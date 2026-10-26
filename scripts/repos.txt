@@ -1,0 +1,12 @@
+# Candidate pure-Python repos for mining recent bug fixes (repo URL, then the install command for tests).
+# Edit freely; prefer actively maintained libraries with simple pytest setups.
+https://github.com/more-itertools/more-itertools.git | pip install -e . pytest
+https://github.com/mahmoud/boltons.git | pip install -e . pytest
+https://github.com/andialbrecht/sqlparse.git | pip install -e . pytest
+https://github.com/python-humanize/humanize.git | pip install -e . pytest freezegun
+https://github.com/python-poetry/tomlkit.git | pip install -e . pytest
+https://github.com/marshmallow-code/marshmallow.git | pip install -e .[tests]
+https://github.com/python-attrs/attrs.git | pip install -e .[tests]
+https://github.com/dateutil/dateutil.git | pip install -e . pytest hypothesis freezegun
+https://github.com/pytoolz/toolz.git | pip install -e . pytest
+https://github.com/pyparsing/pyparsing.git | pip install -e . pytest

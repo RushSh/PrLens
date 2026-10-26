@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+runs/
+data/raw/
+logs/
+.DS_Store
+
+scratch_glimmer_probe.py
+candidates.jsonl
