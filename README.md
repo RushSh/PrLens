@@ -24,7 +24,7 @@ Day 1 of the hackathon. Working today:
 - the census estimator (Gamma-Poisson bug rate, Beta blind rate, NegBin reweighting), checked against brute-force Monte Carlo in the tests;
 - an end-to-end `bugcensus review` on one file, plus an offline `--dry-run`;
 - scripts to mine and validate recent real bug fixes for the realism test and calibration plot;
-- a first realism check on 112 real bugs from 20 Python repos (results below).
+- a first realism check on 112 real bugs from 11 Python repos (results below).
 
 Not yet built (see the roadmap): the bug verifier, model-native decoys, the codebase sweep agent, and the GitHub integration. Until the verifier exists, "bugs found" counts unverified findings and the output says so.
 
@@ -54,6 +54,20 @@ BUGCENSUS_PANEL=glimmer bugcensus review examples/billing.py            # Glimme
 
 Glimmer returns its reasoning before the answer; BugCensus reads only the final answer. A local model serves one request at a time, so BugCensus sends its calls one after another.
 
+### Muse Glimmer on Fireworks (fast, paid by GPU time)
+
+For larger batches, run Glimmer 30B in BF16 on one NVIDIA H200 as a Fireworks on-demand deployment (about $8 per hour while a replica runs; it scales to zero after 15 idle minutes):
+
+```bash
+scripts/fireworks_glimmer.sh up      # asks before creating; prints the line to add to .env
+BUGCENSUS_PANEL=spark,glimmer_fw bugcensus review examples/billing.py
+scripts/fireworks_glimmer.sh down    # delete it when done
+```
+
+### Dashboard
+
+`web/` has a local dashboard (Node.js + Next.js + Postgres) to see every run, which models reviewed it, compare runs, and start new runs with any mix of reviewers. Setup: [web/README.md](web/README.md).
+
 `examples/billing.py` contains one known real bug (`average_order_value` subtracts 1), so you can check whether the panel finds it.
 
 ### Mining real bugs for the realism test
@@ -69,7 +83,7 @@ A candidate is kept only if its fix commit adds or changes a test that fails bef
 
 The estimate is only sound if decoys are about as hard to catch as real bugs. `scripts/realism.py` builds two kinds of unit from mined fixes: the real buggy function (before the fix), and the fixed function with one decoy that the fix's own tests catch. The reviewers see both, unlabeled.
 
-First run (Oct 26, 112 real bugs from 20 repos, 316 units, Spark and Wonder at low reasoning effort):
+First run (Oct 26, 112 real bugs from 11 repos, 316 units, Spark and Wonder at low reasoning effort):
 
 | Reviewer | Real bugs caught | Decoys caught | Gap (logit, decoy − real) | 95% CI |
 |---|---|---|---|---|

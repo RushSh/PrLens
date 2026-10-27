@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Scan every page and component explicitly (folder names like app/runs must never be skipped). */
+@source "./";
+@source "../components";
+
+@theme {
+  --font-sans: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: #f7f7f5;
+  color: #1c1d1f;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,236 @@
+{
+  "file": "examples/billing.py",
+  "changed_lines": 45,
+  "reviewers": [
+    "glimmer"
+  ],
+  "decoys_planted": 10,
+  "decoys_missed_by_all": 6,
+  "decoys": [
+    {
+      "copy": "copy-A",
+      "decoy": "off_by_one in is_valid_card_suffix() line 38: `4` -> `3`",
+      "line_in_copy": 36,
+      "caught_by": [
+        "glimmer"
+      ],
+      "matched": [
+        {
+          "reviewer": "glimmer",
+          "lines": [
+            36,
+            36
+          ],
+          "category": "logic_error",
+          "explanation": "Validates length 3 instead of 4, so four-digit suffixes are rejected and three-digit strings are accepted."
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-A",
+      "decoy": "boundary in late_fee() line 31: `<=` -> `<`",
+      "line_in_copy": 29,
+      "caught_by": [],
+      "matched": [],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-A",
+      "decoy": "operand_swap in split_evenly() line 25: `total_cents % n` -> `n % total_cents`",
+      "line_in_copy": 23,
+      "caught_by": [
+        "glimmer"
+      ],
+      "matched": [
+        {
+          "reviewer": "glimmer",
+          "lines": [
+            23,
+            23
+          ],
+          "category": "logic_error",
+          "explanation": "extra is computed as n % total_cents instead of total_cents % n, so the distribution is wrong and the parts do not sum to total_cents. With total_cents == 0 this also raises ZeroDivisionError."
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-A",
+      "decoy": "missing_guard in clamp() line 13: `if x < lo: return lo` -> `<removed>`",
+      "line_in_copy": 13,
+      "caught_by": [
+        "glimmer"
+      ],
+      "matched": [
+        {
+          "reviewer": "glimmer",
+          "lines": [
+            11,
+            15
+          ],
+          "category": "logic_error",
+          "explanation": "clamp only enforces the upper bound; values below lo are returned unchanged, violating the [lo, hi] contract."
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-A",
+      "decoy": "negation in average_order_value() line 43: `not` -> `<removed>`",
+      "line_in_copy": 41,
+      "caught_by": [
+        "glimmer"
+      ],
+      "matched": [
+        {
+          "reviewer": "glimmer",
+          "lines": [
+            41,
+            42
+          ],
+          "category": "logic_error",
+          "explanation": "Condition is inverted: returns 0 for non-empty totals and proceeds to divide by len(totals) for an empty list, causing ZeroDivisionError and wrong results."
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "logic in is_valid_card_suffix() line 38: `and` -> `or`",
+      "line_in_copy": 38,
+      "caught_by": [],
+      "matched": [],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "operator in average_order_value() line 45: `-` -> `+`",
+      "line_in_copy": 45,
+      "caught_by": [],
+      "matched": [],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "off_by_one in late_fee() line 31: `0` -> `1`",
+      "line_in_copy": 31,
+      "caught_by": [],
+      "matched": [],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "boundary in split_evenly() line 26: `<` -> `<=`",
+      "line_in_copy": 26,
+      "caught_by": [],
+      "matched": [],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "logic in apply_discount() line 6: `or` -> `and`",
+      "line_in_copy": 6,
+      "caught_by": [],
+      "matched": [],
+      "too_wide": []
+    }
+  ],
+  "suspected_bugs": [
+    {
+      "lines": [
+        45,
+        45
+      ],
+      "reviewers": [
+        "glimmer"
+      ],
+      "explanations": [
+        "average_order_value returns sum(totals)/len(totals) - 1, so the mean is off by one for all non-empty inputs."
+      ]
+    }
+  ],
+  "found_counted": 1,
+  "found_is_verified": false,
+  "extras_from_copies": [],
+  "findings_by_version": {
+    "original": [
+      {
+        "reviewer": "glimmer",
+        "lines": [
+          45,
+          45
+        ],
+        "category": "logic error",
+        "explanation": "average_order_value returns sum(totals)/len(totals) - 1, so the mean is off by one for all non-empty inputs."
+      }
+    ],
+    "copy-A": [
+      {
+        "reviewer": "glimmer",
+        "lines": [
+          11,
+          15
+        ],
+        "category": "logic_error",
+        "explanation": "clamp only enforces the upper bound; values below lo are returned unchanged, violating the [lo, hi] contract."
+      },
+      {
+        "reviewer": "glimmer",
+        "lines": [
+          23,
+          23
+        ],
+        "category": "logic_error",
+        "explanation": "extra is computed as n % total_cents instead of total_cents % n, so the distribution is wrong and the parts do not sum to total_cents. With total_cents == 0 this also raises ZeroDivisionError."
+      },
+      {
+        "reviewer": "glimmer",
+        "lines": [
+          36,
+          36
+        ],
+        "category": "logic_error",
+        "explanation": "Validates length 3 instead of 4, so four-digit suffixes are rejected and three-digit strings are accepted."
+      },
+      {
+        "reviewer": "glimmer",
+        "lines": [
+          41,
+          42
+        ],
+        "category": "logic_error",
+        "explanation": "Condition is inverted: returns 0 for non-empty totals and proceeds to divide by len(totals) for an empty list, causing ZeroDivisionError and wrong results."
+      },
+      {
+        "reviewer": "glimmer",
+        "lines": [
+          43,
+          43
+        ],
+        "category": "logic_error",
+        "explanation": "Mean is reduced by 1 due to stray '- 1', giving an incorrect average."
+      }
+    ],
+    "copy-B": []
+  },
+  "estimate": {
+    "expected_hidden": 0.4099588135812986,
+    "p_clean": 0.6939029984281829,
+    "interval": [
+      0,
+      2
+    ],
+    "q_mean": 0.5414325556063915,
+    "found": 1,
+    "decoys": 10,
+    "decoys_missed": 6,
+    "status": "LOOK HERE"
+  },
+  "errors": [],
+  "tokens": {
+    "input": 2636,
+    "output": 15756
+  },
+  "seconds": 966.3
+}

@@ -1,0 +1,605 @@
+{
+  "schema_version": 2,
+  "run_id": "26cce143e465476681d2f52a4669ab95",
+  "kind": "census",
+  "started_at": "2026-10-27T14:16:02+00:00",
+  "finished_at": "2026-10-27T14:16:02+00:00",
+  "git_sha": "3389919+dirty",
+  "prompt_sha": "43b0a9197ce2",
+  "settings": {
+    "n_copies": 2,
+    "per_copy": 5,
+    "seed": 0,
+    "max_span": 6,
+    "line_ranges": null
+  },
+  "models": [
+    {
+      "reviewer": "fake-a",
+      "model_id": "fake-a",
+      "provider": "fake",
+      "endpoint": null,
+      "open_weights": false,
+      "reasoning_effort": null,
+      "max_tokens": null
+    },
+    {
+      "reviewer": "fake-b",
+      "model_id": "fake-b",
+      "provider": "fake",
+      "endpoint": null,
+      "open_weights": false,
+      "reasoning_effort": null,
+      "max_tokens": null
+    }
+  ],
+  "reviews": [
+    {
+      "reviewer": "fake-a",
+      "version": "original",
+      "findings": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "seconds": 0.0,
+      "finish_reason": null,
+      "error": null
+    },
+    {
+      "reviewer": "fake-b",
+      "version": "original",
+      "findings": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "seconds": 0.0,
+      "finish_reason": null,
+      "error": null
+    },
+    {
+      "reviewer": "fake-a",
+      "version": "copy-A",
+      "findings": 5,
+      "input_tokens": null,
+      "output_tokens": null,
+      "seconds": 0.0,
+      "finish_reason": null,
+      "error": null
+    },
+    {
+      "reviewer": "fake-b",
+      "version": "copy-A",
+      "findings": 4,
+      "input_tokens": null,
+      "output_tokens": null,
+      "seconds": 0.0,
+      "finish_reason": null,
+      "error": null
+    },
+    {
+      "reviewer": "fake-a",
+      "version": "copy-B",
+      "findings": 3,
+      "input_tokens": null,
+      "output_tokens": null,
+      "seconds": 0.0,
+      "finish_reason": null,
+      "error": null
+    },
+    {
+      "reviewer": "fake-b",
+      "version": "copy-B",
+      "findings": 5,
+      "input_tokens": null,
+      "output_tokens": null,
+      "seconds": 0.0,
+      "finish_reason": null,
+      "error": null
+    }
+  ],
+  "source": "\"\"\"Example module for trying BugCensus. It contains ONE known real bug (see the README).\"\"\"\n\n\ndef apply_discount(price, pct):\n    \"\"\"Return price after a percentage discount, rounded to cents. pct must be 0-100.\"\"\"\n    if pct < 0 or pct > 100:\n        raise ValueError(\"pct must be between 0 and 100\")\n    return round(price * (1 - pct / 100), 2)\n\n\ndef clamp(x, lo, hi):\n    \"\"\"Clamp x into [lo, hi].\"\"\"\n    if x < lo:\n        return lo\n    if x > hi:\n        return hi\n    return x\n\n\ndef split_evenly(total_cents, n):\n    \"\"\"Split an amount into n parts that differ by at most one cent and sum to the total.\"\"\"\n    if n <= 0:\n        raise ValueError(\"n must be positive\")\n    base = total_cents // n\n    extra = total_cents % n\n    return [base + 1 if i < extra else base for i in range(n)]\n\n\ndef late_fee(days_late, daily_fee, cap):\n    \"\"\"Fee for a late invoice: daily_fee per day late, never more than cap. Not late -> 0.\"\"\"\n    if days_late <= 0:\n        return 0\n    return min(days_late * daily_fee, cap)\n\n\ndef is_valid_card_suffix(s):\n    \"\"\"True if s is exactly four digits.\"\"\"\n    return len(s) == 4 and s.isdigit()\n\n\ndef average_order_value(totals):\n    \"\"\"Mean of order totals; 0 for no orders.\"\"\"\n    if not totals:\n        return 0\n    return sum(totals) / len(totals) - 1  # known real bug: stray \"- 1\"\n",
+  "file": "examples/billing.py",
+  "changed_lines": 45,
+  "reviewers": [
+    "fake-a",
+    "fake-b"
+  ],
+  "decoys_planted": 10,
+  "decoy_free_lines": [],
+  "decoys_missed_by_all": 0,
+  "decoys": [
+    {
+      "copy": "copy-A",
+      "decoy": "off_by_one in is_valid_card_suffix() line 38: `4` -> `3`",
+      "kind": "off_by_one",
+      "function": "is_valid_card_suffix",
+      "line": 38,
+      "line_in_copy": 36,
+      "caught_by": [
+        "fake-a",
+        "fake-b"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-a",
+          "lines": [
+            36,
+            36
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        },
+        {
+          "reviewer": "fake-b",
+          "lines": [
+            36,
+            36
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-A",
+      "decoy": "boundary in late_fee() line 31: `<=` -> `<`",
+      "kind": "boundary",
+      "function": "late_fee",
+      "line": 31,
+      "line_in_copy": 29,
+      "caught_by": [
+        "fake-a"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-a",
+          "lines": [
+            29,
+            29
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-A",
+      "decoy": "operand_swap in split_evenly() line 25: `total_cents % n` -> `n % total_cents`",
+      "kind": "operand_swap",
+      "function": "split_evenly",
+      "line": 25,
+      "line_in_copy": 23,
+      "caught_by": [
+        "fake-a",
+        "fake-b"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-a",
+          "lines": [
+            23,
+            23
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        },
+        {
+          "reviewer": "fake-b",
+          "lines": [
+            23,
+            23
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-A",
+      "decoy": "missing_guard in clamp() line 13: `if x < lo: return lo` -> `<removed>`",
+      "kind": "missing_guard",
+      "function": "clamp",
+      "line": 13,
+      "line_in_copy": 13,
+      "caught_by": [
+        "fake-a",
+        "fake-b"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-a",
+          "lines": [
+            13,
+            13
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        },
+        {
+          "reviewer": "fake-b",
+          "lines": [
+            13,
+            13
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-A",
+      "decoy": "negation in average_order_value() line 43: `not` -> `<removed>`",
+      "kind": "negation",
+      "function": "average_order_value",
+      "line": 43,
+      "line_in_copy": 41,
+      "caught_by": [
+        "fake-a",
+        "fake-b"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-a",
+          "lines": [
+            41,
+            41
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        },
+        {
+          "reviewer": "fake-b",
+          "lines": [
+            41,
+            41
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "logic in is_valid_card_suffix() line 38: `and` -> `or`",
+      "kind": "logic",
+      "function": "is_valid_card_suffix",
+      "line": 38,
+      "line_in_copy": 38,
+      "caught_by": [
+        "fake-a",
+        "fake-b"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-a",
+          "lines": [
+            38,
+            38
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        },
+        {
+          "reviewer": "fake-b",
+          "lines": [
+            38,
+            38
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "operator in average_order_value() line 45: `-` -> `+`",
+      "kind": "operator",
+      "function": "average_order_value",
+      "line": 45,
+      "line_in_copy": 45,
+      "caught_by": [
+        "fake-b"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-b",
+          "lines": [
+            45,
+            45
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "off_by_one in late_fee() line 31: `0` -> `1`",
+      "kind": "off_by_one",
+      "function": "late_fee",
+      "line": 31,
+      "line_in_copy": 31,
+      "caught_by": [
+        "fake-a",
+        "fake-b"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-a",
+          "lines": [
+            31,
+            31
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        },
+        {
+          "reviewer": "fake-b",
+          "lines": [
+            31,
+            31
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "boundary in split_evenly() line 26: `<` -> `<=`",
+      "kind": "boundary",
+      "function": "split_evenly",
+      "line": 26,
+      "line_in_copy": 26,
+      "caught_by": [
+        "fake-a",
+        "fake-b"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-a",
+          "lines": [
+            26,
+            26
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        },
+        {
+          "reviewer": "fake-b",
+          "lines": [
+            26,
+            26
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    },
+    {
+      "copy": "copy-B",
+      "decoy": "logic in apply_discount() line 6: `or` -> `and`",
+      "kind": "logic",
+      "function": "apply_discount",
+      "line": 6,
+      "line_in_copy": 6,
+      "caught_by": [
+        "fake-b"
+      ],
+      "not_reviewed": false,
+      "matched": [
+        {
+          "reviewer": "fake-b",
+          "lines": [
+            6,
+            6
+          ],
+          "category": "logic",
+          "explanation": "suspicious change"
+        }
+      ],
+      "too_wide": []
+    }
+  ],
+  "suspected_bugs": [],
+  "found_counted": 0,
+  "found_is_verified": false,
+  "extras_from_copies": [],
+  "findings_by_version": {
+    "original": [],
+    "copy-A": [
+      {
+        "reviewer": "fake-a",
+        "lines": [
+          36,
+          36
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-a",
+        "lines": [
+          29,
+          29
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-a",
+        "lines": [
+          23,
+          23
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-a",
+        "lines": [
+          13,
+          13
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-a",
+        "lines": [
+          41,
+          41
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-b",
+        "lines": [
+          36,
+          36
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-b",
+        "lines": [
+          23,
+          23
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-b",
+        "lines": [
+          13,
+          13
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-b",
+        "lines": [
+          41,
+          41
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      }
+    ],
+    "copy-B": [
+      {
+        "reviewer": "fake-a",
+        "lines": [
+          38,
+          38
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-a",
+        "lines": [
+          31,
+          31
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-a",
+        "lines": [
+          26,
+          26
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-b",
+        "lines": [
+          38,
+          38
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-b",
+        "lines": [
+          45,
+          45
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-b",
+        "lines": [
+          31,
+          31
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-b",
+        "lines": [
+          26,
+          26
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      },
+      {
+        "reviewer": "fake-b",
+        "lines": [
+          6,
+          6
+        ],
+        "category": "logic",
+        "explanation": "suspicious change"
+      }
+    ]
+  },
+  "estimate": {
+    "expected_hidden": 0.028285943214589545,
+    "p_clean": 0.9731659699919404,
+    "interval": [
+      0,
+      0
+    ],
+    "q_mean": 0.08646520780374845,
+    "found": 0,
+    "decoys": 10,
+    "decoys_missed": 0,
+    "status": "CLEAR"
+  },
+  "verdict": "CLEAR",
+  "errors": [],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  },
+  "seconds": 0.0,
+  "saved_to": "runs/billing-1793110562-26cce1.json"
+}

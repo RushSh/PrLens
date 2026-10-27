@@ -1,0 +1,26 @@
+[
+ {
+  "ts": 1793106492.405924,
+  "model": "mlx-community/Muse-Glimmer-30B-4bit",
+  "version": "original",
+  "input_tokens": 885,
+  "output_tokens": 4751,
+  "seconds": 294.92
+ },
+ {
+  "ts": 1793106797.664433,
+  "model": "mlx-community/Muse-Glimmer-30B-4bit",
+  "version": "copy-A",
+  "input_tokens": 866,
+  "output_tokens": 5005,
+  "seconds": 305.26
+ },
+ {
+  "ts": 1793107163.7612438,
+  "model": "mlx-community/Muse-Glimmer-30B-4bit",
+  "version": "copy-B",
+  "input_tokens": 885,
+  "output_tokens": 6000,
+  "seconds": 366.1
+ }
+]
