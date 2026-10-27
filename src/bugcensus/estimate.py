@@ -26,6 +26,7 @@ class Prior:
     beta: float = 1.0      # Gamma rate
     a_q: float = 1.0       # Beta prior on the panel blind rate
     b_q: float = 1.0
+    difficulty_odds: float = 1.0   # real-bug vs decoy miss odds ratio (1 = decoys as hard as real bugs)
 
 
 @dataclass
@@ -53,13 +54,16 @@ def _negbin_logpmf(s: int, alpha: float, p: np.ndarray) -> np.ndarray:
 
 def census(found: int, decoys: int, decoys_missed: int, size: float = 1.0, prior: Prior | None = None,
            clear_threshold: float = 0.9, look_threshold: float = 0.5, n_q: int = 2000,
-           seed: int = 0) -> CensusResult:
+           seed: int = 0, difficulty_odds: float = 1.0) -> CensusResult:
     """Estimate hidden bugs in one unit (a PR or a sweep module).
 
     found          verified real bugs found in the ORIGINAL pass (never count findings from seeded copies)
     decoys         number of decoys planted (M)
     decoys_missed  decoys missed by every reviewer (m)
     size           unit size in the same units used to fit the prior (e.g. changed lines / 100)
+    difficulty_odds  how much harder real bugs are to catch than decoys, as an odds ratio on "missed by every
+                   reviewer" (1 = equally hard). Measured on a calibration set with known bugs; the blind rate
+                   measured on decoys is converted to the real-bug blind rate: odds(q_real) = k * odds(q_decoy).
     """
     if decoys_missed > decoys or found < 0 or decoys < 0:
         raise ValueError("invalid counts")
@@ -67,6 +71,8 @@ def census(found: int, decoys: int, decoys_missed: int, size: float = 1.0, prior
     rng = np.random.default_rng(seed)
     q = rng.beta(prior.a_q + decoys_missed, prior.b_q + decoys - decoys_missed, n_q)
     q = np.clip(q, 1e-9, 1 - 1e-9)
+    if difficulty_odds != 1.0:
+        q = difficulty_odds * q / (1 - q + difficulty_odds * q)
     # weight q by the likelihood of the bugs we found: S ~ NegBin(alpha, beta / (beta + (1-q) w))
     p_succ = prior.beta / (prior.beta + (1 - q) * size)
     logw = _negbin_logpmf(found, prior.alpha, p_succ)

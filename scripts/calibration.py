@@ -557,7 +557,20 @@ def _group_count(findings):
 VARIANTS = {
     "flat": "Flat blind-rate prior (current product)",
     "pooled": "Pooled blind-rate prior (empirical Bayes from other repositories)",
+    "corrected": "Pooled + decoy-difficulty correction (learned on other repositories)",
 }
+
+
+def _difficulty_odds(units: list[dict]) -> float:
+    """Odds ratio: odds(real bug missed by every reviewer) / odds(decoy missed by every reviewer), pooled over
+    `units` (which have known bugs). >1 means real bugs are harder to catch than decoys."""
+    k = sum(o["k"] for o in units)
+    real_missed = sum(o["k"] - o["found_verified"] for o in units)
+    M = sum(o["decoys"] for o in units)
+    m = sum(o["missed"] for o in units)
+    pr = (real_missed + 0.5) / (k + 1)
+    pd = (m + 0.5) / (M + 1)
+    return (pr / (1 - pr)) / (pd / (1 - pd))
 
 
 def _size(o: dict, args) -> float:
@@ -678,13 +691,17 @@ def analyze(args):
         priors = {}
         for repo in repos_all:
             others = [o for o in obs if o["repo"] != repo]
-            qp = fit_q_prior([(o["decoys"], o["missed"]) for o in others]) if vname == "pooled" else (1.0, 1.0)
+            qp = fit_q_prior([(o["decoys"], o["missed"]) for o in others]) if vname != "flat" else (1.0, 1.0)
             pr = fit_prior([(o["found_verified"], o["decoys"], o["missed"], _size(o, args)) for o in others],
                            min_units=20, q_prior=qp)
+            # the correction uses truth, so it is learned only on the other repositories (never the unit's own)
+            pr.difficulty_odds = _difficulty_odds(others) if vname == "corrected" else 1.0
             priors[repo] = pr
         preds = {}
         for o in obs:
-            est = census(o["found_verified"], o["decoys"], o["missed"], size=_size(o, args), prior=priors[o["repo"]], seed=0)
+            pr = priors[o["repo"]]
+            est = census(o["found_verified"], o["decoys"], o["missed"], size=_size(o, args), prior=pr, seed=0,
+                         difficulty_odds=pr.difficulty_odds)
             preds[o["unit_id"]] = {"expected_hidden": est.expected_hidden, "p_clean": est.p_clean,
                                    "interval": list(est.interval), "status": est.status, "q_mean": est.q_mean}
         variants[vname] = (priors, preds)
@@ -721,7 +738,8 @@ def analyze(args):
     for vname in VARIANTS:
         m = _metrics(test, vname)
         m["name"], m["label"] = vname, VARIANTS[vname]
-        m["priors_by_repo"] = {r: {"alpha": p.alpha, "beta": p.beta, "a_q": p.a_q, "b_q": p.b_q}
+        m["priors_by_repo"] = {r: {"alpha": p.alpha, "beta": p.beta, "a_q": p.a_q, "b_q": p.b_q,
+                                   "difficulty_odds": p.difficulty_odds}
                                for r, p in variants[vname][0].items()}
         result["variants"].append(m)
         t, cr, a = m["totals"], m["clear_rule"], m["auc_anything_hidden"]
