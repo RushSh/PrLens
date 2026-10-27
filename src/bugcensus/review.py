@@ -170,7 +170,8 @@ class LLMReviewer:
         # A cut-off or unparseable reply is a failed review, never "no bugs found":
         # treating it as empty would mark every decoy in that copy as missed.
         if finish == "length":
-            result.error = f"reply cut off at the token limit ({result.output_tokens} tokens); raise BUGCENSUS_LOCAL_MAX_TOKENS"
+            knob = "FIREWORKS_MAX_TOKENS" if self.spec.provider == "fireworks" else "BUGCENSUS_LOCAL_MAX_TOKENS"
+            result.error = f"reply cut off at the token limit ({result.output_tokens} tokens); raise {knob}"
             result.findings = []
         elif '"findings"' not in final_answer(text):
             result.error = "reply contained no findings JSON"

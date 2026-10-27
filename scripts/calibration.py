@@ -427,11 +427,19 @@ def bench(args):
     used = [r for r in results if r.output_tokens]
     if not used:
         sys.exit("every bench call failed before generating; check the deployment and FIREWORKS_GLIMMER_MODEL")
-    # every generated token used GPU time, including replies that were cut off
-    tps = sum(r.output_tokens for r in used) / wall
+    # Every generated token used GPU time, including replies that were cut off. A short bench is dominated by
+    # its slowest reply (the others finish and the GPU idles), so tokens / wall underestimates a long run.
+    # Steady state: each stream's own speed times the number of streams that ran at once.
+    concurrent = min(args.workers, len(jobs))
+    per_stream = sum(r.output_tokens for r in used) / sum(max(r.seconds, 1e-6) for r in used)
+    tps = per_stream * concurrent
     per_call = sum(r.output_tokens for r in used) / len(used)
-    print(f"\nmeasured: {tps:.0f} output tok/s overall with {args.workers} concurrent calls, "
-          f"{per_call:.0f} output tokens per call (cut-off replies count at the cap, so this is a floor), {wall:.0f}s wall")
+    print(f"\nmeasured: {per_stream:.0f} output tok/s per stream x {concurrent} at once = ~{tps:.0f} tok/s in a long run "
+          f"(this short bench averaged {sum(r.output_tokens for r in used) / wall:.0f} because its slowest reply ran alone); "
+          f"{per_call:.0f} output tokens per call")
+    if concurrent < args.workers:
+        print(f"note: only {concurrent} calls ran at once; whether {args.workers} at once keeps the per-stream speed "
+              f"shows in the run's first ETA lines")
     if ok:
         print(f"findings per completed review: {[len(r.findings) for r in ok]}")
     if cut:

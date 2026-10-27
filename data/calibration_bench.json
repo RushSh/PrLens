@@ -1,10 +1,13 @@
 {
-  "at": "2026-10-27T15:40:59+00:00",
+  "at": "2026-10-27T15:46:40+00:00",
   "panel": "glimmer_fw",
-  "workers": 8,
+  "workers": 16,
   "calls": 8,
-  "errors": 3,
-  "output_tokens_per_sec": 477.66952360205823,
-  "output_tokens_per_call": 9565.6,
-  "wall_seconds": 100.1278030872345
+  "errors": 1,
+  "cut_off": 1,
+  "output_tokens_per_sec": 540.8725689935111,
+  "reasoning_effort": null,
+  "max_tokens": 24000,
+  "output_tokens_per_call": 12217.375,
+  "wall_seconds": 180.70615077018738
 }
