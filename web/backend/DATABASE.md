@@ -9,10 +9,10 @@ two disagree.
 
 | Situation | What to do |
 |---|---|
-| First setup | `createdb bugcensus`, copy `.env.example` to `.env`, `npm run migrate`, `npm run import` |
+| First setup | copy `.env.example` to `.env` and start the backend: it creates the database, migrates and imports on start |
 | Any schema change | `npm run migrate:create -- describe-your-change`, write the SQL, update `src/db/schema.ts`, `npm run migrate`, `npm test` |
 | Clean slate (dev) | `npm run db:reset` (drops all BugCensus tables, replays every migration), then `npm run import` |
-| Load saved runs | `npm run import` (reads `runs/*.json` and `data/realism_*.json`; safe to repeat) |
+| Load saved runs | automatic while the backend runs (it watches `runs/` and `data/`); `npm run import` does the same by hand |
 
 ## Rules
 
@@ -36,7 +36,7 @@ two disagree.
 
 | Table | Description |
 |---|---|
-| `jobs` | Runs started from the dashboard: file, chosen reviewers, settings, status, live log |
+| `jobs` | Work started from the dashboard: a census (`kind = census`) or an allow-listed experiment step (`kind = experiment`, `action`, `args`), its lane (`models`, `cpu`, `ops`), status and live log |
 | `runs` | One census of one file: verdict, estimate, decoy counts, tokens, prompt and code version, the full report (`raw`) |
 | `run_models` | Which model, provider, reasoning effort and token cap each reviewer used in that run (`inferred` for older runs) |
 | `reviews` | One row per review call (reviewer × version): tokens, time, finish reason, error |

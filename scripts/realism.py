@@ -50,40 +50,7 @@ def sh(cmd, cwd=None, timeout=600):
 
 # ------------------------------------------------------------------------------------ prepare
 
-def find_func(source: str, name: str, near: int):
-    """Return (start, end) lines of the function `name` closest to line `near`."""
-    best = None
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
-            start = min([d.lineno for d in node.decorator_list] + [node.lineno])
-            if best is None or abs(start - near) < abs(best[0] - near):
-                best = (start, node.end_lineno)
-    return best
-
-
-def snippet(source: str, ranges):
-    """Concatenate function ranges; return text and a map from (absolute line) -> snippet line."""
-    lines = source.splitlines()
-    out, mapping = [], {}
-    for k, (a, b) in enumerate(ranges):
-        if k:
-            out.append("")
-        for ln in range(a, b + 1):
-            out.append(lines[ln - 1])
-            mapping[ln] = len(out)
-    return "\n".join(out) + "\n", mapping
-
-
-def changed_lines(old_text: str, new_text: str):
-    """Lines (1-based) in old_text that the fix changed; insertions mark the neighbouring lines."""
-    old, new = old_text.splitlines(), new_text.splitlines()
-    marks = set()
-    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, old, new).get_opcodes():
-        if tag in ("replace", "delete"):
-            marks.update(range(i1 + 1, i2 + 1))
-        elif tag == "insert":
-            marks.update(x for x in (i1, i1 + 1) if 1 <= x <= len(old))
-    return sorted(marks)
+from bugcensus.bugdata import changed_lines, find_func, snippet  # noqa: E402,F401  (shared with calibration and decoys)
 
 
 def ensure_env(repo_dir: Path, venv: Path, install_cmd: str) -> bool:
@@ -269,7 +236,16 @@ def review(args):
     if out_path.exists():
         done = {(r["unit_id"], r["reviewer"]) for r in map(json.loads, out_path.read_text().splitlines()) if r.get("error") is None}
     jobs = [(u, r) for u in units for r in reviewers if (u["unit_id"], r.name) not in done]
-    print(f"{len(jobs)} review calls")
+    from bugcensus.llm import confirm, plan_line
+
+    lines, total = [], 0.0
+    for r in reviewers:
+        n = sum(1 for _, x in jobs if x is r)
+        line, cost = plan_line(r.spec, n, out_tokens_per_call=5000 if r.spec.provider != "meta" else 3700)
+        lines.append(line)
+        total += cost
+    confirm(f"realism review: {len(units)} units, {len(jobs)} review calls still to do ({len(done)} saved in {out_path})\n"
+            + "\n".join(lines) + f"\n  rough total: ${total:,.2f}", args.yes, args.plan_only)
 
     def run(job):
         u, r = job
@@ -309,9 +285,19 @@ def analyze(args):
     if args.reviewers:
         keep = set(args.reviewers.split(","))
         rows = [r for r in rows if r["reviewer"] in keep]
+    judge = None
+    if args.matcher == "judge":
+        from bugcensus.judge import Verdicts
+
+        judge = Verdicts(Path(__file__).resolve().parents[1], f"realism:{Path(args.reviews).name}")
     hit = defaultdict(dict)       # unit -> reviewer -> bool
     for r in rows:
-        hit[r["unit_id"]][r["reviewer"]] = caught(r["findings"], units[r["unit_id"]]["bug_lines"])
+        u = units[r["unit_id"]]
+        hit[r["unit_id"]][r["reviewer"]] = (judge.caught(u["unit_id"], r["reviewer"], u["unit_id"], r["findings"], u["bug_lines"])
+                                            if judge else caught(r["findings"], u["bug_lines"]))
+    if judge and judge.missing:
+        sys.exit(f"{judge.missing} unit/reviewer pairs have no judge verdict yet; run: python scripts/judge.py "
+                 f"--realism-reviews {args.reviews} --realism-units {args.units}")
     reviewers = sorted({r["reviewer"] for r in rows})
     complete = [u for u in hit if set(hit[u]) == set(reviewers)]
     bugs = sorted({units[u]["bug_id"] for u in complete})
@@ -366,9 +352,14 @@ def analyze(args):
     for k, v in sorted(fam.items(), key=lambda kv: -len(kv[1])):
         print(f"  {k:13s} {np.mean(v):5.0%} of {len(v)}")
         result["families"].append({"family": k, "rate": float(np.mean(v)), "n": len(v)})
-    if args.json:
-        Path(args.json).write_text(json.dumps(result, indent=2))
-        print(f"\nwrote {args.json}")
+    result["matcher"] = args.matcher
+    if not args.json:   # saved by default so the dashboard picks it up
+        import re as _re
+
+        slug = _re.sub(r"[^a-z0-9]+", "_", result["name"].lower()).strip("_")[:60]
+        args.json = str(Path(__file__).resolve().parents[1] / "data" / f"realism_{slug}.json")
+    Path(args.json).write_text(json.dumps(result, indent=2))
+    print(f"\nwrote {args.json}")
     if not args.no_push:
         from bugcensus.cli import _push
 
@@ -404,12 +395,15 @@ def main():
     r.add_argument("--units", default="data/realism_units.jsonl"); r.add_argument("--out", default="data/realism_reviews.jsonl")
     r.add_argument("--panel", default=None); r.add_argument("--workers", type=int, default=6)
     r.add_argument("--limit-units", type=int, default=0, help="review only the first N units (cost control)")
+    r.add_argument("--plan-only", action="store_true", help="print calls and cost, call nothing")
+    r.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
     r.set_defaults(func=review)
     a = sub.add_parser("analyze")
     a.add_argument("--units", default="data/realism_units.jsonl"); a.add_argument("--reviews", default="data/realism_reviews.jsonl")
     a.add_argument("--reviewers", default=None, help="only these reviewers, e.g. spark,glimmer")
     a.add_argument("--name", default=None, help="experiment name shown in the dashboard")
-    a.add_argument("--json", default=None, help="also write the results to this JSON file")
+    a.add_argument("--json", default=None, help="write the results here (default: data/realism_<name>.json)")
+    a.add_argument("--matcher", default="line", choices=["line", "judge"], help="line rule, or judge verdicts (scripts/judge.py)")
     a.add_argument("--no-push", action="store_true", help="don't send results to the dashboard")
     a.set_defaults(func=analyze)
     args = ap.parse_args(); args.func(args)

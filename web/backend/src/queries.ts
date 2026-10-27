@@ -236,6 +236,11 @@ export function toJob(j: typeof jobs.$inferSelect): Job {
   return {
     id: j.id,
     status: j.status,
+    kind: j.kind,
+    action: j.action,
+    title: j.title,
+    lane: j.lane,
+    args: j.args,
     filePath: j.filePath,
     panel: j.panel,
     settings: j.settings,

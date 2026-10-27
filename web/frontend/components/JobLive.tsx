@@ -64,8 +64,9 @@ export function JobLive({ id }: { id: string }) {
           <div className="text-xs text-stone-500">
             <Link href="/jobs" className="hover:underline">Jobs</Link> / {when(job.createdAt)}
           </div>
-          <h1 className="font-mono text-lg font-semibold">{job.filePath}</h1>
-          <div className="text-sm text-stone-600">Reviewers: {job.panel.join(", ")}</div>
+          <h1 className="text-lg font-semibold">{job.title ?? job.filePath}</h1>
+          {job.kind === "census" && job.filePath ? <div className="font-mono text-sm text-stone-600">{job.filePath}</div> : null}
+          {job.panel.length ? <div className="text-sm text-stone-600">Reviewers: {job.panel.join(", ")}</div> : null}
           {job.note ? <div className="text-sm text-stone-500">{job.note}</div> : null}
         </div>
         <div className="flex items-center gap-3">
@@ -79,6 +80,11 @@ export function JobLive({ id }: { id: string }) {
         </div>
       </div>
 
+      {job.status === "succeeded" && job.kind === "experiment" ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
+          Done. Results appear on their pages (Realism checks, Calibration, Runs) automatically.
+        </div>
+      ) : null}
       {job.status === "succeeded" && job.runId ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
           Done. <Link href={`/runs/${job.runId}`} className="font-medium underline">Open the run →</Link>
@@ -88,7 +94,7 @@ export function JobLive({ id }: { id: string }) {
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{job.error}</div>
       ) : null}
       {job.status === "queued" ? (
-        <p className="text-sm text-stone-500">Waiting for the run before it to finish.</p>
+        <p className="text-sm text-stone-500">Waiting for the job before it in the same lane to finish.</p>
       ) : null}
 
       <pre ref={logRef} className="max-h-[60vh] overflow-auto rounded-lg bg-stone-900 p-3 font-mono text-xs leading-5 text-stone-100">

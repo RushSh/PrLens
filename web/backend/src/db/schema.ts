@@ -23,8 +23,13 @@ export const jobs = pgTable("jobs", {
   status: text("status", { enum: ["queued", "running", "succeeded", "failed", "cancelled"] })
     .notNull()
     .default("queued"),
-  filePath: text("file_path").notNull(),
-  panel: text("panel").array().notNull(),
+  kind: text("kind", { enum: ["census", "experiment"] }).notNull().default("census"),
+  action: text("action"),
+  title: text("title"),
+  args: text("args").array().notNull().default([]),
+  lane: text("lane", { enum: ["models", "cpu", "ops"] }).notNull().default("models"),
+  filePath: text("file_path"),
+  panel: text("panel").array().notNull().default([]),
   settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
   note: text("note"),
   log: text("log").notNull().default(""),

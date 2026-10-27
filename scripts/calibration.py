@@ -55,7 +55,9 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from bugcensus.estimate import census, fit_prior, fit_q_prior  # noqa: E402
-from realism import MAX_SPAN, caught, find_func, snippet  # noqa: E402
+from bugcensus.bugdata import find_func, snippet  # noqa: E402
+from bugcensus.judge import Verdicts  # noqa: E402
+from realism import MAX_SPAN, caught  # noqa: E402
 
 BLOCKS = 3              # functions per unit
 ROUNDS = 4              # each bug appears in at most this many units (different company each time)
@@ -89,28 +91,59 @@ def _find_repo(name: str, raw_dirs: list[Path]) -> Path | None:
 
 def _transplant(f_text: str, p_text: str, m_text: str, decoy_line: int):
     """A decoy validated on the FIXED block (m_text = fixed block with the decoy) as the same edit on both
-    the fixed and the BUGGY block. Only single local edits in code identical in both versions qualify.
-    Returns ((fixed_block, line), (buggy_block, line)) or None."""
+    the fixed and the BUGGY block. Every edited region must be code that is identical in both versions
+    (multi-line and multi-hunk edits are fine). Returns ((fixed_block, line), (buggy_block, line)) or None."""
     f, m, p = f_text.splitlines(), m_text.splitlines(), p_text.splitlines()
     ops = [o for o in difflib.SequenceMatcher(None, f, m, autojunk=False).get_opcodes() if o[0] != "equal"]
-    if len(ops) != 1:
+    if not ops or not (1 <= decoy_line <= len(m)):
         return None
-    _, i1, i2, j1, j2 = ops[0]
     fmap = {}
     for tag, a1, a2, b1, b2 in difflib.SequenceMatcher(None, p, f, autojunk=False).get_opcodes():
         if tag == "equal":
             for k in range(a2 - a1):
                 fmap[b1 + k] = a1 + k
-    idx = list(range(i1, i2)) or [i1]
-    if any(i not in fmap for i in idx) or any(fmap[idx[n + 1]] != fmap[idx[n]] + 1 for n in range(len(idx) - 1)):
-        return None
-    pi1 = fmap[i1]
-    pi2 = pi1 + (i2 - i1)
-    buggy = p[:pi1] + m[j1:j2] + p[pi2:]
-    b_line = pi1 + (decoy_line - 1 - j1) + 1
-    if not (1 <= decoy_line <= len(m)) or not (1 <= b_line <= len(buggy)):
+    mapped = []
+    for _, i1, i2, j1, j2 in ops:
+        idx = list(range(i1, i2)) or [i1]
+        if any(i not in fmap for i in idx) or any(fmap[idx[n + 1]] != fmap[idx[n]] + 1 for n in range(len(idx) - 1)):
+            return None
+        pi1 = fmap[i1]
+        mapped.append((pi1, pi1 + (i2 - i1), j1, j2))
+    buggy = p[:]
+    for pi1, pi2, j1, j2 in sorted(mapped, reverse=True):     # bottom-up keeps earlier indices valid
+        buggy[pi1:pi2] = m[j1:j2]
+    # where the decoy's reported line lands in the buggy version
+    d0 = decoy_line - 1
+    host = next(((pi1, pi2, j1, j2) for pi1, pi2, j1, j2 in mapped if j1 <= d0 < max(j2, j1 + 1)), None)
+    if host is None:   # line outside the edited text (e.g. right after a deletion): anchor on the nearest edit
+        host = min(mapped, key=lambda t: abs(t[2] - d0))
+    pi1, _, j1, _ = host
+    shift = sum((j2 - j1_) - (pi2 - pi1_) for pi1_, pi2, j1_, j2 in mapped if pi1_ < pi1)
+    b_line = pi1 + shift + (d0 - j1) + 1
+    if not (1 <= b_line <= len(buggy)):
         return None
     return (m_text, decoy_line), ("\n".join(buggy) + "\n", b_line)
+
+
+def _family_rates() -> dict[str, float]:
+    """Panel catch rate per decoy family from the most recent realism analysis (lower = harder)."""
+    best, rates = "", {}
+    for f in (ROOT / "data").glob("realism_*.json"):
+        try:
+            r = json.loads(f.read_text())
+        except json.JSONDecodeError:
+            continue
+        if r.get("kind") == "realism" and r.get("analyzed_at", "") > best:
+            best, rates = r["analyzed_at"], {x["family"]: x["rate"] for x in r.get("families", [])}
+    return rates
+
+
+def _difficulty(family: str, rates: dict[str, float]) -> float:
+    if family in rates:
+        return rates[family]
+    if family.startswith(("llm:", "glimmer:")):
+        return 0.5          # model-made decoys: assumed hard until a realism check measures them
+    return 0.95
 
 
 def prepare(args):
@@ -118,6 +151,17 @@ def prepare(args):
     by_bug = defaultdict(list)
     for u in realism:
         by_bug[u["bug_id"]].append(u)
+    extra = Counter()
+    for path in filter(None, (args.extra_decoys or "").split(",")):
+        for line in Path(path).read_text().splitlines():
+            if line.strip():
+                d = json.loads(line)
+                if d["bug_id"] in by_bug and d.get("kind") == "decoy":
+                    by_bug[d["bug_id"]].append(d)
+                    extra[d.get("source", Path(path).stem)] += 1
+    if extra:
+        print(f"extra decoys added: {dict(extra)}")
+    rates = _family_rates()
     records = {}
     for path in args.bugs.split(","):
         for line in Path(path).read_text().splitlines():
@@ -160,6 +204,7 @@ def prepare(args):
         if not menu:
             skipped["no decoy usable in both versions"] += 1
             continue
+        menu.sort(key=lambda d: _difficulty(d["family"], rates))       # hardest kinds first
         pool[bug_id.split("@")[0]].append({"bug_id": bug_id, "file": src, "fixed": f_text, "buggy": p_text,
                                            "real_lines": real["bug_lines"], "menu": menu})
 
@@ -192,6 +237,8 @@ def prepare(args):
           f"decoys on the menu per unit: {dict(sorted(Counter(sum(len(b['decoys']) for b in u['blocks']) for u in units).items()))}")
     print(f"  lines per unit: median {sorted(u['lines'] for u in units)[len(units) // 2]}, max {max(u['lines'] for u in units)}")
     print(f"  bugs left out: {dict(skipped)}")
+    fams = Counter(d["family"].split(":")[0] if ":" in d["family"] else "rule-based" for u in units for b in u["blocks"] for d in b["decoys"])
+    print(f"  decoy menu by source: {dict(fams)}  (copies use the hardest kinds first)")
 
 
 def _assemble(parts):
@@ -220,12 +267,12 @@ def _build_unit(unit_id, repo, group, buggy_idx, k):
             "lines": original.count("\n"), "original": original, "blocks": blocks}
 
 
-def build_copies(unit: dict, flagged: set[int]) -> list[dict]:
+def build_copies(unit: dict, flagged: set[int], copies_n: int = COPIES) -> list[dict]:
     """Seeded copies for one unit, after its original was reviewed. Like the pipeline, a decoy is never put
     on a line the original review flagged (+-1). Copy i takes, per function, the i-th menu decoy whose line is
     free; functions without a free decoy stay unchanged in that copy."""
     copies, used = [], defaultdict(set)
-    for ci in range(COPIES):
+    for ci in range(copies_n):
         parts, planted = [], []
         for bi, b in enumerate(unit["blocks"]):
             choice = None
@@ -350,9 +397,16 @@ def _review_jobs(jobs, out: Path, workers: int):
                       flush=True)
 
 
-def execute(units, reviewers, exp: Path, workers: int, on_copies=None) -> None:
+def execute(units, reviewers, exp: Path, workers: int, on_copies=None, copies_n: int = COPIES,
+            units_file: Path = UNITS) -> None:
     """Two phases, resumable: originals, then copies built from what the originals flagged."""
     exp.mkdir(parents=True, exist_ok=True)
+    meta_path = exp / "meta.json"
+    if not meta_path.exists():
+        rel = Path(units_file).resolve()
+        meta_path.write_text(json.dumps({"units": str(rel.relative_to(ROOT)) if rel.is_relative_to(ROOT) else str(rel),
+                                         "copies": copies_n, "panel": sorted(r.name for r in reviewers),
+                                         "started": datetime.now(timezone.utc).isoformat(timespec="seconds")}, indent=2))
     reviews_path, copies_path = exp / "reviews.jsonl", exp / "copies.jsonl"
     names = {r.name for r in reviewers}
 
@@ -376,7 +430,7 @@ def execute(units, reviewers, exp: Path, workers: int, on_copies=None) -> None:
         if set(orig) != names or u["unit_id"] in copies:
             continue
         flagged = _flagged([f for row in orig.values() for f in row["findings"]])
-        rec = {"unit_id": u["unit_id"], "panel": sorted(names), "flagged": sorted(flagged), "copies": build_copies(u, flagged)}
+        rec = {"unit_id": u["unit_id"], "panel": sorted(names), "flagged": sorted(flagged), "copies": build_copies(u, flagged, copies_n)}
         copies[u["unit_id"]] = rec
         new.append(rec)
     with copies_path.open("a") as fh:
@@ -401,7 +455,8 @@ def plan(args):
     from bugcensus.config import registry
 
     units = load_units(args.units, args.split, args.limit_units)
-    print(_plan_text(units, [registry()[n] for n in args.panel.split(",")], args.fw_tps, args.fw_price)[0])
+    print(_plan_text(units, [registry()[n] for n in args.panel.split(",")], args.fw_tps, args.fw_price,
+                     calls_per_unit=1 + args.copies)[0])
 
 
 def bench(args):
@@ -412,7 +467,13 @@ def bench(args):
     reviewers = _reviewers(args.panel)
     units = load_units(args.units, "all", args.n)
     jobs = [(u, r) for u in units for r in reviewers]
-    _confirm(f"bench: {len(jobs)} review calls, {args.workers} at a time, to measure speed.", args.yes)
+    text = (f"bench: {len(jobs)} review calls ({args.workers} at a time) on the originals of the first {len(units)} units, "
+            f"to measure speed and reply length\n" + _plan_text(units, [r.spec for r in reviewers], args.fw_tps, args.fw_price,
+                                                             calls_per_unit=1)[0])
+    if args.plan_only:
+        print(text)
+        return
+    _confirm(text, args.yes)
     t0, results = time.time(), []
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futs = [pool.submit(r.review, u["filename"], u["original"], f"bench|{u['unit_id']}") for u, r in jobs]
@@ -470,7 +531,7 @@ def run(args):
     per_unit_left = []
     for u in units:
         left = sum((u["unit_id"], "original", r.name) not in done for r in reviewers)
-        left += sum((u["unit_id"], f"copy-{chr(65 + i)}", r.name) not in done for i in range(COPIES) for r in reviewers)
+        left += sum((u["unit_id"], f"copy-{chr(65 + i)}", r.name) not in done for i in range(args.copies) for r in reviewers)
         per_unit_left.append(left / max(len(reviewers), 1))
     todo = [u for u, n in zip(units, per_unit_left) if n > 0]
     if not todo:
@@ -481,7 +542,7 @@ def run(args):
     _confirm(f"run '{args.tag}': {len(todo)} units still to finish ({len(done)} reviews already saved in "
              f"{exp.relative_to(ROOT)})\n{text}", args.yes)
     workers = 1 if any(r.spec.local for r in reviewers) else args.workers
-    execute(units, reviewers, exp, workers)
+    execute(units, reviewers, exp, workers, copies_n=args.copies, units_file=Path(args.units))
     print(f"done. next: python scripts/calibration.py analyze --tag {args.tag} --name \"...\"")
 
 
@@ -526,7 +587,7 @@ def dry_run(args):
     for p in (exp / "reviews.jsonl", exp / "copies.jsonl"):
         if p.exists():
             p.unlink()
-    execute(units, fakes, exp, workers=8, on_copies=on_copies)
+    execute(units, fakes, exp, workers=8, on_copies=on_copies, copies_n=args.copies, units_file=Path(args.units))
     args.reviewers = None
     analyze(args)
 
@@ -644,8 +705,22 @@ def analyze(args):
     import numpy as np
 
     exp = EXP_DIR / args.tag
+    meta = json.loads((exp / "meta.json").read_text()) if (exp / "meta.json").exists() else {}
+    if args.units == str(UNITS) and meta.get("units"):
+        args.units = str(ROOT / meta["units"])                  # the units this experiment actually ran on
     units = {u["unit_id"]: u for u in load_units(args.units)}
     rows = _read_jsonl(exp / "reviews.jsonl")
+    judge = Verdicts(ROOT, f"calibration:{args.tag}") if args.matcher == "judge" else None
+
+    def hit(uid, version, target_id, lines):
+        """Did any panel reviewer catch this bug in this version? Line rule or judge."""
+        for reviewer, row in by[(uid, version)].items():
+            if judge:
+                if judge.caught(f"{uid}|{version}", reviewer, target_id, row["findings"], lines):
+                    return True
+            elif caught(row["findings"], lines):
+                return True
+        return False
     copies = {c["unit_id"]: c for c in _read_jsonl(exp / "copies.jsonl")}
     if args.reviewers:
         keep = set(args.reviewers.split(","))
@@ -668,20 +743,21 @@ def analyze(args):
             skipped["original not reviewed by the whole panel"] += 1
             continue
         orig = [f for x in by[(uid, "original")].values() for f in x["findings"]]
-        found = sum(1 for b in u["blocks"] if b["form"] == "buggy" and caught(orig, b["real_lines"]))
+        found = sum(1 for b in u["blocks"] if b["form"] == "buggy" and hit(uid, "original", b["bug_id"], b["real_lines"]))
         decoys = missed = 0
         for c in copies[uid]["copies"]:
             if not complete(uid, c["name"]):
                 continue
-            fs = [f for x in by[(uid, c["name"])].values() for f in x["findings"]]
             for d in c["decoys"]:
                 decoys += 1
-                missed += not caught(fs, [d["line"]])
+                missed += not hit(uid, c["name"], f"decoy@{d['line']}", [d["line"]])
         if not decoys:
             skipped["no seeded copy reviewed by the whole panel"] += 1
             continue
         obs.append({"unit_id": uid, "repo": u["repo"], "split": u["split"], "k": u["k"], "lines": u["lines"],
                     "found_verified": found, "found_unverified": _group_count(orig), "decoys": decoys, "missed": missed})
+    if judge and judge.missing:
+        sys.exit(f"{judge.missing} bug/finding pairs have no judge verdict yet; run: python scripts/judge.py --tag {args.tag}")
     if len({o["repo"] for o in obs}) < 2:
         sys.exit(f"only {len(obs)} complete units from <2 repositories; review more before analyzing")
 
@@ -716,9 +792,11 @@ def analyze(args):
     result = {
         "schema_version": 2, "kind": "calibration", "name": args.name, "tag": args.tag,
         "analyzed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "units_file": str(Path(args.units).relative_to(ROOT)) if Path(args.units).is_absolute() else args.units,
+        "units_file": (str(Path(args.units).resolve().relative_to(ROOT)) if Path(args.units).resolve().is_relative_to(ROOT)
+                       else str(args.units)),
         "dry_run": bool(args.dry), "models": [models[r] for r in panel],
-        "design": {"blocks": BLOCKS, "rounds": ROUNDS, "ks": list(KS), "copies": COPIES, "max_span": MAX_SPAN,
+        "design": {"blocks": BLOCKS, "rounds": ROUNDS, "ks": list(KS), "copies": meta.get("copies", COPIES),
+                   "matcher": args.matcher, "max_span": MAX_SPAN,
                    "max_block_lines": MAX_BLOCK_LINES, "evaluated_on": args.split, "size": args.size,
                    "prior": "cross-fitted: each repository's units use priors fitted on the other repositories"},
         "n_units": len(test), "n_by_k": {str(k): int(sum(o["k"] == k for o in test)) for k in KS},
@@ -777,10 +855,11 @@ def main():
     p.add_argument("--raw", default=f"{ROOT / 'data' / 'raw'},~/raw2", help="comma list of folders with repo clones")
     p.add_argument("--out", default=str(UNITS))
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--extra-decoys", default="", help="comma list of validated decoy files (scripts/decoys.py validate)")
     p.set_defaults(func=prepare)
 
     def costs(s):
-        s.add_argument("--fw-tps", type=float, default=float(os.getenv("FIREWORKS_TOKENS_PER_SEC", "400")),
+        s.add_argument("--fw-tps", type=float, default=float(os.getenv("FIREWORKS_TOKENS_PER_SEC", "950")),
                        help="overall output tokens/s on the Fireworks deployment (bench measures it)")
         s.add_argument("--fw-price", type=float, default=float(os.getenv("FIREWORKS_PRICE_PER_HOUR", "8")))
 
@@ -790,6 +869,7 @@ def main():
         s.add_argument("--units", default=str(UNITS))
         s.add_argument("--split", default="all", choices=["all", "dev", "test"])
         s.add_argument("--limit-units", type=int, default=0, help="only the first N units (pilot)")
+        s.add_argument("--copies", type=int, default=COPIES, help="seeded copies per unit (more = more decoys)")
         costs(s)
         if name == "run":
             s.add_argument("--tag", required=True, help="experiment name; results go to data/calibration/<tag>/")
@@ -803,6 +883,7 @@ def main():
     b.add_argument("--n", type=int, default=8, help="units whose original is reviewed")
     b.add_argument("--workers", type=int, default=8)
     b.add_argument("--yes", action="store_true")
+    b.add_argument("--plan-only", action="store_true", help="print calls and cost, call nothing")
     costs(b)
     b.set_defaults(func=bench)
 
@@ -810,6 +891,8 @@ def main():
         s.add_argument("--units", default=str(UNITS))
         s.add_argument("--split", default="all", choices=["all", "dev", "test"])
         s.add_argument("--no-push", action="store_true", help="don't send results to the dashboard")
+        s.add_argument("--matcher", default="line", choices=["line", "judge"],
+                       help="how a finding counts as catching a bug: line rule, or judge verdicts (scripts/judge.py)")
         s.add_argument("--size", default="unit", choices=["unit", "lines"],
                        help="estimator size per unit: 1 (default; k does not depend on length here) or lines/100")
 
@@ -824,6 +907,7 @@ def main():
     d.add_argument("--p-real", type=float, default=0.8, help="fake catch rate for real bugs")
     d.add_argument("--p-decoy", type=float, default=0.8, help="fake catch rate for decoys")
     d.add_argument("--seed", type=int, default=0, help="changes which bugs and decoys the fakes catch")
+    d.add_argument("--copies", type=int, default=COPIES)
     d.add_argument("--tag", default=None)
     d.add_argument("--name", default=None)
     analysis_args(d)

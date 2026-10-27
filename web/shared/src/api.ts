@@ -153,7 +153,12 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 export interface Job {
   id: string;
   status: JobStatus;
-  filePath: string;
+  kind: "census" | "experiment";
+  action: string | null;
+  title: string | null;
+  lane: "models" | "cpu" | "ops";
+  args: string[];
+  filePath: string | null;
   panel: string[];
   settings: Record<string, unknown>;
   note: string | null;
@@ -166,3 +171,42 @@ export interface Job {
 }
 
 export const noteUpdate = z.object({ note: z.string().max(2000).nullable() });
+
+/** One field of an experiment action's form. */
+export interface ActionField {
+  name: string;
+  label: string;
+  type: "text" | "number" | "select" | "panel" | "checkbox";
+  default?: string | number | boolean | string[];
+  options?: { value: string; label: string }[];
+  help?: string;
+  required?: boolean;
+}
+
+/** An allow-listed experiment step the dashboard can launch. */
+export interface ExperimentAction {
+  id: string;
+  group: string;
+  title: string;
+  description: string;
+  lane: "models" | "cpu" | "ops";
+  /** Paid steps must be planned first; the plan shows calls and cost and returns a token to confirm with. */
+  paid: boolean;
+  /** Free steps that still deserve a confirmation (e.g. deleting a cloud deployment). */
+  confirm?: string;
+  fields: ActionField[];
+}
+
+export const experimentRequest = z.object({
+  action: z.string().regex(/^[a-z_.]+$/),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.array(z.string())])),
+  confirmToken: z.string().optional(),
+  note: z.string().max(500).optional(),
+});
+export type ExperimentRequest = z.infer<typeof experimentRequest>;
+
+export interface ExperimentPlan {
+  output: string;
+  ok: boolean;
+  confirmToken: string | null;
+}

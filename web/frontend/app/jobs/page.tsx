@@ -18,7 +18,7 @@ export default async function JobsPage() {
             <thead className="border-b border-stone-200 bg-stone-50">
               <tr>
                 <Th>Started</Th>
-                <Th>File</Th>
+                <Th>What</Th>
                 <Th>Reviewers</Th>
                 <Th>Status</Th>
                 <Th>Result</Th>
@@ -32,8 +32,12 @@ export default async function JobsPage() {
                       {when(j.startedAt ?? j.createdAt)}
                     </Link>
                   </Td>
-                  <Td className="font-mono text-xs">{j.filePath}</Td>
-                  <Td>{j.panel.join(", ")}</Td>
+                  <Td>
+                    <div className="text-sm">{j.title ?? j.filePath}</div>
+                    {j.kind === "census" && j.filePath ? <div className="font-mono text-xs text-stone-500">{j.filePath}</div> : null}
+                    <div className="text-xs text-stone-400">{j.lane === "models" ? "calls models" : j.lane === "cpu" ? "this machine" : "admin"}</div>
+                  </Td>
+                  <Td>{j.panel.length ? j.panel.join(", ") : "–"}</Td>
                   <Td>
                     <JobStatus status={j.status} />
                   </Td>
@@ -42,8 +46,12 @@ export default async function JobsPage() {
                       <Link className="underline" href={`/runs/${j.runId}`}>
                         View run
                       </Link>
-                    ) : (
+                    ) : j.error ? (
                       <span className="text-sm text-red-700">{j.error}</span>
+                    ) : (
+                      <Link className="text-sm underline" href={`/jobs/${j.id}`}>
+                        Log
+                      </Link>
                     )}
                   </Td>
                 </tr>

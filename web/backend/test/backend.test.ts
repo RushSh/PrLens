@@ -147,3 +147,48 @@ describe("calibration", () => {
     expect(rows[0].n).toBe(exp?.nUnits);
   });
 });
+
+describe("startup and experiments", () => {
+  it("creates a missing database and applies every migration on start", async () => {
+    const { ensureDatabase, migrateUp } = await import("../src/startup");
+    const url = t.url.replace(/\/bugcensus_test$/, "/bugcensus_fresh");
+    const logs: string[] = [];
+    await ensureDatabase(url, (m) => logs.push(m));
+    const applied = await migrateUp(url, (m) => logs.push(m));
+    expect(logs[0]).toMatch(/created database bugcensus_fresh/);
+    expect(applied.length).toBeGreaterThanOrEqual(3);
+    expect(await migrateUp(url, () => {})).toEqual([]);            // second start: nothing to do
+    await ensureDatabase(url, (m) => logs.push(m));                // exists: no-op
+    expect(logs.filter((l) => l.includes("created")).length).toBe(1);
+  });
+
+  it("lists actions and refuses a paid step without a confirmation for exactly these settings", async () => {
+    const { confirmToken } = await import("../src/experiments");
+    const queued: unknown[] = [];
+    const runner = { enqueueExperiment: async (j: unknown) => (queued.push(j), "00000000-0000-0000-0000-000000000001") };
+    const root = path.resolve(here, "..", "..", "..");
+    const app = buildApp({ db: t.db, runner: runner as never, root });
+    const headers = { "x-bugcensus-client": "1" };
+    const actions = (await app.inject({ method: "GET", url: "/api/experiments/actions" })).json();
+    const run = actions.find((a: { id: string }) => a.id === "calibration.run");
+    expect(run.paid).toBe(true);
+    expect(actions.find((a: { id: string }) => a.id === "calibration.dry_run").paid).toBe(false);
+
+    const params = { units: "data/calibration_units.jsonl", tag: "t1", panel: ["spark"], copies: 2, workers: 4, fwTps: 950, limitUnits: 2 };
+    const post = (body: object) => app.inject({ method: "POST", url: "/api/experiments/run", headers, payload: body });
+    const noToken = await post({ action: "calibration.run", params });
+    expect(noToken.statusCode).toBe(400);
+    expect(noToken.json().error).toMatch(/plan this step first/);
+    const token = confirmToken("calibration.run", params);
+    expect((await post({ action: "calibration.run", params: { ...params, limitUnits: 0 }, confirmToken: token })).statusCode).toBe(400);
+    expect((await post({ action: "calibration.run", params, confirmToken: token })).statusCode).toBe(201);
+    const job = queued[0] as { args: string[]; lane: string };
+    expect(job.lane).toBe("models");
+    expect(job.args).toEqual(expect.arrayContaining(["scripts/calibration.py", "run", "--tag", "t1", "--yes", "--limit-units", "2"]));
+
+    expect((await post({ action: "nope.nope", params: {} })).statusCode).toBe(400);
+    expect((await post({ action: "calibration.run", params: { ...params, tag: "x; rm -rf /" }, confirmToken: token })).statusCode).toBe(400);
+    expect((await post({ action: "calibration.dry_run", params: { pReal: 0.5, pDecoy: 0.5, seed: 1 } })).statusCode).toBe(201);
+    await app.close();
+  });
+});

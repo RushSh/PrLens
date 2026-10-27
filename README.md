@@ -90,9 +90,31 @@ python scripts/calibration.py analyze --tag fw1 --reviewers glimmer_fw --name "G
 
 Interrupted or some calls failed? Run the same `run` command again: finished reviews are kept and only the rest is done. Results show up on the dashboard's Calibration page (with `BUGCENSUS_API_URL` set, or after `npm run import`).
 
+### Harder decoys and the judge (Oct 27)
+
+The first calibration showed one-token decoys are much easier to spot than real bugs in multi-function changes. Two
+new decoy sources, both kept only if the bug fix's own tests fail on them, and a better way to decide what a finding caught:
+
+```bash
+python scripts/setup_envs.py                                 # once per machine: clone repos, build test environments
+python scripts/decoys.py index                               # data/bug_fixes.jsonl (committed; git only)
+python scripts/decoys.py generate --model spark --plan-only  # a model writes subtle multi-line bugs (~$2 for 92 bugs)
+python scripts/decoys.py glimmer --backend mlx --plan-only   # near-miss tokens from Glimmer's own probabilities (free on the Mac)
+python scripts/decoys.py validate --in data/decoys_llm_spark_raw.jsonl     # keep what the fix's tests catch
+python scripts/decoys.py realism-units --decoys data/decoys_validated_llm_spark.jsonl
+python scripts/calibration.py prepare --out data/calibration_units_v2.jsonl --extra-decoys data/decoys_validated_llm_spark.jsonl
+python scripts/judge.py --tag fw1 --plan-only                # judge: does a finding describe the bug? (~$3.60 for fw1)
+python scripts/calibration.py analyze --tag fw1 --matcher judge --name "fw1, judge matching"
+```
+
+Calibration copies now use the hardest decoy kinds first (by the latest realism check), `--copies` sets how many
+seeded copies each unit gets, and analysis can use the judge instead of the line rule (`--matcher judge`). The judge
+sees real bugs and decoys the same way (a diff), and a placebo share of calls with the wrong bug measures how often it
+says yes by mistake. All of these are also on the dashboard's Experiments page.
+
 ### Dashboard
 
-`web/` has a local dashboard (Node.js + Next.js + Postgres) to see every run, which models reviewed it, compare runs, start new runs with any mix of reviewers, and view realism checks and calibration results. Setup: [web/README.md](web/README.md).
+`web/` has a local dashboard (Node.js + Next.js + Postgres) to see every run, which models reviewed it, compare runs, start new runs with any mix of reviewers, run every experiment stage (with a cost plan and confirmation for paid steps), and view realism checks and calibration results. It sets up its own database and imports results automatically. Setup: [web/README.md](web/README.md).
 
 `examples/billing.py` contains one known real bug (`average_order_value` subtracts 1), so you can check whether the panel finds it.
 

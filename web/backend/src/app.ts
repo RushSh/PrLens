@@ -3,14 +3,19 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import Fastify, { type FastifyInstance } from "fastify";
 import { z } from "zod";
-import { launchRequest, noteUpdate } from "@bugcensus/shared";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { experimentRequest, launchRequest, noteUpdate, type ExperimentPlan } from "@bugcensus/shared";
 import type { Db } from "./db/client";
 import { env } from "./env";
 import { importCensus } from "./import/census";
 import { importRepository } from "./import/files";
 import { importCalibration } from "./import/calibration";
 import { importRealism } from "./import/realism";
-import { JobRunner, UserError } from "./jobs/runner";
+import { UserError } from "./errors";
+import { command, confirmToken, getAction, listActions, parseParams } from "./experiments";
+import type { ImportSummary } from "./import/files";
+import type { JobRunner } from "./jobs/runner";
 import { availableModels } from "./models";
 import {
   distinctFiles,
@@ -31,7 +36,11 @@ export interface AppOptions {
   /** Override for tests (no Python needed). */
   models?: typeof availableModels;
   root?: string;
+  /** Runs an import of the repository's result files (the auto-importer's, when the server has one). */
+  onImport?: () => Promise<ImportSummary>;
 }
+
+const exec = promisify(execFile);
 
 export function buildApp(opts: AppOptions): FastifyInstance {
   const app = Fastify({ logger: env.NODE_ENV !== "test", bodyLimit: 20 * 1024 * 1024 });
@@ -100,7 +109,7 @@ export function buildApp(opts: AppOptions): FastifyInstance {
   app.post("/api/import/census", async (req) => importCensus(db, req.body));
   app.post("/api/import/realism", async (req) => importRealism(db, req.body));
   app.post("/api/import/calibration", async (req) => importCalibration(db, req.body));
-  app.post("/api/import/files", async () => importRepository(db, root));
+  app.post("/api/import/files", async () => (opts.onImport ? opts.onImport() : importRepository(db, root)));
 
   // ---- launching runs
   app.get("/api/models", async (req) => {
@@ -128,6 +137,48 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     if (!opts.runner) return reply.status(503).send({ error: "this server does not run jobs" });
     const { id } = uuidParam.parse(req.params);
     return (await opts.runner.cancel(id)) ? { ok: true } : reply.status(409).send({ error: "job is not queued or running" });
+  });
+
+  // ---- experiments (allow-listed steps; paid ones must be planned and confirmed)
+  app.get("/api/experiments/actions", async () => listActions(root));
+  app.post("/api/experiments/plan", async (req): Promise<ExperimentPlan> => {
+    const body = experimentRequest.parse(req.body);
+    const action = getAction(body.action);
+    if (!action.paid) throw new UserError("this step is free and has no plan");
+    const params = await parseParams(action, body.params, root);
+    const { program, args } = command(action, params, true);
+    try {
+      const { stdout, stderr } = await exec(program, args, {
+        cwd: root,
+        timeout: 120_000,
+        maxBuffer: 4 * 1024 * 1024,
+        env: { ...process.env, PYTHONPATH: `${root}/src`, PYTHONUNBUFFERED: "1", BUGCENSUS_API_URL: "" },
+      });
+      return { ok: true, output: (stdout + stderr).trim(), confirmToken: confirmToken(action.id, params) };
+    } catch (err) {
+      const e = err as { stdout?: string; stderr?: string; message: string };
+      return { ok: false, output: ((e.stdout ?? "") + (e.stderr ?? "") || e.message).trim(), confirmToken: null };
+    }
+  });
+  app.post("/api/experiments/run", async (req, reply) => {
+    if (!opts.runner) return reply.status(503).send({ error: "this server does not run jobs" });
+    const body = experimentRequest.parse(req.body);
+    const action = getAction(body.action);
+    const params = await parseParams(action, body.params, root);
+    if (action.paid && body.confirmToken !== confirmToken(action.id, params)) {
+      throw new UserError("plan this step first and confirm its cost (the settings changed since the plan, or the server restarted)");
+    }
+    const { program, args } = command(action, params);
+    const id = await opts.runner.enqueueExperiment({
+      action: action.id,
+      title: action.title,
+      lane: action.lane,
+      program,
+      args,
+      settings: params,
+      note: body.note,
+    });
+    return reply.status(201).send({ id });
   });
 
   return app;
