@@ -38,8 +38,13 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
                 r.truth.setdefault(c.name, []).extend(d.final_line for d in c.decoys)
 
     jobs = [(r, "original", source) for r in reviewers] + [(r, c.name, c.source) for c in copies for r in reviewers]
+    hosted = [j for j in jobs if not getattr(getattr(j[0], "spec", None), "local", False)]
+    local = [j for j in jobs if getattr(getattr(j[0], "spec", None), "local", False)]
     with ThreadPoolExecutor(max_workers=8) as pool:
-        results: list[ReviewResult] = list(pool.map(lambda j: j[0].review(filename, j[2], j[1]), jobs))
+        futures = pool.map(lambda j: j[0].review(filename, j[2], j[1]), hosted)
+        # a local model serves one request at a time: run its calls sequentially alongside
+        local_results = [j[0].review(filename, j[2], j[1]) for j in local]
+        results: list[ReviewResult] = list(futures) + local_results
 
     by_version: dict[str, list[Finding]] = {}
     for res in results:

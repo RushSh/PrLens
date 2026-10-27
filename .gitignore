@@ -10,6 +10,5 @@ runs/
 data/raw/
 logs/
 .DS_Store
-
-scratch_glimmer_probe.py
-candidates.jsonl
+scratch_*.py
+data/realism_units_?.jsonl

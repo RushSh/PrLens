@@ -35,3 +35,17 @@ def test_pipeline_dry_run_never_touches_file(tmp_path):
     assert rep["estimate"] is not None
     assert "Still hidden" in format_report(rep)
     assert list((tmp_path / "runs").glob("*.json"))
+
+
+def test_parse_findings_ignores_reasoning_channel():
+    raw = ('to=self<|message|>maybe {"findings": [{"start_line": 99}]} hmm<|eom|>'
+           '<|start|>assistant to=user<|message|>```json\n{"findings": [{"start_line": 3, "end_line": 4}]}\n```')
+    fs = parse_findings(raw, "glimmer")
+    assert [(f.start_line, f.end_line) for f in fs] == [(3, 4)]
+
+
+def test_glimmer_is_local_and_needs_no_key(monkeypatch):
+    from bugcensus.config import registry
+    monkeypatch.delenv("GLIMMER_API_KEY", raising=False)
+    g = registry()["glimmer"]
+    assert g.local and g.open_weights and g.api_key == "local"

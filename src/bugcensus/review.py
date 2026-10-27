@@ -14,7 +14,7 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Protocol
 
-from .config import ModelSpec, reasoning_effort
+from .config import ModelSpec, local_max_tokens, reasoning_effort
 
 PROMPT = """You are reviewing a code change before it is merged.
 Find every bug in the code below: wrong results, crashes, missed edge cases, broken contracts,
@@ -66,8 +66,25 @@ def number_lines(source: str) -> str:
     return "\n".join(f"{i:4d} | {line}" for i, line in enumerate(source.splitlines(), start=1))
 
 
+_FINAL_MARKERS = ("to=user<|message|>", "<|channel|>final<|message|>")
+_SPECIAL = re.compile(r"<\|[a-z_]+\|>")
+
+
+def final_answer(text: str) -> str:
+    """Keep only the final answer when a model returns its reasoning channel too (e.g. Muse Glimmer
+    served locally): everything after the last final-answer marker, with special tokens removed."""
+    if not text:
+        return ""
+    for marker in _FINAL_MARKERS:
+        if marker in text:
+            text = text.rsplit(marker, 1)[1]
+            break
+    return _SPECIAL.sub("", text).strip()
+
+
 def parse_findings(text: str, reviewer: str) -> list[Finding]:
     """Parse a model reply into findings. Tolerates code fences and prose around the JSON."""
+    text = final_answer(text)
     if not text:
         return []
     candidates = [text]
@@ -122,14 +139,19 @@ class LLMReviewer:
                                context=f"Context:\n{context}\n" if context else "")
         kwargs = {}
         effort = reasoning_effort()
-        if effort:
-            kwargs["reasoning_effort"] = effort
+        if self.spec.local:
+            # local servers (mlx_lm.server) need an explicit generation budget and may not support
+            # response_format; the parser handles reasoning text and fences.
+            kwargs["max_tokens"] = local_max_tokens()
+        else:
+            kwargs["response_format"] = {"type": "json_object"}
+            if effort:
+                kwargs["reasoning_effort"] = effort
         t0 = time.time()
         try:
             resp = self.client.chat.completions.create(
                 model=self.spec.model_id,
                 messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
                 **kwargs,
             )
         except Exception as exc:  # report, don't crash the whole census

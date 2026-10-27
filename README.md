@@ -23,7 +23,8 @@ Day 1 of the hackathon. Working today:
 - reviewer client for any OpenAI-compatible endpoint (Meta Model API, Baseten), with token-usage logging;
 - the census estimator (Gamma-Poisson bug rate, Beta blind rate, NegBin reweighting), checked against brute-force Monte Carlo in the tests;
 - an end-to-end `bugcensus review` on one file, plus an offline `--dry-run`;
-- scripts to mine and validate recent real bug fixes for the realism test and calibration plot.
+- scripts to mine and validate recent real bug fixes for the realism test and calibration plot;
+- a first realism check on 112 real bugs from 20 Python repos (results below).
 
 Not yet built (see the roadmap): the bug verifier, model-native decoys, the codebase sweep agent, and the GitHub integration. Until the verifier exists, "bugs found" counts unverified findings and the output says so.
 
@@ -41,6 +42,18 @@ bugcensus review examples/billing.py            # real census with the panel in 
 pytest
 ```
 
+### Running Muse Glimmer locally (second reviewer, no API credits)
+
+The default panel is Muse Spark (hosted) plus Muse Glimmer running on your own machine with MLX (Apple silicon, about 16 GB of memory for the 4-bit weights). Muse Wonder is kept for escalations.
+
+```bash
+uv pip install mlx-lm
+mlx_lm.server --model mlx-community/Muse-Glimmer-30B-4bit --port 8080   # leave running in its own terminal
+BUGCENSUS_PANEL=glimmer bugcensus review examples/billing.py            # Glimmer only, zero credits
+```
+
+Glimmer returns its reasoning before the answer; BugCensus reads only the final answer. A local model serves one request at a time, so BugCensus sends its calls one after another.
+
 `examples/billing.py` contains one known real bug (`average_order_value` subtracts 1), so you can check whether the panel finds it.
 
 ### Mining real bugs for the realism test
@@ -51,6 +64,26 @@ python scripts/validate_bugs.py --candidates data/candidates.jsonl --out data/bu
 ```
 
 A candidate is kept only if its fix commit adds or changes a test that fails before the fix and passes after it.
+
+### Realism check: do reviewers catch decoys as often as real bugs?
+
+The estimate is only sound if decoys are about as hard to catch as real bugs. `scripts/realism.py` builds two kinds of unit from mined fixes: the real buggy function (before the fix), and the fixed function with one decoy that the fix's own tests catch. The reviewers see both, unlabeled.
+
+First run (Oct 26, 112 real bugs from 20 repos, 316 units, Spark and Wonder at low reasoning effort):
+
+| Reviewer | Real bugs caught | Decoys caught | Gap (logit, decoy − real) | 95% CI |
+|---|---|---|---|---|
+| Muse Spark | 78% | 83% | +0.34 | −0.17 to +0.91 |
+| Muse Wonder | 69% | 79% | +0.53 | +0.05 to +1.06 |
+| Panel (either) | 83% | 85% | +0.17 | −0.40 to +0.69 |
+
+The panel missed 17% of real bugs and 15% of decoys. Decoys are slightly easier, so the estimate leans optimistic, but the panel gap is small and not significant. The hard families (missing guard 50% caught, negation 80%) are closest to real bugs, and easy ones (operand swap 100%, operator 97%) are what make decoys too easy. Next: more hard-family decoys, reweighting toward real-bug features, and model-native decoys. Caveat: a finding counts as a catch if it covers the bug line ±1 and spans at most 6 lines; on a random non-bug line the same rule hits 20% of the time.
+
+```bash
+python scripts/realism.py prepare --bugs data/bugs.jsonl --out data/realism_units.jsonl
+python scripts/realism.py review  --units data/realism_units.jsonl --out data/realism_reviews.jsonl --panel spark,glimmer --limit-units 40
+python scripts/realism.py analyze --units data/realism_units.jsonl --reviews data/realism_reviews.jsonl
+```
 
 ## Repository layout
 
@@ -72,7 +105,7 @@ A candidate is kept only if its fix commit adds or changes a test that fails bef
 | --- | --- | --- |
 | Muse Spark | Reviewer, test writer for the verifier | Meta Model API |
 | Muse Wonder | Strong reviewer for escalations | Meta Model API |
-| Muse Glimmer | Local reviewer; model-native decoys from token probabilities | Open weights on Modal |
+| Muse Glimmer | Second reviewer; model-native decoys from token probabilities | Open weights, run locally with MLX |
 | Muse Spark Open | Reviewer; model-native decoys | Open weights on Baseten |
 | Muse Code | Writes and fixes code in the demo loop | Muse Code |
 
