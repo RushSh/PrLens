@@ -77,3 +77,28 @@ def test_failed_copy_review_is_not_counted_as_missed_decoys(tmp_path):
     assert rep["decoys_missed_by_all"] == 0
     assert rep["decoys_planted"] == len(rep["decoys"]) - len(b)
     assert "NOT REVIEWED" in format_report(rep)
+
+
+def test_verdict_never_clear_while_found_bugs_remain():
+    from bugcensus.pipeline import _verdict
+    from bugcensus.estimate import census
+    est = census(found=1, decoys=40, decoys_missed=0)
+    assert est.status == "CLEAR"
+    assert _verdict(1, est) == "FIX 1 FOUND BUG"
+    assert _verdict(0, census(found=0, decoys=40, decoys_missed=0)) == "CLEAR"
+
+
+def test_decoys_avoid_lines_the_original_review_flagged(tmp_path):
+    from bugcensus.review import ReviewResult
+
+    class FlagsLine45(FakeReviewer):
+        def review(self, filename, source, version, context=""):
+            res = super().review(filename, source, version, context)
+            if version == "original":
+                res.findings.append(Finding(self.name, 45, 45, "logic", "high", "off by one"))
+            return res
+
+    src = Path(__file__).resolve().parents[1] / "examples" / "billing.py"
+    rep = run_census(src, [FlagsLine45("fake", catch_prob=1.0, seed=1)], out_dir=tmp_path)
+    assert 45 in rep["decoy_free_lines"]
+    assert all(not d["decoy"].split(" line ")[1].startswith(("44:", "45:", "46:")) for d in rep["decoys"])

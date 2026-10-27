@@ -20,6 +20,16 @@ from .review import Finding, ReviewResult, Reviewer
 from .seed import SeededCopy, make_copies, valid_decoys
 
 
+def _run_jobs(jobs, filename: str) -> list[ReviewResult]:
+    """Hosted reviewers run in parallel; a local model serves one request at a time, so its calls run in turn."""
+    hosted = [j for j in jobs if not getattr(getattr(j[0], "spec", None), "local", False)]
+    local = [j for j in jobs if getattr(getattr(j[0], "spec", None), "local", False)]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = pool.map(lambda j: j[0].review(filename, j[2], j[1]), hosted)
+        local_results = [j[0].review(filename, j[2], j[1]) for j in local]
+        return list(futures) + local_results
+
+
 def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tuple[int, int]] | None = None,
                n_copies: int = 2, per_copy: int = 5, prior: Prior | None = None, verified_found: int | None = None,
                seed: int = 0, out_dir: Path | None = Path("runs")) -> dict:
@@ -28,7 +38,14 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
     filename = path.name
     t0 = time.time()
 
-    decoys = valid_decoys(source, line_ranges, seed=seed)
+    # Phase 1: review the original. Phase 2: plant decoys away from lines the original review
+    # already flagged (a decoy on a flagged line would be "caught" just because a real bug is there),
+    # then review the copies.
+    results: list[ReviewResult] = _run_jobs([(r, "original", source) for r in reviewers], filename)
+    flagged = sorted({ln for res in results for f in res.findings if span(f) <= MAX_SPAN
+                      for ln in range(f.start_line - 1, f.end_line + 2)})
+
+    decoys = [d for d in valid_decoys(source, line_ranges, seed=seed) if d.line not in flagged]
     copies: list[SeededCopy] = make_copies(source, decoys, n_copies=n_copies, per_copy=per_copy, seed=seed)
 
     # Test harness hook only: fake reviewers may be told where planted bugs are.
@@ -37,14 +54,7 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
             for c in copies:
                 r.truth.setdefault(c.name, []).extend(d.final_line for d in c.decoys)
 
-    jobs = [(r, "original", source) for r in reviewers] + [(r, c.name, c.source) for c in copies for r in reviewers]
-    hosted = [j for j in jobs if not getattr(getattr(j[0], "spec", None), "local", False)]
-    local = [j for j in jobs if getattr(getattr(j[0], "spec", None), "local", False)]
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = pool.map(lambda j: j[0].review(filename, j[2], j[1]), hosted)
-        # a local model serves one request at a time: run its calls sequentially alongside
-        local_results = [j[0].review(filename, j[2], j[1]) for j in local]
-        results: list[ReviewResult] = list(futures) + local_results
+    results += _run_jobs([(r, c.name, c.source) for c in copies for r in reviewers], filename)
 
     by_version: dict[str, list[Finding]] = {}
     for res in results:
@@ -95,12 +105,13 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
 
     report = {
         "file": str(path), "changed_lines": changed, "reviewers": [r.name for r in reviewers],
-        "decoys_planted": n_decoys, "decoys_missed_by_all": missed, "decoys": decoy_rows,
+        "decoys_planted": n_decoys, "decoy_free_lines": flagged, "decoys_missed_by_all": missed, "decoys": decoy_rows,
         "suspected_bugs": suspected, "found_counted": found,
         "found_is_verified": verified_found is not None,
         "extras_from_copies": extras,
         "findings_by_version": {v: [_brief(f) for f in fs] for v, fs in by_version.items()},
         "estimate": asdict(est) if est else None,
+        "verdict": _verdict(found, est),
         "errors": [f"{r.reviewer}/{r.version}: {r.error}" for r in results if r.error],
         "tokens": {"input": sum(r.input_tokens or 0 for r in results), "output": sum(r.output_tokens or 0 for r in results)},
         "seconds": round(time.time() - t0, 1),
@@ -109,6 +120,15 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / f"{path.stem}-{int(time.time())}.json").write_text(json.dumps(report, indent=2))
     return report
+
+
+def _verdict(found: int, est: CensusResult | None) -> str:
+    """The headline. CLEAR only when nothing was found AND nothing is likely hidden."""
+    if est is None:
+        return "NOT ESTIMATED"
+    if found:
+        return f"FIX {found} FOUND BUG{'S' if found > 1 else ''}"
+    return est.status
 
 
 def _brief(f: Finding) -> dict:
@@ -128,7 +148,11 @@ def format_report(rep: dict) -> str:
         lo, hi = est["interval"]
         lines.append(f"Still hidden (estimate): {est['expected_hidden']:.2f} bugs (90% interval {lo}-{hi}), "
                      f"P(clean) {est['p_clean']:.0%}")
-        lines.append(f"Status: {est['status']}")
+        if rep["found_counted"]:
+            lines.append(f"Status: {rep['verdict']}; rest of the file: {est['status']} "
+                         f"({'nothing else likely hidden' if est['status'] == 'CLEAR' else 'more may be hidden'})")
+        else:
+            lines.append(f"Status: {rep['verdict']}")
     elif any("/original:" in e for e in rep["errors"]):
         lines.append("Still hidden: not estimated (the review of the original failed; see Errors)")
     elif rep["decoys"]:
