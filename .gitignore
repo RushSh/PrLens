@@ -17,3 +17,4 @@ node_modules/
 next-env.d.ts
 *.tsbuildinfo
 web/backend/.env
+data/calibration/dryrun_*/

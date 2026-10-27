@@ -131,3 +131,19 @@ describe("api", () => {
     expect(resolveRepoFile("examples/billing.py", root)).toBe(path.join("examples", "billing.py"));
   });
 });
+
+describe("calibration", () => {
+  it("imports a calibration analysis with both estimator variants; re-import replaces it", async () => {
+    const { importCalibration } = await import("../src/import/calibration");
+    const { listCalibration } = await import("../src/queries");
+    const raw = await fixture("calibration.json");
+    expect((await importCalibration(t.db, raw)).created).toBe(true);
+    expect((await importCalibration(t.db, raw)).created).toBe(false);
+    const [exp] = await listCalibration(t.db);
+    expect(exp?.dryRun).toBe(true);
+    expect(exp?.variants.map((v) => v.name)).toEqual(["flat", "pooled"]);
+    expect(exp?.variants[0]?.bins.length).toBeGreaterThan(2);
+    const { rows } = await t.pool.query("SELECT count(*)::int AS n FROM calibration_units");
+    expect(rows[0].n).toBe(exp?.nUnits);
+  });
+});

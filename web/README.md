@@ -35,11 +35,13 @@ npm run dev:frontend     # terminal 2, then open http://localhost:3000
 - **Compare**: runs side by side; differing rows highlighted; decoy-by-decoy outcomes.
 - **New run**: choose a file and one or more reviewers. Each shows whether it is ready (key set, local server up, Fireworks deployment set) and a rough cost. Jobs run one at a time; the job page streams progress.
 - **Realism checks**: real-bug vs decoy catch rates per reviewer and per decoy family.
+- **Calibration**: predicted vs actual hidden bugs (calibration plot with 95% intervals), for each estimator variant, plus coverage, P(clean) reliability, false-clear rate and AUC. See "Calibration" in the main README.
 
 Runs started from the command line are saved too: they are written to `runs/` as before, and if
 `BUGCENSUS_API_URL=http://127.0.0.1:4000` is set in the repo's `.env` they also appear in the dashboard
 right away (otherwise run `npm run import -w backend`). Realism analyses: `python scripts/realism.py
-analyze --name "..." --json data/realism_<name>.json`.
+analyze --name "..." --json data/realism_<name>.json`. Calibration analyses
+(`scripts/calibration.py analyze`) are pushed the same way and saved as `data/calibration_<name>.json`.
 
 Runs saved before Oct 27 2026 lack model details. The importer fills them from the defaults of that time
 and from `logs/usage.jsonl`, marks them with `*`, and flags Glimmer reviews that hit the old 6,000-token

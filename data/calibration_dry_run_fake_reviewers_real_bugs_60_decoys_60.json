@@ -1,0 +1,2948 @@
+{
+  "schema_version": 2,
+  "kind": "calibration",
+  "name": "Dry run: fake reviewers (real bugs 60%, decoys 60%)",
+  "tag": "dryrun_r60_d60",
+  "analyzed_at": "2026-10-27T15:19:35+00:00",
+  "units_file": "data/calibration_units.jsonl",
+  "dry_run": true,
+  "models": [
+    {
+      "reviewer": "fake-a",
+      "model_id": "fake-a",
+      "provider": "fake",
+      "inferred": false
+    },
+    {
+      "reviewer": "fake-b",
+      "model_id": "fake-b",
+      "provider": "fake",
+      "inferred": false
+    }
+  ],
+  "design": {
+    "blocks": 3,
+    "rounds": 4,
+    "ks": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "copies": 2,
+    "max_span": 6,
+    "max_block_lines": 250,
+    "evaluated_on": "all",
+    "size": "unit",
+    "prior": "cross-fitted: each repository's units use priors fitted on the other repositories"
+  },
+  "n_units": 76,
+  "n_by_k": {
+    "0": 19,
+    "1": 19,
+    "2": 19,
+    "3": 19
+  },
+  "repos": 8,
+  "skipped": {},
+  "decoys_per_unit": 4.223684210526316,
+  "decoy_miss_rate": 0.21806853582554517,
+  "calls": {
+    "total": 422,
+    "errors": 0,
+    "output_tokens": 0
+  },
+  "variants": [
+    {
+      "totals": {
+        "predicted": 43.39081084856057,
+        "actual": 23.0,
+        "actual_over_predicted": 0.5300661488044764,
+        "ci": [
+          0.3602935698423929,
+          0.6861676928540001
+        ]
+      },
+      "slope": {
+        "value": 0.375776964649539,
+        "ci": [
+          0.20613022765609107,
+          0.49528426253227836
+        ]
+      },
+      "coverage90": {
+        "rate": 1.0,
+        "n": 76
+      },
+      "clear_rule": {
+        "cleared": 0,
+        "share_cleared": 0.0,
+        "false_clear_rate": null
+      },
+      "auc_anything_hidden": {
+        "estimate": 0.6094276094276094,
+        "findings_count_baseline": 0.47558922558922556
+      },
+      "bins": [
+        {
+          "lo": 0.230529,
+          "hi": 0.332972,
+          "n": 14,
+          "pred_mean": 0.2855685952073412,
+          "actual_mean": 0.14285714285714285,
+          "ci_low": 0.0,
+          "ci_high": 0.4
+        },
+        {
+          "lo": 0.332972,
+          "hi": 0.463336,
+          "n": 14,
+          "pred_mean": 0.37523271771645283,
+          "actual_mean": 0.21428571428571427,
+          "ci_low": 0.0,
+          "ci_high": 0.36363636363636365
+        },
+        {
+          "lo": 0.463336,
+          "hi": 0.658281,
+          "n": 16,
+          "pred_mean": 0.5393391980111002,
+          "actual_mean": 0.4375,
+          "ci_low": 0.2727272727272727,
+          "ci_high": 0.6
+        },
+        {
+          "lo": 0.658281,
+          "hi": 0.769625,
+          "n": 16,
+          "pred_mean": 0.7066135483815434,
+          "actual_mean": 0.25,
+          "ci_low": 0.1,
+          "ci_high": 0.46153846153846156
+        },
+        {
+          "lo": 0.769625,
+          "hi": 1.190868,
+          "n": 14,
+          "pred_mean": 0.913067953430087,
+          "actual_mean": 0.5,
+          "ci_low": 0.3,
+          "ci_high": 0.6666666666666666
+        }
+      ],
+      "pclean_bins": [
+        {
+          "lo": 0,
+          "hi": 0.5,
+          "n": 17,
+          "mean_p_clean": 0.43628614184774467,
+          "frac_clean": 0.5882352941176471
+        },
+        {
+          "lo": 0.5,
+          "hi": 0.7,
+          "n": 34,
+          "mean_p_clean": 0.5870863111508671,
+          "frac_clean": 0.7058823529411765
+        },
+        {
+          "lo": 0.7,
+          "hi": 0.9,
+          "n": 25,
+          "mean_p_clean": 0.7593542224287227,
+          "frac_clean": 0.8
+        }
+      ],
+      "name": "flat",
+      "label": "Flat blind-rate prior (current product)",
+      "priors_by_repo": {
+        "boltons": {
+          "alpha": 20.0,
+          "beta": 10.918854415274463,
+          "a_q": 1.0,
+          "b_q": 1.0
+        },
+        "isort": {
+          "alpha": 20.0,
+          "beta": 11.013837898898617,
+          "a_q": 1.0,
+          "b_q": 1.0
+        },
+        "markdown": {
+          "alpha": 20.0,
+          "beta": 11.029411764705882,
+          "a_q": 1.0,
+          "b_q": 1.0
+        },
+        "mistune": {
+          "alpha": 19.999999999999996,
+          "beta": 10.976594027441484,
+          "a_q": 1.0,
+          "b_q": 1.0
+        },
+        "more-itertools": {
+          "alpha": 20.0,
+          "beta": 10.76167076167076,
+          "a_q": 1.0,
+          "b_q": 1.0
+        },
+        "networkx": {
+          "alpha": 19.999999999999996,
+          "beta": 11.109701965757768,
+          "a_q": 1.0,
+          "b_q": 1.0
+        },
+        "packaging": {
+          "alpha": 20.0,
+          "beta": 11.283404816892116,
+          "a_q": 1.0,
+          "b_q": 1.0
+        },
+        "sqlglot": {
+          "alpha": 20.0,
+          "beta": 10.415159843772603,
+          "a_q": 1.0,
+          "b_q": 1.0
+        }
+      }
+    },
+    {
+      "totals": {
+        "predicted": 26.160648528788617,
+        "actual": 23.0,
+        "actual_over_predicted": 0.8791830972649449,
+        "ci": [
+          0.5866945418474674,
+          1.1630250505331405
+        ]
+      },
+      "slope": {
+        "value": 3.290489244234833,
+        "ci": [
+          1.3400103874185405,
+          4.65755604568538
+        ]
+      },
+      "coverage90": {
+        "rate": 1.0,
+        "n": 76
+      },
+      "clear_rule": {
+        "cleared": 0,
+        "share_cleared": 0.0,
+        "false_clear_rate": null
+      },
+      "auc_anything_hidden": {
+        "estimate": 0.6060606060606061,
+        "findings_count_baseline": 0.47558922558922556
+      },
+      "bins": [
+        {
+          "lo": 0.278148,
+          "hi": 0.31836,
+          "n": 14,
+          "pred_mean": 0.3057834998727483,
+          "actual_mean": 0.2857142857142857,
+          "ci_low": 0.09055944055944058,
+          "ci_high": 0.5
+        },
+        {
+          "lo": 0.31836,
+          "hi": 0.33523,
+          "n": 15,
+          "pred_mean": 0.3273900397514301,
+          "actual_mean": 0.13333333333333333,
+          "ci_low": 0.0,
+          "ci_high": 0.3333333333333333
+        },
+        {
+          "lo": 0.33523,
+          "hi": 0.352719,
+          "n": 15,
+          "pred_mean": 0.34130390831003443,
+          "actual_mean": 0.3333333333333333,
+          "ci_low": 0.0,
+          "ci_high": 0.6470588235294118
+        },
+        {
+          "lo": 0.352719,
+          "hi": 0.369321,
+          "n": 15,
+          "pred_mean": 0.3579192367054729,
+          "actual_mean": 0.3333333333333333,
+          "ci_low": 0.2,
+          "ci_high": 0.4
+        },
+        {
+          "lo": 0.369321,
+          "hi": 0.415669,
+          "n": 16,
+          "pred_mean": 0.38764586162157794,
+          "actual_mean": 0.4375,
+          "ci_low": 0.125,
+          "ci_high": 0.5384615384615384
+        }
+      ],
+      "pclean_bins": [
+        {
+          "lo": 0.5,
+          "hi": 0.7,
+          "n": 18,
+          "mean_p_clean": 0.6856128282795999,
+          "frac_clean": 0.6111111111111112
+        },
+        {
+          "lo": 0.7,
+          "hi": 0.9,
+          "n": 58,
+          "mean_p_clean": 0.7225471515310754,
+          "frac_clean": 0.7413793103448276
+        }
+      ],
+      "name": "pooled",
+      "label": "Pooled blind-rate prior (empirical Bayes from other repositories)",
+      "priors_by_repo": {
+        "boltons": {
+          "alpha": 19.999999999999996,
+          "beta": 12.766996287377633,
+          "a_q": 11.259541984732824,
+          "b_q": 38.74045801526718
+        },
+        "isort": {
+          "alpha": 19.999999999999996,
+          "beta": 13.419598837991181,
+          "a_q": 9.62962962962963,
+          "b_q": 40.37037037037037
+        },
+        "markdown": {
+          "alpha": 20.0,
+          "beta": 13.169677726100618,
+          "a_q": 10.883280757097792,
+          "b_q": 39.11671924290221
+        },
+        "mistune": {
+          "alpha": 19.999999999999996,
+          "beta": 13.165377846513165,
+          "a_q": 11.209964412811388,
+          "b_q": 38.79003558718861
+        },
+        "more-itertools": {
+          "alpha": 20.0,
+          "beta": 12.950834907037876,
+          "a_q": 10.45016077170418,
+          "b_q": 39.549839228295816
+        },
+        "networkx": {
+          "alpha": 19.999999999999996,
+          "beta": 13.195250051291884,
+          "a_q": 11.11111111111111,
+          "b_q": 38.88888888888889
+        },
+        "packaging": {
+          "alpha": 20.0,
+          "beta": 13.29840753836563,
+          "a_q": 11.522633744855968,
+          "b_q": 38.47736625514403
+        },
+        "sqlglot": {
+          "alpha": 20.0,
+          "beta": 12.379539996997131,
+          "a_q": 11.284046692607005,
+          "b_q": 38.715953307393
+        }
+      }
+    }
+  ],
+  "units": [
+    {
+      "unit_id": "cal-boltons-0-0",
+      "repo": "boltons",
+      "split": "test",
+      "k": 0,
+      "lines": 235,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.3635423694782677,
+          "p_clean": 0.726212336002971,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21030007804292777
+        },
+        "pooled": {
+          "expected_hidden": 0.31851169369777244,
+          "p_clean": 0.7316428914359903,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21558000424003343
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-0-1",
+      "repo": "boltons",
+      "split": "test",
+      "k": 1,
+      "lines": 66,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.7454869222412961,
+          "p_clean": 0.5110453376266941,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.4054619843957904
+        },
+        "pooled": {
+          "expected_hidden": 0.36357732974997575,
+          "p_clean": 0.7002742927947232,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2340468663670659
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-0-2",
+      "repo": "boltons",
+      "split": "test",
+      "k": 2,
+      "lines": 105,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.2858343444340875,
+          "p_clean": 0.7737602130759736,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.15145828710957002
+        },
+        "pooled": {
+          "expected_hidden": 0.33817295504241474,
+          "p_clean": 0.7177870392558122,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20819813157728267
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-0-3",
+      "repo": "boltons",
+      "split": "test",
+      "k": 3,
+      "lines": 158,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 5,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.23273720574093998,
+          "p_clean": 0.8090681716819172,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.11847531091408078
+        },
+        "pooled": {
+          "expected_hidden": 0.3413102951508956,
+          "p_clean": 0.7155702607833772,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20110403457329806
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-1-0",
+      "repo": "boltons",
+      "split": "test",
+      "k": 0,
+      "lines": 105,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.8525698692157595,
+          "p_clean": 0.46395415500043824,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4836387759888995
+        },
+        "pooled": {
+          "expected_hidden": 0.35271925949915556,
+          "p_clean": 0.7077124792508098,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23833102946206708
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-1-1",
+      "repo": "boltons",
+      "split": "dev",
+      "k": 1,
+      "lines": 142,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 5,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.2732945099164405,
+          "p_clean": 0.7822506515327041,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.15166507182875139
+        },
+        "pooled": {
+          "expected_hidden": 0.32247015723778116,
+          "p_clean": 0.7287977697557145,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20798804648334268
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-1-2",
+      "repo": "boltons",
+      "split": "test",
+      "k": 2,
+      "lines": 133,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 4,
+      "missed": 2,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.9040799918795095,
+          "p_clean": 0.4360868921524593,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.48919032022170694
+        },
+        "pooled": {
+          "expected_hidden": 0.3860111379794152,
+          "p_clean": 0.6850735754745315,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.24823742769246887
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-1-3",
+      "repo": "boltons",
+      "split": "dev",
+      "k": 3,
+      "lines": 201,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 3,
+      "missed": 2,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.8487179424200391,
+          "p_clean": 0.4603204973534828,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.42171371672323316
+        },
+        "pooled": {
+          "expected_hidden": 0.4156689991157181,
+          "p_clean": 0.6656368159539591,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.24414324912956806
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-2-0",
+      "repo": "boltons",
+      "split": "test",
+      "k": 0,
+      "lines": 88,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.3635423694782677,
+          "p_clean": 0.726212336002971,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21030007804292777
+        },
+        "pooled": {
+          "expected_hidden": 0.31851169369777244,
+          "p_clean": 0.7316428914359903,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21558000424003343
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-2-1",
+      "repo": "boltons",
+      "split": "test",
+      "k": 1,
+      "lines": 130,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.8525698692157595,
+          "p_clean": 0.46395415500043824,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4836387759888995
+        },
+        "pooled": {
+          "expected_hidden": 0.35271925949915556,
+          "p_clean": 0.7077124792508098,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23833102946206708
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-2-2",
+      "repo": "boltons",
+      "split": "test",
+      "k": 2,
+      "lines": 215,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 3,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.3329724845423823,
+          "p_clean": 0.7438401430932099,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17593101896143987
+        },
+        "pooled": {
+          "expected_hidden": 0.34452061301927694,
+          "p_clean": 0.7134071435750917,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21204288300096114
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-2-3",
+      "repo": "boltons",
+      "split": "dev",
+      "k": 3,
+      "lines": 130,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 6,
+      "missed": 2,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.6456104118695474,
+          "p_clean": 0.5503207717028157,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.33794214221192
+        },
+        "pooled": {
+          "expected_hidden": 0.38427575177972517,
+          "p_clean": 0.6861235722628443,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23611112467579712
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-3-1",
+      "repo": "boltons",
+      "split": "dev",
+      "k": 0,
+      "lines": 111,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.7003269432807592,
+          "p_clean": 0.5314934740927777,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.400043627555053
+        },
+        "pooled": {
+          "expected_hidden": 0.34689641284772105,
+          "p_clean": 0.711657816895873,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2344702965464221
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-3-2",
+      "repo": "boltons",
+      "split": "test",
+      "k": 1,
+      "lines": 76,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 5,
+      "missed": 0,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.30475627971362407,
+          "p_clean": 0.7622264218873807,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17698712932442873
+        },
+        "pooled": {
+          "expected_hidden": 0.31254269711606525,
+          "p_clean": 0.7358723276867052,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21160513476442505
+        }
+      }
+    },
+    {
+      "unit_id": "cal-boltons-3-3",
+      "repo": "boltons",
+      "split": "test",
+      "k": 2,
+      "lines": 123,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.665676427005133,
+          "p_clean": 0.5486007903792386,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.3474026419059319
+        },
+        "pooled": {
+          "expected_hidden": 0.37405256026776523,
+          "p_clean": 0.6931748353905526,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22991866330284194
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-0-0",
+      "repo": "isort",
+      "split": "test",
+      "k": 3,
+      "lines": 176,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.5985824938992541,
+          "p_clean": 0.5818477855564865,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.30252772703212316
+        },
+        "pooled": {
+          "expected_hidden": 0.31836024366793203,
+          "p_clean": 0.7317223473804275,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.19666835716783262
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-0-1",
+      "repo": "isort",
+      "split": "test",
+      "k": 0,
+      "lines": 558,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.6936167109354267,
+          "p_clean": 0.5344419661391254,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.39952169137212895
+        },
+        "pooled": {
+          "expected_hidden": 0.2865438685627905,
+          "p_clean": 0.7547057681819425,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20346361199603383
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-0-2",
+      "repo": "isort",
+      "split": "test",
+      "k": 1,
+      "lines": 510,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 6,
+      "missed": 4,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 1.1804918433625886,
+          "p_clean": 0.33016675492586733,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.6675711352108112
+        },
+        "pooled": {
+          "expected_hidden": 0.35417945053198063,
+          "p_clean": 0.7063696979220456,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2506774425787451
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-1-0",
+      "repo": "isort",
+      "split": "test",
+      "k": 2,
+      "lines": 571,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 5,
+      "missed": 3,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.9440344759358477,
+          "p_clean": 0.41635932082531235,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4921078258516848
+        },
+        "pooled": {
+          "expected_hidden": 0.35506348313434716,
+          "p_clean": 0.7058351115354171,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22880703863912358
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-1-1",
+      "repo": "isort",
+      "split": "test",
+      "k": 3,
+      "lines": 127,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 5,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.2305289039385933,
+          "p_clean": 0.8105570868012074,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.118305912427806
+        },
+        "pooled": {
+          "expected_hidden": 0.2781479731208341,
+          "p_clean": 0.7609718406188098,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17212480063082336
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-1-2",
+      "repo": "isort",
+      "split": "dev",
+      "k": 0,
+      "lines": 425,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.6936167109354267,
+          "p_clean": 0.5344419661391254,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.39952169137212895
+        },
+        "pooled": {
+          "expected_hidden": 0.2865438685627905,
+          "p_clean": 0.7547057681819425,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20346361199603383
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-2-0",
+      "repo": "isort",
+      "split": "test",
+      "k": 1,
+      "lines": 526,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 4,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.6186875532581023,
+          "p_clean": 0.5710148416662122,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.34120296707239917
+        },
+        "pooled": {
+          "expected_hidden": 0.29554317950233855,
+          "p_clean": 0.7481194704535914,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.19991310918011918
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-2-1",
+      "repo": "isort",
+      "split": "test",
+      "k": 2,
+      "lines": 551,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 5,
+      "missed": 2,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.7696245210913215,
+          "p_clean": 0.4922583954038572,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4223213249996032
+        },
+        "pooled": {
+          "expected_hidden": 0.31745751869416283,
+          "p_clean": 0.7322214213160432,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.214523674940944
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-2-2",
+      "repo": "isort",
+      "split": "dev",
+      "k": 3,
+      "lines": 156,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 5,
+      "missed": 1,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.4883407879412227,
+          "p_clean": 0.6396201308705252,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.25910637894439187
+        },
+        "pooled": {
+          "expected_hidden": 0.29872824543590637,
+          "p_clean": 0.7457758487893394,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.19298183342227204
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-3-0",
+      "repo": "isort",
+      "split": "test",
+      "k": 0,
+      "lines": 387,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 5,
+      "missed": 2,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.8378779164948881,
+          "p_clean": 0.4622935391525407,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4803454910776617
+        },
+        "pooled": {
+          "expected_hidden": 0.30769396355251116,
+          "p_clean": 0.7392202007523161,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.218262206540465
+        }
+      }
+    },
+    {
+      "unit_id": "cal-isort-3-1",
+      "repo": "isort",
+      "split": "dev",
+      "k": 1,
+      "lines": 370,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 5,
+      "missed": 2,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.7696245210913215,
+          "p_clean": 0.4922583954038572,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4223213249996032
+        },
+        "pooled": {
+          "expected_hidden": 0.31745751869416283,
+          "p_clean": 0.7322214213160432,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.214523674940944
+        }
+      }
+    },
+    {
+      "unit_id": "cal-markdown-0-0",
+      "repo": "markdown",
+      "split": "test",
+      "k": 2,
+      "lines": 136,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 4,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.5616876752080872,
+          "p_clean": 0.6003544328583815,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2973107667086231
+        },
+        "pooled": {
+          "expected_hidden": 0.34641091315368017,
+          "p_clean": 0.7119340666618007,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21943689445496056
+        }
+      }
+    },
+    {
+      "unit_id": "cal-mistune-0-0",
+      "repo": "mistune",
+      "split": "test",
+      "k": 3,
+      "lines": 174,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 6,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.4108807911731231,
+          "p_clean": 0.6844382420063453,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20892678885964558
+        },
+        "pooled": {
+          "expected_hidden": 0.35309050953393695,
+          "p_clean": 0.7072346096333726,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21397060571641374
+        }
+      }
+    },
+    {
+      "unit_id": "cal-mistune-0-1",
+      "repo": "mistune",
+      "split": "dev",
+      "k": 0,
+      "lines": 53,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 5,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.5822948269753946,
+          "p_clean": 0.5892589740683809,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.3362087997986031
+        },
+        "pooled": {
+          "expected_hidden": 0.32911378860187407,
+          "p_clean": 0.7239695943867512,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.229097795936273
+        }
+      }
+    },
+    {
+      "unit_id": "cal-mistune-1-0",
+      "repo": "mistune",
+      "split": "dev",
+      "k": 1,
+      "lines": 128,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 6,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.4633360659996133,
+          "p_clean": 0.6537222866787054,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2567562408791677
+        },
+        "pooled": {
+          "expected_hidden": 0.33341970770869545,
+          "p_clean": 0.7209057478923158,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22117404718080638
+        }
+      }
+    },
+    {
+      "unit_id": "cal-mistune-1-1",
+      "repo": "mistune",
+      "split": "test",
+      "k": 2,
+      "lines": 41,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 3,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.33096017195404076,
+          "p_clean": 0.745034433639664,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17574033832452307
+        },
+        "pooled": {
+          "expected_hidden": 0.3329722058104966,
+          "p_clean": 0.7213875788618669,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2109806833584375
+        }
+      }
+    },
+    {
+      "unit_id": "cal-mistune-2-0",
+      "repo": "mistune",
+      "split": "test",
+      "k": 3,
+      "lines": 119,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.26075095029681916,
+          "p_clean": 0.7899513445169902,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.1331474826454993
+        },
+        "pooled": {
+          "expected_hidden": 0.33584529319329226,
+          "p_clean": 0.7193439870047478,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20366103381064474
+        }
+      }
+    },
+    {
+      "unit_id": "cal-mistune-2-1",
+      "repo": "mistune",
+      "split": "test",
+      "k": 0,
+      "lines": 113,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 5,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.3029230111510421,
+          "p_clean": 0.7633464664008199,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17680088686980164
+        },
+        "pooled": {
+          "expected_hidden": 0.30208518757902436,
+          "p_clean": 0.7433376572291533,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2105579117968375
+        }
+      }
+    },
+    {
+      "unit_id": "cal-mistune-3-0",
+      "repo": "mistune",
+      "split": "test",
+      "k": 1,
+      "lines": 55,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 5,
+      "missed": 3,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 1.0179726400883067,
+          "p_clean": 0.388640486702318,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.551321352036839
+        },
+        "pooled": {
+          "expected_hidden": 0.3943387992773987,
+          "p_clean": 0.6793727418787743,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.26084636380271664
+        }
+      }
+    },
+    {
+      "unit_id": "cal-mistune-3-1",
+      "repo": "mistune",
+      "split": "test",
+      "k": 2,
+      "lines": 186,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 6,
+      "missed": 1,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.4633360659996133,
+          "p_clean": 0.6537222866787054,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2567562408791677
+        },
+        "pooled": {
+          "expected_hidden": 0.33341970770869545,
+          "p_clean": 0.7209057478923158,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22117404718080638
+        }
+      }
+    },
+    {
+      "unit_id": "cal-more-itertools-0-0",
+      "repo": "more-itertools",
+      "split": "dev",
+      "k": 3,
+      "lines": 112,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.6765223099114658,
+          "p_clean": 0.5437350200276704,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.34820533651033203
+        },
+        "pooled": {
+          "expected_hidden": 0.3455637340626655,
+          "p_clean": 0.7126315247169221,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21551902461193323
+        }
+      }
+    },
+    {
+      "unit_id": "cal-more-itertools-1-0",
+      "repo": "more-itertools",
+      "split": "test",
+      "k": 0,
+      "lines": 134,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 3,
+      "missed": 2,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 1.1908682733853424,
+          "p_clean": 0.33498922928104014,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.6577855613324426
+        },
+        "pooled": {
+          "expected_hidden": 0.3533168755860107,
+          "p_clean": 0.7072508741266585,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.24192049680094213
+        }
+      }
+    },
+    {
+      "unit_id": "cal-more-itertools-2-0",
+      "repo": "more-itertools",
+      "split": "test",
+      "k": 1,
+      "lines": 150,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 2,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 1.0198497213408824,
+          "p_clean": 0.3922426660603523,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.5675630522544007
+        },
+        "pooled": {
+          "expected_hidden": 0.34748451582709483,
+          "p_clean": 0.7112031525108001,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23800174631555485
+        }
+      }
+    },
+    {
+      "unit_id": "cal-networkx-0-0",
+      "repo": "networkx",
+      "split": "test",
+      "k": 2,
+      "lines": 269,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 5,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.2454831288307277,
+          "p_clean": 0.8004797958981325,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.13251194452302484
+        },
+        "pooled": {
+          "expected_hidden": 0.31740388013190857,
+          "p_clean": 0.732335629558318,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20168627865703845
+        }
+      }
+    },
+    {
+      "unit_id": "cal-networkx-1-0",
+      "repo": "networkx",
+      "split": "test",
+      "k": 3,
+      "lines": 338,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 5,
+      "missed": 2,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.6646412880490559,
+          "p_clean": 0.5417476087087405,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.3382479308167947
+        },
+        "pooled": {
+          "expected_hidden": 0.38512188674006576,
+          "p_clean": 0.685509748731123,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2335553383515338
+        }
+      }
+    },
+    {
+      "unit_id": "cal-networkx-2-0",
+      "repo": "networkx",
+      "split": "test",
+      "k": 0,
+      "lines": 310,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 5,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.2987791524710102,
+          "p_clean": 0.7658889358192147,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.1763795194200295
+        },
+        "pooled": {
+          "expected_hidden": 0.2987616172308638,
+          "p_clean": 0.7457495228175711,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2087146048979052
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-0-0",
+      "repo": "packaging",
+      "split": "test",
+      "k": 1,
+      "lines": 283,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.30610284679735456,
+          "p_clean": 0.760849481739205,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17470980014130444
+        },
+        "pooled": {
+          "expected_hidden": 0.32324133346279843,
+          "p_clean": 0.7281686301659316,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21653229182227907
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-0-1",
+      "repo": "packaging",
+      "split": "test",
+      "k": 2,
+      "lines": 256,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 5,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.47566741104211446,
+          "p_clean": 0.6464975582376538,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2582314201666137
+        },
+        "pooled": {
+          "expected_hidden": 0.3551471610603061,
+          "p_clean": 0.7058075096207037,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22693421320790202
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-0-2",
+      "repo": "packaging",
+      "split": "dev",
+      "k": 3,
+      "lines": 87,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 4,
+      "missed": 2,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.7419946639807833,
+          "p_clean": 0.5045355606113728,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.3818350504532256
+        },
+        "pooled": {
+          "expected_hidden": 0.4001807671136269,
+          "p_clean": 0.6755425325176145,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.24429431525281417
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-0-3",
+      "repo": "packaging",
+      "split": "dev",
+      "k": 0,
+      "lines": 435,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.34988088240433995,
+          "p_clean": 0.7340577763098295,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20880806152089454
+        },
+        "pooled": {
+          "expected_hidden": 0.313402484385317,
+          "p_clean": 0.7351785797359551,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22037572017345156
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-0-4",
+      "repo": "packaging",
+      "split": "dev",
+      "k": 1,
+      "lines": 159,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.34988088240433995,
+          "p_clean": 0.7340577763098295,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20880806152089454
+        },
+        "pooled": {
+          "expected_hidden": 0.313402484385317,
+          "p_clean": 0.7351785797359551,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22037572017345156
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-1-0",
+      "repo": "packaging",
+      "split": "dev",
+      "k": 2,
+      "lines": 135,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 5,
+      "missed": 2,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.6971384679690262,
+          "p_clean": 0.5255186788072455,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.3752083654409597
+        },
+        "pooled": {
+          "expected_hidden": 0.3836062050343477,
+          "p_clean": 0.6864775513682274,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2448128358540146
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-1-1",
+      "repo": "packaging",
+      "split": "test",
+      "k": 3,
+      "lines": 168,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 4,
+      "missed": 1,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.5477829928695507,
+          "p_clean": 0.6073531576084729,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.29630114304720945
+        },
+        "pooled": {
+          "expected_hidden": 0.36168495654128685,
+          "p_clean": 0.7013670558952583,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23104139657533126
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-1-2",
+      "repo": "packaging",
+      "split": "dev",
+      "k": 0,
+      "lines": 413,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 5,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.5648909392200353,
+          "p_clean": 0.5978700746545603,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.33486462555357155
+        },
+        "pooled": {
+          "expected_hidden": 0.33431127120722803,
+          "p_clean": 0.720274792662422,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.234845213097361
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-1-3",
+      "repo": "packaging",
+      "split": "test",
+      "k": 1,
+      "lines": 73,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.30610284679735456,
+          "p_clean": 0.760849481739205,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17470980014130444
+        },
+        "pooled": {
+          "expected_hidden": 0.32324133346279843,
+          "p_clean": 0.7281686301659316,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21653229182227907
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-1-4",
+      "repo": "packaging",
+      "split": "test",
+      "k": 2,
+      "lines": 435,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 3,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.3206604686860279,
+          "p_clean": 0.7511992739675732,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17476270123754994
+        },
+        "pooled": {
+          "expected_hidden": 0.3389694269133191,
+          "p_clean": 0.7171424568627008,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21674327642393226
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-2-0",
+      "repo": "packaging",
+      "split": "test",
+      "k": 3,
+      "lines": 125,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 5,
+      "missed": 2,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.6971384679690262,
+          "p_clean": 0.5255186788072455,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.3752083654409597
+        },
+        "pooled": {
+          "expected_hidden": 0.3836062050343477,
+          "p_clean": 0.6864775513682274,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2448128358540146
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-2-1",
+      "repo": "packaging",
+      "split": "test",
+      "k": 0,
+      "lines": 383,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.34988088240433995,
+          "p_clean": 0.7340577763098295,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20880806152089454
+        },
+        "pooled": {
+          "expected_hidden": 0.313402484385317,
+          "p_clean": 0.7351785797359551,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22037572017345156
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-2-2",
+      "repo": "packaging",
+      "split": "test",
+      "k": 1,
+      "lines": 113,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.7187078370818081,
+          "p_clean": 0.5224408697496954,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.403437247319968
+        },
+        "pooled": {
+          "expected_hidden": 0.3570597922662342,
+          "p_clean": 0.7045949093425997,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23880781648693952
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-2-3",
+      "repo": "packaging",
+      "split": "test",
+      "k": 2,
+      "lines": 206,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 5,
+      "missed": 1,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.5142668156220309,
+          "p_clean": 0.6250028169113584,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2915319377634398
+        },
+        "pooled": {
+          "expected_hidden": 0.3449141402570689,
+          "p_clean": 0.7128739794182916,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23082416032551292
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-2-4",
+      "repo": "packaging",
+      "split": "test",
+      "k": 3,
+      "lines": 385,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.6418004767991924,
+          "p_clean": 0.5595114870670339,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.34562761566786715
+        },
+        "pooled": {
+          "expected_hidden": 0.36734170327412263,
+          "p_clean": 0.6975750918355508,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23459072437204326
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-3-0",
+      "repo": "packaging",
+      "split": "test",
+      "k": 0,
+      "lines": 549,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.675247891628978,
+          "p_clean": 0.5426202144035015,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.3980880342888829
+        },
+        "pooled": {
+          "expected_hidden": 0.34068998549512086,
+          "p_clean": 0.7158492425112446,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2392480567326069
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-3-1",
+      "repo": "packaging",
+      "split": "test",
+      "k": 1,
+      "lines": 88,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 2,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.44556358447903927,
+          "p_clean": 0.6776807218979849,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2522408339491936
+        },
+        "pooled": {
+          "expected_hidden": 0.334827081575623,
+          "p_clean": 0.7201035260236697,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2241625388789513
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-3-2",
+      "repo": "packaging",
+      "split": "test",
+      "k": 2,
+      "lines": 148,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 5,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.24129107004276334,
+          "p_clean": 0.8032592880894287,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.1321601897322293
+        },
+        "pooled": {
+          "expected_hidden": 0.3267179565588103,
+          "p_clean": 0.7256771669025954,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20902956800179873
+        }
+      }
+    },
+    {
+      "unit_id": "cal-packaging-3-3",
+      "repo": "packaging",
+      "split": "dev",
+      "k": 3,
+      "lines": 175,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 5,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.4453151639828422,
+          "p_clean": 0.6639859851778366,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23184793983585006
+        },
+        "pooled": {
+          "expected_hidden": 0.3650291377527145,
+          "p_clean": 0.6990540968387158,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22316946218414083
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-0-0",
+      "repo": "sqlglot",
+      "split": "dev",
+      "k": 0,
+      "lines": 101,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 3,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.4720505678581343,
+          "p_clean": 0.665302681582643,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.25975749885858057
+        },
+        "pooled": {
+          "expected_hidden": 0.33523026193228567,
+          "p_clean": 0.719954234314709,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22031857905796348
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-0-1",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 1,
+      "lines": 94,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 4,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.658281366487024,
+          "p_clean": 0.5526859830392243,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.3441795087872072
+        },
+        "pooled": {
+          "expected_hidden": 0.3693210174643133,
+          "p_clean": 0.6963936815861341,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23099007626142587
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-0-2",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 2,
+      "lines": 106,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.335607641667879,
+          "p_clean": 0.7431771303296879,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17760981874865467
+        },
+        "pooled": {
+          "expected_hidden": 0.3391599079116978,
+          "p_clean": 0.7171739867895357,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21242035354366728
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-0-3",
+      "repo": "sqlglot",
+      "split": "dev",
+      "k": 3,
+      "lines": 235,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 5,
+      "missed": 2,
+      "actual_hidden": 2,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.8172902921558418,
+          "p_clean": 0.47269888360475965,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.42507679652141495
+        },
+        "pooled": {
+          "expected_hidden": 0.3921540185875415,
+          "p_clean": 0.6810219537014076,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.24501833887939106
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-1-0",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 0,
+      "lines": 111,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.3842547029012273,
+          "p_clean": 0.7145855624758133,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21254938835605253
+        },
+        "pooled": {
+          "expected_hidden": 0.32882342636340545,
+          "p_clean": 0.7244153310471639,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21617923335588862
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-1-1",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 1,
+      "lines": 132,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 4,
+      "missed": 1,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.7381717244468429,
+          "p_clean": 0.5152450206796046,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.4029695698673436
+        },
+        "pooled": {
+          "expected_hidden": 0.35807376182780865,
+          "p_clean": 0.7040480981487673,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.23507737129482753
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-1-2",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 2,
+      "lines": 207,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 4,
+      "missed": 0,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.335607641667879,
+          "p_clean": 0.7431771303296879,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17760981874865467
+        },
+        "pooled": {
+          "expected_hidden": 0.3391599079116978,
+          "p_clean": 0.7171739867895357,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21242035354366728
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-1-3",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 3,
+      "lines": 79,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 4,
+      "missed": 2,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.8715451855654105,
+          "p_clean": 0.4504994252360703,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4324437892841016
+        },
+        "pooled": {
+          "expected_hidden": 0.41002902880216074,
+          "p_clean": 0.6693594848093338,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.24454816820971595
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-2-0",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 0,
+      "lines": 101,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.8986607954030493,
+          "p_clean": 0.44674472947705013,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4870228730575823
+        },
+        "pooled": {
+          "expected_hidden": 0.3640945231942878,
+          "p_clean": 0.7000182739072411,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2389523650936083
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-2-1",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 1,
+      "lines": 100,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 3,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.785902920797098,
+          "p_clean": 0.49442973465962337,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4084897215842297
+        },
+        "pooled": {
+          "expected_hidden": 0.3753076483583321,
+          "p_clean": 0.692427866017793,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2346624759084579
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-2-2",
+      "repo": "sqlglot",
+      "split": "dev",
+      "k": 2,
+      "lines": 220,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 5,
+      "missed": 0,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.28828434607054354,
+          "p_clean": 0.7728263203945052,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.15304129342895387
+        },
+        "pooled": {
+          "expected_hidden": 0.3329089955097675,
+          "p_clean": 0.7215093229248636,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.20856940463274043
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-2-3",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 3,
+      "lines": 142,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 5,
+      "missed": 1,
+      "actual_hidden": 1,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.5190415157575747,
+          "p_clean": 0.6233676865381028,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.26121614270471916
+        },
+        "pooled": {
+          "expected_hidden": 0.37328241758319997,
+          "p_clean": 0.6936798088754612,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2229967710061792
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-3-0",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 0,
+      "lines": 78,
+      "found_verified": 0,
+      "found_unverified": 0,
+      "decoys": 3,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.4720505678581343,
+          "p_clean": 0.665302681582643,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.25975749885858057
+        },
+        "pooled": {
+          "expected_hidden": 0.33523026193228567,
+          "p_clean": 0.719954234314709,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.22031857905796348
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-3-1",
+      "repo": "sqlglot",
+      "split": "dev",
+      "k": 1,
+      "lines": 91,
+      "found_verified": 1,
+      "found_unverified": 1,
+      "decoys": 4,
+      "missed": 2,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.9513878841462351,
+          "p_clean": 0.4189671511721922,
+          "interval": [
+            0,
+            3
+          ],
+          "status": "NEEDS REVIEW",
+          "q_mean": 0.4918583741397955
+        },
+        "pooled": {
+          "expected_hidden": 0.39840817681355056,
+          "p_clean": 0.6769661495601529,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2488473892699825
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-3-2",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 2,
+      "lines": 106,
+      "found_verified": 2,
+      "found_unverified": 2,
+      "decoys": 3,
+      "missed": 0,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.35161571516560003,
+          "p_clean": 0.7329302263703178,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.17769256034512704
+        },
+        "pooled": {
+          "expected_hidden": 0.3556913471307708,
+          "p_clean": 0.7057876999252253,
+          "interval": [
+            0,
+            1
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.2126440884662305
+        }
+      }
+    },
+    {
+      "unit_id": "cal-sqlglot-3-3",
+      "repo": "sqlglot",
+      "split": "test",
+      "k": 3,
+      "lines": 240,
+      "found_verified": 3,
+      "found_unverified": 3,
+      "decoys": 6,
+      "missed": 1,
+      "actual_hidden": 0,
+      "pred": {
+        "flat": {
+          "expected_hidden": 0.4347129362808118,
+          "p_clean": 0.6706888065733734,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21040086404952496
+        },
+        "pooled": {
+          "expected_hidden": 0.37696916599373836,
+          "p_clean": 0.6911638508623968,
+          "interval": [
+            0,
+            2
+          ],
+          "status": "LOOK HERE",
+          "q_mean": 0.21553545335809382
+        }
+      }
+    }
+  ],
+  "notes": [
+    "DRY RUN: fake reviewers, no models. Checks the pipeline and the math only.",
+    "Actual hidden counts only the k known bugs; fixed functions may hide others, so actual is a lower bound.",
+    "Decoys were test-validated on the fixed version of each function.",
+    "Each bug appears in up to 4 units; confidence intervals resample whole repositories."
+  ]
+}

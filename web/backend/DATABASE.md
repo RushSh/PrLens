@@ -30,6 +30,7 @@ two disagree.
 | `runs` | `UNIQUE(run_key)` | One row per run. `run_key` is the Python `run_id`, or `legacy:<file name>` for runs saved before Oct 27 2026, so importing twice is a no-op. |
 | `run_models` | `UNIQUE(run_id, reviewer)` | A reviewer name means one model within a run. |
 | `realism_experiments` | `UNIQUE(exp_key)` | Re-analysing the same reviews replaces the older analysis instead of duplicating it. |
+| `calibration_experiments` | `UNIQUE(exp_key)` | `tag|name`: re-analysing an experiment under the same name replaces it. |
 
 ## Tables
 
@@ -45,3 +46,5 @@ two disagree.
 | `realism_experiments` | One realism check (real bugs vs decoys) |
 | `realism_reviewer_stats` | Per reviewer (and panel) catch rates, logit gap, 95% CI |
 | `realism_families` | Panel catch rate per decoy family |
+| `calibration_experiments` | One calibration analysis: models, design, and metrics per estimator variant (`variants`) |
+| `calibration_units` | Per unit: true bugs (k), found, decoys, actual hidden, and each variant's prediction |

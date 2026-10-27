@@ -1,6 +1,7 @@
 /** Read side: database rows -> API shapes from @bugcensus/shared. */
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type {
+  CalibrationExperiment,
   Job,
   RealismExperiment,
   RunDetail,
@@ -9,6 +10,7 @@ import type {
 } from "@bugcensus/shared";
 import type { Db } from "./db/client";
 import {
+  calibrationExperiments,
   decoys,
   findings,
   jobs,
@@ -260,4 +262,29 @@ export async function getJob(db: Db, id: string): Promise<Job | null> {
 export async function distinctFiles(db: Db): Promise<string[]> {
   const rows = await db.selectDistinct({ f: runs.filePath }).from(runs).orderBy(asc(runs.filePath));
   return rows.map((r) => r.f);
+}
+
+export async function listCalibration(db: Db): Promise<CalibrationExperiment[]> {
+  const rows = await db.select().from(calibrationExperiments).orderBy(desc(calibrationExperiments.analyzedAt));
+  return rows.map((e) => ({
+    id: e.id,
+    name: e.name,
+    tag: e.tag,
+    analyzedAt: e.analyzedAt.toISOString(),
+    dryRun: e.dryRun,
+    nUnits: e.nUnits,
+    repos: e.repos,
+    decoysPerUnit: e.decoysPerUnit,
+    decoyMissRate: e.decoyMissRate,
+    models: (e.models as Array<Record<string, unknown>>).map((m) => ({
+      reviewer: String(m.reviewer),
+      modelId: String(m.model_id),
+      provider: String(m.provider),
+      reasoningEffort: (m.reasoning_effort as string | null) ?? null,
+    })),
+    design: e.design,
+    calls: e.calls,
+    variants: e.variants,
+    notes: e.notes,
+  }));
 }

@@ -64,9 +64,35 @@ BUGCENSUS_PANEL=spark,glimmer_fw bugcensus review examples/billing.py
 scripts/fireworks_glimmer.sh down    # delete it when done
 ```
 
+### Calibration: does "N bugs still hidden" mean N?
+
+`scripts/calibration.py` builds 76 test changes ("units") from 71 real, test-confirmed bug fixes in 8 repositories. Each unit has 3 functions; exactly k of them (0-3, balanced) are the real buggy versions, so the true number of bugs is known. Each unit is censused like a PR (original first, then seeded copies that avoid lines the original review flagged), and the prediction is compared with the truth: calibration plot, totals, slope, 90%-interval coverage, P(clean) reliability, false-clear rate, and AUC against simply counting findings. Two estimator variants are evaluated on the same reviews: the flat blind-rate prior (current product) and a pooled empirical-Bayes prior learned from the other repositories.
+
+Everything except `bench` and `run` is free. Both of those print the calls and a cost estimate and ask before calling anything.
+
+```bash
+python scripts/calibration.py prepare                        # already done: data/calibration_units.jsonl is committed (rebuilding needs all repo clones)
+python scripts/calibration.py dry-run                        # fake reviewers: checks the pipeline and the math
+python scripts/calibration.py plan --panel spark,glimmer_fw  # calls, rough cost and time, no calls
+```
+
+**Runbook for one hour on Fireworks** (Spark + Glimmer on 1 x H200; about $6 of Meta credits plus ~1 GPU-hour):
+
+```bash
+scripts/fireworks_glimmer.sh up                              # asks, creates, prints FIREWORKS_GLIMMER_MODEL=...; paste into .env
+bugcensus models --list                                      # glimmer_fw should say READY
+python scripts/calibration.py bench --panel glimmer_fw       # 8 calls; measures speed, projects the full run
+python scripts/calibration.py run --panel spark,glimmer_fw --tag fw1 --fw-tps <measured>   # resumable; Ctrl-C is safe
+scripts/fireworks_glimmer.sh down                            # stop paying as soon as the run finishes
+python scripts/calibration.py analyze --tag fw1 --name "Spark + Glimmer (Fireworks), Oct 2026"
+python scripts/calibration.py analyze --tag fw1 --reviewers glimmer_fw --name "Glimmer alone (Fireworks)"
+```
+
+Interrupted or some calls failed? Run the same `run` command again: finished reviews are kept and only the rest is done. Results show up on the dashboard's Calibration page (with `BUGCENSUS_API_URL` set, or after `npm run import`).
+
 ### Dashboard
 
-`web/` has a local dashboard (Node.js + Next.js + Postgres) to see every run, which models reviewed it, compare runs, and start new runs with any mix of reviewers. Setup: [web/README.md](web/README.md).
+`web/` has a local dashboard (Node.js + Next.js + Postgres) to see every run, which models reviewed it, compare runs, start new runs with any mix of reviewers, and view realism checks and calibration results. Setup: [web/README.md](web/README.md).
 
 `examples/billing.py` contains one known real bug (`average_order_value` subtracts 1), so you can check whether the panel finds it.
 

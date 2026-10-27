@@ -13,6 +13,7 @@ const NAV = [
   { href: "/new", label: "New run" },
   { href: "/jobs", label: "Jobs" },
   { href: "/realism", label: "Realism checks" },
+  { href: "/calibration", label: "Calibration" },
 ];
 
 export default function RootLayout({ children }: { children: ReactNode }) {

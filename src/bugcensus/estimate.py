@@ -85,19 +85,42 @@ def census(found: int, decoys: int, decoys_missed: int, size: float = 1.0, prior
     return CensusResult(expected, p_clean, (lo, hi), float(np.sum(w * q)), found, decoys, decoys_missed, status)
 
 
-def fit_prior(history: list[tuple[int, int, int, float]], min_units: int = 30) -> Prior:
+def fit_prior(history: list[tuple[int, int, int, float]], min_units: int = 30,
+              q_prior: tuple[float, float] = (1.0, 1.0)) -> Prior:
     """Empirical-Bayes prior from past units: (found, decoys, decoys_missed, size).
     Method of moments for the Gamma bug rate. The blind-rate prior stays flat on purpose:
     pooling q without PR features biased hard PRs in testing (see the kickoff review)."""
     if len(history) < min_units:
-        return Prior()
+        return Prior(a_q=q_prior[0], b_q=q_prior[1])
     S = np.array([h[0] for h in history], float)
     M = np.array([h[1] for h in history], float)
     m = np.array([h[2] for h in history], float)
     w = np.array([h[3] for h in history], float)
-    qbar = (1 + m) / (2 + M)
+    a_q, b_q = q_prior
+    qbar = (a_q + m) / (a_q + b_q + M)            # each unit's blind rate under the q prior in use
     y = S / ((1 - qbar) * w)                       # noisy per-unit rate estimates
     mu = float(np.mean(y))
     noise = float(np.mean(y / ((1 - qbar) * w)))  # Poisson noise contribution
     var = max(float(np.var(y)) - noise, 0.05 * mu * mu, 1e-6)
-    return Prior(alpha=mu * mu / var, beta=mu / var)
+    return Prior(alpha=mu * mu / var, beta=mu / var, a_q=a_q, b_q=b_q)
+
+
+def fit_q_prior(history: list[tuple[int, int]], min_units: int = 20, max_strength: float = 50.0) -> tuple[float, float]:
+    """Empirical-Bayes Beta prior for the panel blind rate q from past units' decoys: (decoys, decoys_missed).
+
+    Beta-binomial method of moments. The pooled miss rate sets the prior mean; the prior's strength
+    (a_q + b_q, worth that many decoys) comes from how much the miss rate really varies between units
+    (overdispersion): units that differ a lot get a weak prior, so a hard PR is not pulled toward the
+    average; units that look alike get a stronger one, capped at `max_strength` decoys.
+    Returns (a_q, b_q); (1, 1), the flat prior, when there is too little history."""
+    rows = [(M, m) for M, m in history if M > 0]
+    if len(rows) < min_units:
+        return 1.0, 1.0
+    M = np.array([r[0] for r in rows], float)
+    m = np.array([r[1] for r in rows], float)
+    p = float(np.clip(m.sum() / M.sum(), 0.01, 0.99))
+    phi = float(np.sum((m - M * p) ** 2 / (M * p * (1 - p))) / (len(rows) - 1))   # dispersion
+    mbar = float(M.mean())
+    rho = (phi - 1) / (mbar - 1) if mbar > 1 else 0.0
+    strength = max_strength if rho <= 0 else float(np.clip((1 - rho) / rho, 2.0, max_strength))
+    return p * strength, (1 - p) * strength

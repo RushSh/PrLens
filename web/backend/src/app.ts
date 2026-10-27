@@ -8,10 +8,20 @@ import type { Db } from "./db/client";
 import { env } from "./env";
 import { importCensus } from "./import/census";
 import { importRepository } from "./import/files";
+import { importCalibration } from "./import/calibration";
 import { importRealism } from "./import/realism";
 import { JobRunner, UserError } from "./jobs/runner";
 import { availableModels } from "./models";
-import { distinctFiles, getJob, getRun, listJobs, listRealism, listRuns, setRunNote } from "./queries";
+import {
+  distinctFiles,
+  getJob,
+  getRun,
+  listCalibration,
+  listJobs,
+  listRealism,
+  listRuns,
+  setRunNote,
+} from "./queries";
 
 const uuidParam = z.object({ id: z.string().uuid() });
 
@@ -84,10 +94,12 @@ export function buildApp(opts: AppOptions): FastifyInstance {
 
   // ---- realism
   app.get("/api/realism", async () => listRealism(db));
+  app.get("/api/calibration", async () => listCalibration(db));
 
   // ---- imports (the Python CLI pushes here; `npm run import` reads the files directly)
   app.post("/api/import/census", async (req) => importCensus(db, req.body));
   app.post("/api/import/realism", async (req) => importRealism(db, req.body));
+  app.post("/api/import/calibration", async (req) => importCalibration(db, req.body));
   app.post("/api/import/files", async () => importRepository(db, root));
 
   // ---- launching runs

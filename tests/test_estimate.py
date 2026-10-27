@@ -56,3 +56,17 @@ def test_fit_prior_recovers_mean_rate():
         hist.append((int(S), 12, int(m), 1.0))
     p = fit_prior(hist)
     assert 1.5 < p.alpha / p.beta < 2.6
+
+
+def test_fit_q_prior_recovers_rate_and_stays_flat_without_history():
+    import numpy as np
+    from bugcensus.estimate import fit_q_prior
+
+    assert fit_q_prior([(5, 1)] * 5) == (1.0, 1.0)
+    rng = np.random.default_rng(0)
+    hist = [(6, int(rng.binomial(6, 0.1))) for _ in range(200)]          # same q everywhere
+    a, b = fit_q_prior(hist)
+    assert abs(a / (a + b) - 0.1) < 0.03 and a + b > 20                   # strong prior near 0.1
+    qs = rng.beta(0.5, 2.0, 200)                                           # very different units
+    a2, b2 = fit_q_prior([(6, int(rng.binomial(6, q))) for q in qs])
+    assert a2 + b2 < 10                                                    # weak prior

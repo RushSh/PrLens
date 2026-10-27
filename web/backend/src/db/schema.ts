@@ -14,6 +14,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { CalibrationVariant } from "@bugcensus/shared";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -187,6 +188,43 @@ export const realismFamilies = pgTable("realism_families", {
   n: integer("n").notNull(),
 });
 
+export const calibrationExperiments = pgTable("calibration_experiments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  expKey: text("exp_key").notNull().unique(),
+  name: text("name").notNull(),
+  tag: text("tag").notNull(),
+  analyzedAt: ts("analyzed_at").notNull(),
+  dryRun: boolean("dry_run").notNull().default(false),
+  nUnits: integer("n_units").notNull(),
+  repos: integer("repos").notNull(),
+  decoysPerUnit: doublePrecision("decoys_per_unit").notNull(),
+  decoyMissRate: doublePrecision("decoy_miss_rate").notNull(),
+  models: jsonb("models").notNull(),
+  design: jsonb("design").$type<Record<string, unknown>>().notNull(),
+  calls: jsonb("calls").$type<{ total: number; errors: number; output_tokens: number }>().notNull(),
+  variants: jsonb("variants").$type<CalibrationVariant[]>().notNull(),
+  notes: text("notes").array().notNull().default([]),
+  raw: jsonb("raw").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const calibrationUnits = pgTable("calibration_units", {
+  id: serial("id").primaryKey(),
+  experimentId: uuid("experiment_id")
+    .notNull()
+    .references(() => calibrationExperiments.id, { onDelete: "cascade" }),
+  unitId: text("unit_id").notNull(),
+  repo: text("repo").notNull(),
+  k: integer("k").notNull(),
+  lines: integer("lines").notNull(),
+  foundVerified: integer("found_verified").notNull(),
+  foundUnverified: integer("found_unverified").notNull(),
+  decoys: integer("decoys").notNull(),
+  missed: integer("missed").notNull(),
+  actualHidden: integer("actual_hidden").notNull(),
+  pred: jsonb("pred").notNull(),
+});
+
 export const tables = {
   jobs,
   runs,
@@ -198,4 +236,6 @@ export const tables = {
   realismExperiments,
   realismReviewerStats,
   realismFamilies,
+  calibrationExperiments,
+  calibrationUnits,
 };

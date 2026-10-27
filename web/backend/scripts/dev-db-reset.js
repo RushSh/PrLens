@@ -15,6 +15,8 @@ if (process.env.NODE_ENV === "production") {
 
 // children before parents
 const TABLES = [
+  "calibration_units",
+  "calibration_experiments",
   "realism_families",
   "realism_reviewer_stats",
   "realism_experiments",
