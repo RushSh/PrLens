@@ -49,10 +49,17 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
     by_version: dict[str, list[Finding]] = {}
     for res in results:
         by_version.setdefault(res.version, []).extend(res.findings)
+    failed = {res.version for res in results if res.error}
 
-    # decoys: caught or missed by every reviewer
+    # decoys: caught or missed by every reviewer. A copy where any reviewer failed is left out:
+    # its decoys were not seen by the full panel, so they say nothing about the panel's blind rate.
     decoy_rows, missed = [], 0
     for c in copies:
+        if c.name in failed:
+            for d in c.decoys:
+                decoy_rows.append({"copy": c.name, "decoy": d.describe(), "line_in_copy": d.final_line,
+                                   "caught_by": [], "not_reviewed": True, "matched": [], "too_wide": []})
+            continue
         fs = by_version.get(c.name, [])
         for d in c.decoys:
             who = caught_by(d, fs)
@@ -62,7 +69,7 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
             decoy_rows.append({"copy": c.name, "decoy": d.describe(), "line_in_copy": d.final_line, "caught_by": who,
                                "matched": [_brief(f) for f in matching_findings(d, fs)],
                                "too_wide": [_brief(f) for f in near if span(f) > MAX_SPAN]})
-    n_decoys = sum(len(c.decoys) for c in copies)
+    n_decoys = sum(len(c.decoys) for c in copies if c.name not in failed)
 
     # real findings from the original pass, grouped into suspected bugs
     groups = dedupe(by_version.get("original", []))
@@ -83,7 +90,7 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
     found = verified_found if verified_found is not None else len(groups)
     changed = sum(b - a + 1 for a, b in line_ranges) if line_ranges else len(source.splitlines())
     est: CensusResult | None = None
-    if n_decoys:
+    if n_decoys and "original" not in failed:
         est = census(found, n_decoys, missed, size=max(changed, 1) / 100.0, prior=prior, seed=seed)
 
     report = {
@@ -122,12 +129,21 @@ def format_report(rep: dict) -> str:
         lines.append(f"Still hidden (estimate): {est['expected_hidden']:.2f} bugs (90% interval {lo}-{hi}), "
                      f"P(clean) {est['p_clean']:.0%}")
         lines.append(f"Status: {est['status']}")
+    elif any("/original:" in e for e in rep["errors"]):
+        lines.append("Still hidden: not estimated (the review of the original failed; see Errors)")
+    elif rep["decoys"]:
+        lines.append("Still hidden: not estimated (every seeded copy's review failed; see Errors)")
     else:
         lines.append("Still hidden: not estimated (no valid decoys could be planted in this code)")
-    lines.append(f"Decoys (audit): {rep['decoys_planted']} planted, "
+    skipped = sum(1 for d in rep["decoys"] if d.get("not_reviewed"))
+    lines.append(f"Decoys (audit): {rep['decoys_planted']} counted"
+                 + (f" ({skipped} more not counted: their copy's review failed)" if skipped else "") + ", "
                  f"{rep['decoys_planted'] - rep['decoys_missed_by_all']} caught, "
                  f"{rep['decoys_missed_by_all']} missed by every reviewer")
     for d in rep["decoys"]:
+        if d.get('not_reviewed'):
+            lines.append(f"  [NOT REVIEWED: review of this copy failed] {d['copy']}: {d['decoy']}")
+            continue
         tag = 'caught by ' + ', '.join(d['caught_by']) if d['caught_by'] else 'MISSED'
         if not d['caught_by'] and d.get('too_wide'):
             tag += ' (only a too-wide finding covered it)'

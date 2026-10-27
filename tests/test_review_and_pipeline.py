@@ -59,3 +59,21 @@ def test_wide_findings_do_not_catch_decoys():
     tight = Finding("spark", 14, 14, "logic", "high", "guard removed")
     assert caught_by(d, [wide]) == []
     assert caught_by(d, [wide, tight]) == ["spark"]
+
+
+def test_failed_copy_review_is_not_counted_as_missed_decoys(tmp_path):
+    from bugcensus.review import ReviewResult
+
+    class BreaksOnB(FakeReviewer):
+        def review(self, filename, source, version, context=""):
+            if version == "copy-B":
+                return ReviewResult(self.name, version, error="reply cut off at the token limit")
+            return super().review(filename, source, version, context)
+
+    src = Path(__file__).resolve().parents[1] / "examples" / "billing.py"
+    rep = run_census(src, [BreaksOnB("fake", catch_prob=1.0, seed=1)], line_ranges=None, out_dir=tmp_path)
+    b = [d for d in rep["decoys"] if d["copy"] == "copy-B"]
+    assert b and all(d["not_reviewed"] for d in b)
+    assert rep["decoys_missed_by_all"] == 0
+    assert rep["decoys_planted"] == len(rep["decoys"]) - len(b)
+    assert "NOT REVIEWED" in format_report(rep)

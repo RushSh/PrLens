@@ -55,4 +55,4 @@ def reasoning_effort() -> str | None:
 
 def local_max_tokens() -> int:
     """Generation budget for locally served models; their reasoning is long and servers default low."""
-    return int(os.getenv("BUGCENSUS_LOCAL_MAX_TOKENS", "6000"))
+    return int(os.getenv("BUGCENSUS_LOCAL_MAX_TOKENS", "12000"))

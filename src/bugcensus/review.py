@@ -164,11 +164,19 @@ class LLMReviewer:
         except Exception as exc:  # report, don't crash the whole census
             return ReviewResult(self.name, version, error=f"{type(exc).__name__}: {exc}",
                                 seconds=time.time() - t0)
-        text = resp.choices[0].message.content or ""
+        choice = resp.choices[0]
+        text = choice.message.content or ""
         usage = getattr(resp, "usage", None)
         result = ReviewResult(self.name, version, parse_findings(text, self.name),
                               getattr(usage, "prompt_tokens", None), getattr(usage, "completion_tokens", None),
                               time.time() - t0)
+        # A cut-off or unparseable reply is a failed review, never "no bugs found":
+        # treating it as empty would mark every decoy in that copy as missed.
+        if getattr(choice, "finish_reason", None) == "length":
+            result.error = f"reply cut off at the token limit ({result.output_tokens} tokens); raise BUGCENSUS_LOCAL_MAX_TOKENS"
+            result.findings = []
+        elif '"findings"' not in final_answer(text):
+            result.error = "reply contained no findings JSON"
         self._log(result)
         return result
 
