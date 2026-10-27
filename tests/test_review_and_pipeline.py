@@ -49,3 +49,13 @@ def test_glimmer_is_local_and_needs_no_key(monkeypatch):
     monkeypatch.delenv("GLIMMER_API_KEY", raising=False)
     g = registry()["glimmer"]
     assert g.local and g.open_weights and g.api_key == "local"
+
+
+def test_wide_findings_do_not_catch_decoys():
+    from types import SimpleNamespace
+    from bugcensus.match import caught_by
+    d = SimpleNamespace(final_line=14, line=14)
+    wide = Finding("glimmer", 11, 17, "logic", "low", "whole function")
+    tight = Finding("spark", 14, 14, "logic", "high", "guard removed")
+    assert caught_by(d, [wide]) == []
+    assert caught_by(d, [wide, tight]) == ["spark"]

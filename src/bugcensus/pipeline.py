@@ -15,7 +15,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .estimate import CensusResult, Prior, census
-from .match import caught_by, covers, dedupe
+from .match import MAX_SPAN, caught_by, covers, dedupe, matching_findings, span
 from .review import Finding, ReviewResult, Reviewer
 from .seed import SeededCopy, make_copies, valid_decoys
 
@@ -57,7 +57,11 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
         for d in c.decoys:
             who = caught_by(d, fs)
             missed += not who
-            decoy_rows.append({"copy": c.name, "decoy": d.describe(), "line_in_copy": d.final_line, "caught_by": who})
+            line = d.final_line or d.line
+            near = [f for f in fs if covers(f, line)]
+            decoy_rows.append({"copy": c.name, "decoy": d.describe(), "line_in_copy": d.final_line, "caught_by": who,
+                               "matched": [_brief(f) for f in matching_findings(d, fs)],
+                               "too_wide": [_brief(f) for f in near if span(f) > MAX_SPAN]})
     n_decoys = sum(len(c.decoys) for c in copies)
 
     # real findings from the original pass, grouped into suspected bugs
@@ -88,6 +92,7 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
         "suspected_bugs": suspected, "found_counted": found,
         "found_is_verified": verified_found is not None,
         "extras_from_copies": extras,
+        "findings_by_version": {v: [_brief(f) for f in fs] for v, fs in by_version.items()},
         "estimate": asdict(est) if est else None,
         "errors": [f"{r.reviewer}/{r.version}: {r.error}" for r in results if r.error],
         "tokens": {"input": sum(r.input_tokens or 0 for r in results), "output": sum(r.output_tokens or 0 for r in results)},
@@ -97,6 +102,11 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / f"{path.stem}-{int(time.time())}.json").write_text(json.dumps(report, indent=2))
     return report
+
+
+def _brief(f: Finding) -> dict:
+    return {"reviewer": f.reviewer, "lines": [f.start_line, f.end_line], "category": f.category,
+            "explanation": f.explanation}
 
 
 def format_report(rep: dict) -> str:
@@ -118,7 +128,10 @@ def format_report(rep: dict) -> str:
                  f"{rep['decoys_planted'] - rep['decoys_missed_by_all']} caught, "
                  f"{rep['decoys_missed_by_all']} missed by every reviewer")
     for d in rep["decoys"]:
-        lines.append(f"  [{'caught by ' + ', '.join(d['caught_by']) if d['caught_by'] else 'MISSED'}] {d['copy']}: {d['decoy']}")
+        tag = 'caught by ' + ', '.join(d['caught_by']) if d['caught_by'] else 'MISSED'
+        if not d['caught_by'] and d.get('too_wide'):
+            tag += ' (only a too-wide finding covered it)'
+        lines.append(f"  [{tag}] {d['copy']}: {d['decoy']}")
     if rep["extras_from_copies"]:
         lines.append(f"Extra finds in seeded copies (not counted): {len(rep['extras_from_copies'])}")
     if rep["errors"]:

@@ -19,7 +19,14 @@ from .config import ModelSpec, local_max_tokens, reasoning_effort
 PROMPT = """You are reviewing a code change before it is merged.
 Find every bug in the code below: wrong results, crashes, missed edge cases, broken contracts,
 misuse of APIs, wrong error handling, security problems. List ALL of them, not only the most important.
-Do not report style, naming or formatting issues.
+
+A bug is code that gives a wrong result, crashes or behaves insecurely for an input it is meant to
+handle, judged by its name, docstring, comments and how the rest of the code uses it.
+Do NOT report:
+- missing input validation, type checks or defensive guards for inputs the code is not meant to accept;
+- floating-point precision or rounding-mode remarks, unless the code clearly needs exact results;
+- style, naming, formatting, documentation or performance issues.
+Point each finding at the smallest line range that contains the bug (usually one to three lines).
 
 Return ONLY a JSON object with this shape:
 {{"findings": [{{"start_line": <int>, "end_line": <int>, "category": "<short label>",
