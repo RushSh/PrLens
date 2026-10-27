@@ -102,3 +102,25 @@ def test_decoys_avoid_lines_the_original_review_flagged(tmp_path):
     rep = run_census(src, [FlagsLine45("fake", catch_prob=1.0, seed=1)], out_dir=tmp_path)
     assert 45 in rep["decoy_free_lines"]
     assert all(not d["decoy"].split(" line ")[1].startswith(("44:", "45:", "46:")) for d in rep["decoys"])
+
+
+def test_fireworks_glimmer_request_settings(monkeypatch):
+    from bugcensus.config import describe, effort_for, max_tokens_for, registry
+
+    monkeypatch.setenv("FIREWORKS_REASONING_EFFORT", "")
+    fw = registry()["glimmer_fw"]
+    assert fw.provider == "fireworks" and fw.open_weights and not fw.local
+    assert effort_for(fw) is None and max_tokens_for(fw) == 12000
+    monkeypatch.setenv("FIREWORKS_REASONING_EFFORT", "low")
+    assert describe(fw)["reasoning_effort"] == "low"
+    assert max_tokens_for(registry()["spark"]) is None
+
+
+def test_run_report_records_models_and_reviews(tmp_path):
+    src = Path(__file__).resolve().parents[1] / "examples" / "billing.py"
+    rep = run_census(src, [FakeReviewer("fake", catch_prob=1.0, seed=1)], out_dir=tmp_path)
+    assert rep["schema_version"] == 2 and len(rep["run_id"]) == 32
+    assert rep["models"][0]["provider"] == "fake"
+    assert {r["version"] for r in rep["reviews"]} == {"original", "copy-A", "copy-B"}
+    assert rep["source"].startswith(src.read_text()[:20])
+    assert all({"kind", "function", "line"} <= set(d) for d in rep["decoys"])

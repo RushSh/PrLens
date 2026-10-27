@@ -14,7 +14,7 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Protocol
 
-from .config import ModelSpec, local_max_tokens, reasoning_effort
+from .config import ModelSpec, effort_for, max_tokens_for
 
 PROMPT = """You are reviewing a code change before it is merged.
 Find every bug in the code below: wrong results, crashes, missed edge cases, broken contracts,
@@ -61,6 +61,7 @@ class ReviewResult:
     output_tokens: int | None = None
     seconds: float = 0.0
     error: str | None = None
+    finish_reason: str | None = None
 
 
 class Reviewer(Protocol):
@@ -144,35 +145,31 @@ class LLMReviewer:
     def review(self, filename: str, source: str, version: str, context: str = "") -> ReviewResult:
         prompt = PROMPT.format(filename=filename, numbered=number_lines(source),
                                context=f"Context:\n{context}\n" if context else "")
-        kwargs = {}
-        effort = reasoning_effort()
-        if self.spec.local:
-            # local servers (mlx_lm.server) need an explicit generation budget and may not support
-            # response_format; the parser handles reasoning text and fences.
-            kwargs["max_tokens"] = local_max_tokens()
-        else:
+        kwargs: dict = {}
+        effort, max_tokens = effort_for(self.spec), max_tokens_for(self.spec)
+        if max_tokens:
+            kwargs["max_tokens"] = max_tokens
+        if self.spec.provider in ("meta", "baseten"):
             kwargs["response_format"] = {"type": "json_object"}
-            if effort:
-                kwargs["reasoning_effort"] = effort
+        # local MLX servers and Fireworks reasoning models: no JSON mode; the parser handles prose and fences
+        if effort:
+            kwargs["reasoning_effort"] = effort
         t0 = time.time()
         try:
-            resp = self.client.chat.completions.create(
-                model=self.spec.model_id,
-                messages=[{"role": "user", "content": prompt}],
-                **kwargs,
-            )
+            resp = self._create(prompt, kwargs)
         except Exception as exc:  # report, don't crash the whole census
             return ReviewResult(self.name, version, error=f"{type(exc).__name__}: {exc}",
                                 seconds=time.time() - t0)
         choice = resp.choices[0]
         text = choice.message.content or ""
+        finish = getattr(choice, "finish_reason", None)
         usage = getattr(resp, "usage", None)
         result = ReviewResult(self.name, version, parse_findings(text, self.name),
                               getattr(usage, "prompt_tokens", None), getattr(usage, "completion_tokens", None),
-                              time.time() - t0)
+                              time.time() - t0, finish_reason=finish)
         # A cut-off or unparseable reply is a failed review, never "no bugs found":
         # treating it as empty would mark every decoy in that copy as missed.
-        if getattr(choice, "finish_reason", None) == "length":
+        if finish == "length":
             result.error = f"reply cut off at the token limit ({result.output_tokens} tokens); raise BUGCENSUS_LOCAL_MAX_TOKENS"
             result.findings = []
         elif '"findings"' not in final_answer(text):
@@ -180,12 +177,33 @@ class LLMReviewer:
         self._log(result)
         return result
 
+    def _create(self, prompt: str, kwargs: dict):
+        """One chat call. A Fireworks deployment scaled to zero answers 503 while it starts a replica,
+        so for Fireworks keep retrying for up to FIREWORKS_COLD_START_SECONDS (default 600)."""
+        import os
+
+        call = lambda: self.client.chat.completions.create(
+            model=self.spec.model_id, messages=[{"role": "user", "content": prompt}], **kwargs)
+        if self.spec.provider != "fireworks":
+            return call()
+        from openai import APIStatusError
+
+        deadline = time.time() + float(os.getenv("FIREWORKS_COLD_START_SECONDS", "600"))
+        while True:
+            try:
+                return call()
+            except APIStatusError as exc:
+                if exc.status_code != 503 or time.time() > deadline:
+                    raise
+                time.sleep(15)
+
     def _log(self, r: ReviewResult) -> None:
         if not self.usage_log:
             return
         self.usage_log.parent.mkdir(parents=True, exist_ok=True)
         with self.usage_log.open("a") as f:
-            f.write(json.dumps({"ts": time.time(), "model": self.spec.model_id, "version": r.version,
+            f.write(json.dumps({"ts": time.time(), "model": self.spec.model_id, "provider": self.spec.provider,
+                                "reviewer": self.name, "version": r.version, "error": r.error,
                                 "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
                                 "seconds": round(r.seconds, 2)}) + "\n")
 

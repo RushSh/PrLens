@@ -32,6 +32,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from datetime import datetime, timezone  # noqa: E402
+import hashlib  # noqa: E402
+
+from bugcensus.config import describe, registry  # noqa: E402
+from bugcensus.review import PROMPT  # noqa: E402
+
+PROMPT_SHA = hashlib.sha256(PROMPT.encode()).hexdigest()[:12]
 MAX_SPAN = 6        # findings longer than this don't count as pointing at a bug
 TRIES = 14          # decoy candidates tried per bug
 KEEP = 2            # decoys kept per bug (different kinds)
@@ -249,7 +256,7 @@ def prepare(args):
 # ------------------------------------------------------------------------------------ review
 
 def review(args):
-    from bugcensus.config import panel_names, registry
+    from bugcensus.config import panel_names
     from bugcensus.review import LLMReviewer
 
     units = [json.loads(l) for l in Path(args.units).read_text().splitlines() if l.strip()]
@@ -269,7 +276,9 @@ def review(args):
         res = r.review(Path(u["file"]).name, u["snippet"], u["unit_id"])
         return {"unit_id": u["unit_id"], "reviewer": r.name, "error": res.error,
                 "findings": [f.__dict__ for f in res.findings],
-                "input_tokens": res.input_tokens, "output_tokens": res.output_tokens}
+                "input_tokens": res.input_tokens, "output_tokens": res.output_tokens,
+                "seconds": round(res.seconds, 1), "ts": time.time(), "prompt_sha": PROMPT_SHA,
+                "model": describe(r.spec)}
 
     if any(r.spec.local for r in reviewers):
         args.workers = 1   # local models serve one request at a time
@@ -297,14 +306,17 @@ def analyze(args):
     units = {u["unit_id"]: u for u in map(json.loads, Path(args.units).read_text().splitlines()) if u}
     rows = [json.loads(l) for l in Path(args.reviews).read_text().splitlines() if l.strip()]
     rows = [r for r in rows if r.get("error") is None and r["unit_id"] in units]
+    if args.reviewers:
+        keep = set(args.reviewers.split(","))
+        rows = [r for r in rows if r["reviewer"] in keep]
     hit = defaultdict(dict)       # unit -> reviewer -> bool
     for r in rows:
         hit[r["unit_id"]][r["reviewer"]] = caught(r["findings"], units[r["unit_id"]]["bug_lines"])
     reviewers = sorted({r["reviewer"] for r in rows})
     complete = [u for u in hit if set(hit[u]) == set(reviewers)]
     bugs = sorted({units[u]["bug_id"] for u in complete})
-    print(f"bugs {len(bugs)}  units {len(complete)}  reviewers {reviewers}  "
-          f"output tokens {sum(r['output_tokens'] or 0 for r in rows)}")
+    out_tokens = sum(r["output_tokens"] or 0 for r in rows)
+    print(f"bugs {len(bugs)}  units {len(complete)}  reviewers {reviewers}  output tokens {out_tokens}")
 
     def rates(bug_sample, who):
         out = {}
@@ -319,22 +331,33 @@ def analyze(args):
 
     lg = lambda p: np.log(np.clip(p, 0.02, 0.98) / (1 - np.clip(p, 0.02, 0.98)))
     rng = np.random.default_rng(0)
+    result = {"schema_version": 2, "kind": "realism", "name": args.name or Path(args.reviews).stem,
+              "analyzed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+              "units_file": args.units, "reviews_file": args.reviews,
+              "bugs": len(bugs), "units": len(complete),
+              "repos": len({units[u]["bug_id"].split("@")[0] for u in complete}),
+              "max_span": MAX_SPAN, "output_tokens": out_tokens,
+              "models": _models(rows, reviewers), "reviewers": [], "miss_all": {}, "families": []}
     print(f"\n{'reviewer':8s} {'real caught':>14s} {'decoy caught':>14s} {'gap (logit)':>12s} {'95% CI':>16s}")
     for who in reviewers + ["panel"]:
         r = rates(bugs, who)
         gap = lg(r["decoy"][0]) - lg(r["real"][0])
         boots = []
         for _ in range(2000):
-            s = list(rng.choice(bugs, len(bugs)))
-            rb = rates(s, who)
+            sample = list(rng.choice(bugs, len(bugs)))
+            rb = rates(sample, who)
             boots.append(lg(rb["decoy"][0]) - lg(rb["real"][0]))
         lo, hi = np.nanpercentile(boots, [2.5, 97.5])
         print(f"{who:8s} {r['real'][0]:8.0%} (n={r['real'][1]:3d}) {r['decoy'][0]:8.0%} (n={r['decoy'][1]:3d}) "
               f"{gap:+12.2f} [{lo:+.2f}, {hi:+.2f}]")
+        result["reviewers"].append({"reviewer": who, "real_rate": float(r["real"][0]), "real_n": r["real"][1],
+                                    "decoy_rate": float(r["decoy"][0]), "decoy_n": r["decoy"][1],
+                                    "gap_logit": float(gap), "ci_low": float(lo), "ci_high": float(hi)})
     print("\nPanel MISS-ALL rate (what the estimator uses):")
     for kind in ("real", "decoy"):
         v = [not any(hit[u].values()) for u in complete if units[u]["kind"] == kind]
         print(f"  {kind:5s} {np.mean(v):.0%} of {len(v)}")
+        result["miss_all"][kind] = {"rate": float(np.mean(v)), "n": len(v)}
     print("\nDecoy detection by family (panel):")
     fam = defaultdict(list)
     for u in complete:
@@ -342,6 +365,28 @@ def analyze(args):
             fam[units[u]["family"]].append(any(hit[u].values()))
     for k, v in sorted(fam.items(), key=lambda kv: -len(kv[1])):
         print(f"  {k:13s} {np.mean(v):5.0%} of {len(v)}")
+        result["families"].append({"family": k, "rate": float(np.mean(v)), "n": len(v)})
+    if args.json:
+        Path(args.json).write_text(json.dumps(result, indent=2))
+        print(f"\nwrote {args.json}")
+    if not args.no_push:
+        from bugcensus.cli import _push
+
+        _push(result, "realism")
+
+
+def _models(rows, reviewers):
+    """Model details per reviewer. Rows written before Oct 27 carry only the reviewer name, so their
+    model is taken from today's registry defaults and marked inferred."""
+    seen = {}
+    for r in rows:
+        if r.get("model") and r["reviewer"] not in seen:
+            seen[r["reviewer"]] = {**r["model"], "inferred": False}
+    reg = registry()
+    for who in reviewers:
+        if who not in seen and who in reg:
+            seen[who] = {**describe(reg[who]), "inferred": True}
+    return [seen[w] for w in reviewers if w in seen]
 
 
 def main():
@@ -362,6 +407,10 @@ def main():
     r.set_defaults(func=review)
     a = sub.add_parser("analyze")
     a.add_argument("--units", default="data/realism_units.jsonl"); a.add_argument("--reviews", default="data/realism_reviews.jsonl")
+    a.add_argument("--reviewers", default=None, help="only these reviewers, e.g. spark,glimmer")
+    a.add_argument("--name", default=None, help="experiment name shown in the dashboard")
+    a.add_argument("--json", default=None, help="also write the results to this JSON file")
+    a.add_argument("--no-push", action="store_true", help="don't send results to the dashboard")
     a.set_defaults(func=analyze)
     args = ap.parse_args(); args.func(args)
 

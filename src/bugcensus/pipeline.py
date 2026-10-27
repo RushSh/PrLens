@@ -8,15 +8,18 @@ Isolation rules enforced here:
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import subprocess
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
 
 from .estimate import CensusResult, Prior, census
 from .match import MAX_SPAN, caught_by, covers, dedupe, matching_findings, span
-from .review import Finding, ReviewResult, Reviewer
+from .review import PROMPT, Finding, ReviewResult, Reviewer
 from .seed import SeededCopy, make_copies, valid_decoys
 
 
@@ -24,10 +27,27 @@ def _run_jobs(jobs, filename: str) -> list[ReviewResult]:
     """Hosted reviewers run in parallel; a local model serves one request at a time, so its calls run in turn."""
     hosted = [j for j in jobs if not getattr(getattr(j[0], "spec", None), "local", False)]
     local = [j for j in jobs if getattr(getattr(j[0], "spec", None), "local", False)]
+
+    def one(j) -> ReviewResult:
+        res = j[0].review(filename, j[2], j[1])
+        _progress(res)
+        return res
+
     with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = pool.map(lambda j: j[0].review(filename, j[2], j[1]), hosted)
-        local_results = [j[0].review(filename, j[2], j[1]) for j in local]
+        futures = pool.map(one, hosted)
+        local_results = [one(j) for j in local]
         return list(futures) + local_results
+
+
+def _progress(res: ReviewResult) -> None:
+    """One line per finished review call on stderr (the dashboard shows it live in the job log)."""
+    import sys
+
+    detail = f"ERROR {res.error}" if res.error else f"{len(res.findings)} findings"
+    # one write per line so lines from parallel reviewers never interleave
+    sys.stderr.write(f"[{time.strftime('%H:%M:%S')}] {res.reviewer} reviewed {res.version}: {detail}, "
+                     f"{res.output_tokens or 0} output tokens, {res.seconds:.0f}s\n")
+    sys.stderr.flush()
 
 
 def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tuple[int, int]] | None = None,
@@ -37,10 +57,15 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
     source = path.read_text()
     filename = path.name
     t0 = time.time()
+    run_id = uuid.uuid4().hex
 
     # Phase 1: review the original. Phase 2: plant decoys away from lines the original review
     # already flagged (a decoy on a flagged line would be "caught" just because a real bug is there),
     # then review the copies.
+    import sys
+
+    print(f"[{time.strftime('%H:%M:%S')}] reviewing {filename} with {', '.join(r.name for r in reviewers)}",
+          file=sys.stderr, flush=True)
     results: list[ReviewResult] = _run_jobs([(r, "original", source) for r in reviewers], filename)
     flagged = sorted({ln for res in results for f in res.findings if span(f) <= MAX_SPAN
                       for ln in range(f.start_line - 1, f.end_line + 2)})
@@ -54,6 +79,8 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
             for c in copies:
                 r.truth.setdefault(c.name, []).extend(d.final_line for d in c.decoys)
 
+    print(f"[{time.strftime('%H:%M:%S')}] planted {sum(len(c.decoys) for c in copies)} decoys in "
+          f"{len(copies)} copies; reviewing copies", file=sys.stderr, flush=True)
     results += _run_jobs([(r, c.name, c.source) for c in copies for r in reviewers], filename)
 
     by_version: dict[str, list[Finding]] = {}
@@ -67,8 +94,8 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
     for c in copies:
         if c.name in failed:
             for d in c.decoys:
-                decoy_rows.append({"copy": c.name, "decoy": d.describe(), "line_in_copy": d.final_line,
-                                   "caught_by": [], "not_reviewed": True, "matched": [], "too_wide": []})
+                decoy_rows.append({**_decoy_fields(c.name, d), "caught_by": [], "not_reviewed": True,
+                                   "matched": [], "too_wide": []})
             continue
         fs = by_version.get(c.name, [])
         for d in c.decoys:
@@ -76,7 +103,7 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
             missed += not who
             line = d.final_line or d.line
             near = [f for f in fs if covers(f, line)]
-            decoy_rows.append({"copy": c.name, "decoy": d.describe(), "line_in_copy": d.final_line, "caught_by": who,
+            decoy_rows.append({**_decoy_fields(c.name, d), "caught_by": who, "not_reviewed": False,
                                "matched": [_brief(f) for f in matching_findings(d, fs)],
                                "too_wide": [_brief(f) for f in near if span(f) > MAX_SPAN]})
     n_decoys = sum(len(c.decoys) for c in copies if c.name not in failed)
@@ -104,6 +131,17 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
         est = census(found, n_decoys, missed, size=max(changed, 1) / 100.0, prior=prior, seed=seed)
 
     report = {
+        "schema_version": 2, "run_id": run_id, "kind": "census",
+        "started_at": _iso(t0), "finished_at": _iso(time.time()),
+        "git_sha": _git_sha(path), "prompt_sha": hashlib.sha256(PROMPT.encode()).hexdigest()[:12],
+        "settings": {"n_copies": n_copies, "per_copy": per_copy, "seed": seed, "max_span": MAX_SPAN,
+                     "line_ranges": [list(r) for r in line_ranges] if line_ranges else None},
+        "models": [_model_info(r) for r in reviewers],
+        "reviews": [{"reviewer": r.reviewer, "version": r.version, "findings": len(r.findings),
+                     "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
+                     "seconds": round(r.seconds, 1), "finish_reason": getattr(r, "finish_reason", None),
+                     "error": r.error} for r in results],
+        "source": source if len(source) < 200_000 else None,
         "file": str(path), "changed_lines": changed, "reviewers": [r.name for r in reviewers],
         "decoys_planted": n_decoys, "decoy_free_lines": flagged, "decoys_missed_by_all": missed, "decoys": decoy_rows,
         "suspected_bugs": suspected, "found_counted": found,
@@ -118,8 +156,44 @@ def run_census(path: str | Path, reviewers: list[Reviewer], line_ranges: list[tu
     }
     if out_dir:
         out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / f"{path.stem}-{int(time.time())}.json").write_text(json.dumps(report, indent=2))
+        out = out_dir / f"{path.stem}-{int(time.time())}-{run_id[:6]}.json"
+        out.write_text(json.dumps(report, indent=2))
+        report["saved_to"] = str(out)
     return report
+
+
+def _iso(ts: float) -> str:
+    from datetime import datetime, timezone
+
+    return datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="seconds")
+
+
+def _git_sha(path: Path) -> str | None:
+    """Commit of the BugCensus code that produced the run ('+dirty' if uncommitted changes)."""
+    here = Path(__file__).resolve().parent
+    try:
+        sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=here, capture_output=True,
+                             text=True, timeout=5).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=here,
+                               capture_output=True, text=True, timeout=5).stdout.strip()
+        return (sha + ("+dirty" if dirty else "")) or None
+    except Exception:
+        return None
+
+
+def _model_info(r) -> dict:
+    spec = getattr(r, "spec", None)
+    if spec is None:
+        return {"reviewer": r.name, "model_id": r.name, "provider": "fake", "endpoint": None,
+                "open_weights": False, "reasoning_effort": None, "max_tokens": None}
+    from .config import describe
+
+    return describe(spec)
+
+
+def _decoy_fields(copy_name: str, d) -> dict:
+    return {"copy": copy_name, "decoy": d.describe(), "kind": d.kind, "function": d.function,
+            "line": d.line, "line_in_copy": d.final_line}
 
 
 def _verdict(found: int, est: CensusResult | None) -> str:

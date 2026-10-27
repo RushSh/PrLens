@@ -20,6 +20,7 @@ class ModelSpec:
     api_key_env: str   # name of the env var holding the key
     open_weights: bool = False
     local: bool = False          # served on this machine (no key needed, one request at a time)
+    provider: str = "meta"       # meta | baseten | mlx-local | fireworks (shown in run reports and the dashboard)
 
     @property
     def api_key(self) -> str | None:
@@ -30,16 +31,22 @@ def registry() -> dict[str, ModelSpec]:
     meta_base = os.getenv("META_API_BASE", "https://api.meta.ai/v1")
     baseten_base = os.getenv("BASETEN_API_BASE", "https://inference.baseten.co/v1")
     glimmer_base = os.getenv("GLIMMER_API_BASE", "http://localhost:8080/v1")
+    fireworks_base = os.getenv("FIREWORKS_API_BASE", "https://api.fireworks.ai/inference/v1")
     return {
         "glimmer": ModelSpec("glimmer", os.getenv("BUGCENSUS_GLIMMER_MODEL", "mlx-community/Muse-Glimmer-30B-4bit"),
-                             glimmer_base, "GLIMMER_API_KEY", open_weights=True, local=True),
+                             glimmer_base, "GLIMMER_API_KEY", open_weights=True, local=True, provider="mlx-local"),
+        # Muse Glimmer 30B (BF16) on a Fireworks on-demand deployment. Set FIREWORKS_GLIMMER_MODEL to the
+        # deployment printed by scripts/fireworks_glimmer.sh (accounts/<account>/deployments/<id>).
+        "glimmer_fw": ModelSpec("glimmer_fw",
+                                os.getenv("FIREWORKS_GLIMMER_MODEL", "accounts/fireworks/models/muse-glimmer-30b"),
+                                fireworks_base, "FIREWORKS_API_KEY", open_weights=True, provider="fireworks"),
         "spark": ModelSpec("spark", os.getenv("BUGCENSUS_SPARK_MODEL", "muse-spark-1.3"),
                            meta_base, "META_API_KEY"),
         "wonder": ModelSpec("wonder", os.getenv("BUGCENSUS_WONDER_MODEL", "muse-wonder-1.0"),
                             meta_base, "META_API_KEY"),
         "spark_open": ModelSpec("spark_open",
                                 os.getenv("BUGCENSUS_SPARK_OPEN_MODEL", "meta-models/muse-spark-open-1026"),
-                                baseten_base, "BASETEN_API_KEY", open_weights=True),
+                                baseten_base, "BASETEN_API_KEY", open_weights=True, provider="baseten"),
     }
 
 
@@ -54,5 +61,28 @@ def reasoning_effort() -> str | None:
 
 
 def local_max_tokens() -> int:
-    """Generation budget for locally served models; their reasoning is long and servers default low."""
+    """Generation budget for open-weight models (local MLX and Fireworks); their reasoning is long and
+    servers default low."""
     return int(os.getenv("BUGCENSUS_LOCAL_MAX_TOKENS", "12000"))
+
+
+def effort_for(spec: ModelSpec) -> str | None:
+    """Reasoning effort sent to this model, or None if the request does not set one."""
+    if spec.provider == "fireworks":
+        return os.getenv("FIREWORKS_REASONING_EFFORT", "").strip() or None
+    if spec.provider == "mlx-local":
+        return None
+    return reasoning_effort()
+
+
+def max_tokens_for(spec: ModelSpec) -> int | None:
+    return local_max_tokens() if spec.provider in ("mlx-local", "fireworks") else None
+
+
+def describe(spec: ModelSpec) -> dict:
+    """What the run report records about a reviewer's model (no keys)."""
+    from urllib.parse import urlparse
+
+    return {"reviewer": spec.name, "model_id": spec.model_id, "provider": spec.provider,
+            "endpoint": urlparse(spec.base_url).netloc, "open_weights": spec.open_weights,
+            "reasoning_effort": effort_for(spec), "max_tokens": max_tokens_for(spec)}
