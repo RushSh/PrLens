@@ -76,7 +76,11 @@ def effort_for(spec: ModelSpec) -> str | None:
 
 
 def max_tokens_for(spec: ModelSpec) -> int | None:
-    return local_max_tokens() if spec.provider in ("mlx-local", "fireworks") else None
+    """Reply budget. Glimmer on Fireworks reasons longer on bigger inputs (7.5k-12k+ tokens per review on
+    calibration units) and the GPU is fast, so it gets its own, larger cap."""
+    if spec.provider == "fireworks":
+        return int(os.getenv("FIREWORKS_MAX_TOKENS", "24000"))
+    return local_max_tokens() if spec.provider == "mlx-local" else None
 
 
 def describe(spec: ModelSpec) -> dict:

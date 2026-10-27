@@ -110,7 +110,7 @@ def test_fireworks_glimmer_request_settings(monkeypatch):
     monkeypatch.setenv("FIREWORKS_REASONING_EFFORT", "")
     fw = registry()["glimmer_fw"]
     assert fw.provider == "fireworks" and fw.open_weights and not fw.local
-    assert effort_for(fw) is None and max_tokens_for(fw) == 12000
+    assert effort_for(fw) is None and max_tokens_for(fw) == 24000
     monkeypatch.setenv("FIREWORKS_REASONING_EFFORT", "low")
     assert describe(fw)["reasoning_effort"] == "low"
     assert max_tokens_for(registry()["spark"]) is None

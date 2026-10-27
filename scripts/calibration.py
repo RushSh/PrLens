@@ -68,7 +68,7 @@ UNITS = ROOT / "data" / "calibration_units.jsonl"
 EXP_DIR = ROOT / "data" / "calibration"
 
 # Rough output tokens per review call, measured on Oct 26-27 (function-sized code).
-OUT_TOKENS = {"spark": 3650, "wonder": 4230, "mlx-local": 5200, "fireworks": 5200, "baseten": 3650}
+OUT_TOKENS = {"spark": 3650, "wonder": 4230, "mlx-local": 5200, "fireworks": 10500, "baseten": 3650}  # fireworks: Oct 27 bench
 META_PER_CALL = {"spark": 0.017, "wonder": 0.09}   # Oct 26 realism-check averages
 LOCAL_TPS = 17.7                                      # M3 Max, 4-bit MLX
 
@@ -300,7 +300,7 @@ def _plan_text(units, specs, fw_tps: float, fw_price: float, calls_per_unit: flo
             hours = out_total / fw_tps / 3600 + 0.15        # + cold start and the slow tail
             cost = hours * fw_price
             lines.append(f"  {s.name:11s} Fireworks  ~{hours:.1f} GPU-hours, ~${cost:,.2f} at {fw_tps:.0f} output tok/s overall "
-                         f"(assumed until `bench` measures it), ${fw_price:.2f}/h")
+                         f"(pass the bench result as --fw-tps), ${fw_price:.2f}/h")
             total += cost
         elif s.provider == "mlx-local":
             lines.append(f"  {s.name:11s} local MLX  free, ~{out_total / LOCAL_TPS / 3600:.0f} hours on this Mac (one call at a time)")
@@ -423,19 +423,31 @@ def bench(args):
                   + (f"  ERROR {res.error}" if res.error else ""), flush=True)
     wall = time.time() - t0
     ok = [r for r in results if not r.error]
-    if not ok:
-        sys.exit("every bench call failed; check the deployment and FIREWORKS_GLIMMER_MODEL")
-    tps = sum(r.output_tokens or 0 for r in ok) / wall
-    per_call = sum(r.output_tokens or 0 for r in ok) / len(ok)
+    cut = [r for r in results if r.error and "token limit" in r.error]
+    used = [r for r in results if r.output_tokens]
+    if not used:
+        sys.exit("every bench call failed before generating; check the deployment and FIREWORKS_GLIMMER_MODEL")
+    # every generated token used GPU time, including replies that were cut off
+    tps = sum(r.output_tokens for r in used) / wall
+    per_call = sum(r.output_tokens for r in used) / len(used)
     print(f"\nmeasured: {tps:.0f} output tok/s overall with {args.workers} concurrent calls, "
-          f"{per_call:.0f} output tokens per call, {wall:.0f}s wall, {len(results) - len(ok)} errors")
+          f"{per_call:.0f} output tokens per call (cut-off replies count at the cap, so this is a floor), {wall:.0f}s wall")
+    if ok:
+        print(f"findings per completed review: {[len(r.findings) for r in ok]}")
+    if cut:
+        print(f"WARNING: {len(cut)} of {len(results)} replies hit the token cap; raise FIREWORKS_MAX_TOKENS "
+              f"(now {cut[0].output_tokens}) or set FIREWORKS_REASONING_EFFORT before the full run")
+    if len(results) - len(ok) - len(cut):
+        print(f"{len(results) - len(ok) - len(cut)} calls failed for other reasons: {[r.error for r in results if r.error and r not in cut][:2]}")
     specs = [registry()[n] for n in args.panel.split(",")]
     for s in specs:
         OUT_TOKENS[s.name] = per_call
     print("\nprojection for the full run:\n" + _plan_text(load_units(args.units), specs, tps, args.fw_price)[0])
     (ROOT / "data" / "calibration_bench.json").write_text(json.dumps({
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "panel": args.panel, "workers": args.workers,
-        "calls": len(results), "errors": len(results) - len(ok), "output_tokens_per_sec": tps,
+        "calls": len(results), "errors": len(results) - len(ok), "cut_off": len(cut), "output_tokens_per_sec": tps,
+        "reasoning_effort": os.getenv("FIREWORKS_REASONING_EFFORT") or None,
+        "max_tokens": int(os.getenv("FIREWORKS_MAX_TOKENS", "24000")),
         "output_tokens_per_call": per_call, "wall_seconds": wall}, indent=2))
     print("saved data/calibration_bench.json; next: run with --fw-tps", round(tps))
 
