@@ -68,8 +68,8 @@ export function autoImport(
       return running;
     }
     running = importRepository(db, root).then((s) => {
-      if (s.runsCreated || s.failed.length) {
-        log(`auto-import: ${s.runsCreated} new runs, ${s.realism} realism, ${s.calibration} calibration` +
+      if (s.runsCreated || s.triage || s.failed.length) {
+        log(`auto-import: ${s.runsCreated} new runs, ${s.realism} realism, ${s.calibration} calibration, ${s.triage} triage` +
           (s.failed.length ? `, ${s.failed.length} failed (${s.failed.map((f) => f.file).join(", ")})` : ""));
       }
       return s;

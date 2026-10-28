@@ -12,6 +12,7 @@ import { importCensus } from "./import/census";
 import { importRepository } from "./import/files";
 import { importCalibration } from "./import/calibration";
 import { importRealism } from "./import/realism";
+import { importTriage } from "./import/triage";
 import { UserError } from "./errors";
 import { command, confirmToken, getAction, listActions, parseParams } from "./experiments";
 import type { ImportSummary } from "./import/files";
@@ -21,10 +22,12 @@ import {
   distinctFiles,
   getJob,
   getRun,
+  getTriagePr,
   listCalibration,
   listJobs,
   listRealism,
   listRuns,
+  listTriage,
   setRunNote,
 } from "./queries";
 
@@ -105,10 +108,18 @@ export function buildApp(opts: AppOptions): FastifyInstance {
   app.get("/api/realism", async () => listRealism(db));
   app.get("/api/calibration", async () => listCalibration(db));
 
+  // ---- PR Reviewer triage
+  app.get("/api/triage/prs", async () => listTriage(db));
+  app.get("/api/triage/prs/:id", async (req, reply) => {
+    const { id } = z.object({ id: z.string().min(1).max(200) }).parse(req.params);
+    return (await getTriagePr(db, id)) ?? reply.status(404).send({ error: "PR not found" });
+  });
+
   // ---- imports (the Python CLI pushes here; `npm run import` reads the files directly)
   app.post("/api/import/census", async (req) => importCensus(db, req.body));
   app.post("/api/import/realism", async (req) => importRealism(db, req.body));
   app.post("/api/import/calibration", async (req) => importCalibration(db, req.body));
+  app.post("/api/import/triage", async (req) => importTriage(db, req.body));
   app.post("/api/import/files", async () => (opts.onImport ? opts.onImport() : importRepository(db, root)));
 
   // ---- launching runs

@@ -3,6 +3,8 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type {
   CalibrationExperiment,
   Job,
+  PrTriage,
+  TriageList,
   RealismExperiment,
   RunDetail,
   RunModel,
@@ -21,6 +23,8 @@ import {
   runModels,
   runs,
   suspectedBugs,
+  triagePrs,
+  triageSets,
 } from "./db/schema";
 
 type RunRow = typeof runs.$inferSelect;
@@ -292,4 +296,58 @@ export async function listCalibration(db: Db): Promise<CalibrationExperiment[]> 
     variants: e.variants,
     notes: e.notes,
   }));
+}
+
+// ---- PR Reviewer triage: the most recently generated set
+
+async function latestTriageSet(db: Db) {
+  const [set] = await db.select().from(triageSets).orderBy(desc(triageSets.generatedAt)).limit(1);
+  return set ?? null;
+}
+
+export async function listTriage(db: Db): Promise<TriageList> {
+  const set = await latestTriageSet(db);
+  if (!set) return { set: null, prs: [] };
+  const rows = await db
+    .select({
+      id: triagePrs.prId,
+      title: triagePrs.title,
+      repo: triagePrs.repo,
+      openedAt: triagePrs.openedAt,
+      reviewCount: triagePrs.reviewCount,
+      skipCount: triagePrs.skipCount,
+      readLines: triagePrs.readLines,
+      totalLines: triagePrs.totalLines,
+      caughtByTriage: triagePrs.caughtByTriage,
+      payload: triagePrs.payload,
+    })
+    .from(triagePrs)
+    .where(eq(triagePrs.setId, set.id))
+    .orderBy(asc(triagePrs.repo), desc(triagePrs.openedAt));
+  return {
+    set: {
+      name: set.name,
+      generatedAt: set.generatedAt.toISOString(),
+      model: set.model,
+      threshold: set.threshold,
+      alpha: set.alpha,
+      summary: set.summary,
+    },
+    prs: rows.map(({ payload, ...r }) => ({
+      ...r,
+      number: payload.number,
+      branch: payload.branch,
+      source: payload.source,
+    })),
+  };
+}
+
+export async function getTriagePr(db: Db, prId: string): Promise<PrTriage | null> {
+  const set = await latestTriageSet(db);
+  if (!set) return null;
+  const [row] = await db
+    .select({ payload: triagePrs.payload })
+    .from(triagePrs)
+    .where(and(eq(triagePrs.setId, set.id), eq(triagePrs.prId, prId)));
+  return row?.payload ?? null;
 }

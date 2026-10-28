@@ -3,12 +3,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { AvailableModel } from "@bugcensus/shared";
+import type { AvailableModel, PrTriage, TriageList } from "@bugcensus/shared";
 import { buildApp } from "../src/app";
 import { tables } from "../src/db/schema";
 import { importCensus } from "../src/import/census";
 import type { UsageEntry } from "../src/import/legacy";
 import { importRealism } from "../src/import/realism";
+import { importTriage } from "../src/import/triage";
 import { resolveRepoFile, UserError } from "../src/jobs/runner";
 import { getRun, listRealism, listRuns } from "../src/queries";
 import { startTestDb } from "./pg";
@@ -190,5 +191,41 @@ describe("startup and experiments", () => {
     expect((await post({ action: "calibration.run", params: { ...params, tag: "x; rm -rf /" }, confirmToken: token })).statusCode).toBe(400);
     expect((await post({ action: "calibration.dry_run", params: { pReal: 0.5, pDecoy: 0.5, seed: 1 } })).statusCode).toBe(201);
     await app.close();
+  });
+});
+
+describe("triage", () => {
+  it("imports a triage set once, replaces it when re-exported, and serves the list and each PR", async () => {
+    const raw = (await fixture("triage.json")) as { generated_at: string; prs: { id: string }[] };
+    const first = await importTriage(t.db, raw);
+    const again = await importTriage(t.db, raw);
+    expect(first.created).toBe(true);
+    expect(again).toEqual({ id: first.id, created: false });
+    const newer = await importTriage(t.db, { ...raw, generated_at: "2030-01-01T00:00:00+00:00" });
+    expect(newer.created).toBe(true);
+
+    const app = buildApp({ db: t.db });
+    const list = await app.inject({ method: "GET", url: "/api/triage/prs" });
+    expect(list.statusCode).toBe(200);
+    const body = list.json() as TriageList;
+    expect(body.set?.name).toBe("test");
+    expect(body.prs.map((p) => p.id).sort()).toEqual(raw.prs.map((p) => p.id).sort());
+    expect(body.prs.every((p) => p.readLines <= p.totalLines && p.caughtByTriage !== null)).toBe(true);
+
+    const id = raw.prs[0]!.id;
+    const one = await app.inject({ method: "GET", url: `/api/triage/prs/${encodeURIComponent(id)}` });
+    expect(one.statusCode).toBe(200);
+    const pr = one.json() as PrTriage;
+    expect(pr.source).toBe("eval");
+    expect(pr.groundTruth?.bugItemIds.length).toBeGreaterThan(0);
+    expect((await app.inject({ method: "GET", url: "/api/triage/prs/nope" })).statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("refuses a triage file whose items do not match the contract", async () => {
+    const raw = (await fixture("triage.json")) as { prs: { toReview: { priority: string }[] }[] };
+    const bad = structuredClone(raw);
+    bad.prs[0]!.toReview[0]!.priority = "urgent";
+    await expect(importTriage(t.db, { ...bad, name: "bad" })).rejects.toThrow();
   });
 });

@@ -6,9 +6,11 @@
  *   - SkippedItem ("Safe to skip"):     filtered out of the review queue, with its skip category.
  * Rules always win over scores: verified findings, sensitive paths and public API changes are never skipped.
  *
- * These types are the contract between the triage backend (not wired up yet) and the dashboard tab, which
- * runs on sample data until then.
+ * These types are the contract between the triage backend and the dashboard tab. scripts/export_triage.py writes
+ * them (data/triage_*.json), the backend validates them with `prTriageSchema` on import and serves them at
+ * /api/triage/prs; the tab falls back to sample data when none are imported.
  */
+import { z } from "zod";
 
 /** Why a hunk needs a human. */
 export const REVIEW_REASONS = {
@@ -32,6 +34,7 @@ export const SKIP_CATEGORIES = {
   docs: { label: "Docs", help: "Documentation and comments only." },
   test_fixture: { label: "Test fixture", help: "Static test data." },
   low_risk_refactor: { label: "Low-risk refactor", help: "Rename or move with no change in behavior." },
+  low_score: { label: "Low risk score", help: "Scored below the calibrated skip threshold." },
 } as const;
 export type SkipCategory = keyof typeof SKIP_CATEGORIES;
 
@@ -109,9 +112,20 @@ export interface PrAuthor {
   agent?: string;
 }
 
+/** Where the real bug was, for PRs from the evaluation set (real commits that introduced a known bug). */
+export interface TriageGroundTruth {
+  /** Review or skipped item ids that hold the bug. */
+  bugItemIds: string[];
+  /** True when a bug item is in the review list. */
+  caughtByTriage: boolean;
+  /** The later commits that fixed it; evidence "deleted" = traced from changed lines, "adjacent" = from an insertion point. */
+  fixes: { sha: string; subject: string; evidence: "deleted" | "adjacent" }[];
+}
+
 export interface PrTriage {
   id: string;
-  number: number;
+  /** PR number when there is one; evaluation PRs are commits and have none. */
+  number: number | null;
   title: string;
   repo: string;
   branch: string;
@@ -124,9 +138,117 @@ export interface PrTriage {
   toReview: ReviewItem[];
   skipped: SkippedItem[];
   guarantee: SkipGuarantee | null;
-  /** "sample" until the triage backend is wired up. */
-  source: "sample" | "live";
+  /** "sample": built-in demo data; "eval": real commit with a known bug; "live": a PR triaged on request. */
+  source: "sample" | "eval" | "live";
+  groundTruth?: TriageGroundTruth;
 }
+
+/** One row of the PR list (GET /api/triage/prs). */
+export interface PrTriageSummary {
+  id: string;
+  number: number | null;
+  title: string;
+  repo: string;
+  branch: string;
+  openedAt: string;
+  source: PrTriage["source"];
+  reviewCount: number;
+  skipCount: number;
+  readLines: number;
+  totalLines: number;
+  /** null when the real bug is not known. */
+  caughtByTriage: boolean | null;
+}
+
+/** About the imported triage set, shown above the PR list. */
+export interface TriageSetInfo {
+  name: string;
+  generatedAt: string;
+  model: string;
+  threshold: number;
+  alpha: number;
+  summary: { prs: number; repos: number; missed: number; read_share: number; held_out_missed: number; held_out_read_share: number };
+}
+
+export interface TriageList {
+  set: TriageSetInfo | null;
+  prs: PrTriageSummary[];
+}
+
+// ---- validation of imported files (scripts/export_triage.py)
+
+const diffLine = z.object({
+  kind: z.enum(["add", "del", "ctx"]),
+  oldNo: z.number().int().nullable(),
+  newNo: z.number().int().nullable(),
+  text: z.string(),
+  flagged: z.boolean().optional(),
+});
+const hunk = {
+  id: z.string(),
+  file: z.string(),
+  header: z.string(),
+  added: z.number().int(),
+  removed: z.number().int(),
+  diff: z.array(diffLine),
+};
+const reviewItem = z.object({
+  ...hunk,
+  tier: z.literal("review"),
+  riskScore: z.number(),
+  priority: z.enum(["P0", "P1", "P2"]),
+  reasons: z.array(z.object({ code: z.enum(Object.keys(REVIEW_REASONS) as [ReviewReasonCode, ...ReviewReasonCode[]]), detail: z.string() })),
+  signals: z.array(z.object({ name: z.string(), value: z.string(), weight: z.number() })),
+  forcedByRule: z.boolean(),
+});
+const skippedItem = z.object({
+  ...hunk,
+  tier: z.literal("skip"),
+  category: z.enum(Object.keys(SKIP_CATEGORIES) as [SkipCategory, ...SkipCategory[]]),
+  reason: z.string(),
+  riskScore: z.number(),
+});
+export const prTriageSchema: z.ZodType<PrTriage> = z.object({
+  id: z.string(),
+  number: z.number().int().nullable(),
+  title: z.string(),
+  repo: z.string(),
+  branch: z.string(),
+  author: z.object({ name: z.string(), kind: z.enum(["ai_agent", "human"]), agent: z.string().optional() }),
+  openedAt: z.string(),
+  taskSummary: z.string(),
+  panel: z.array(z.string()),
+  toReview: z.array(reviewItem),
+  skipped: z.array(skippedItem),
+  guarantee: z.object({ missBound: z.number(), confidence: z.number(), calibratedOn: z.string() }).nullable(),
+  source: z.enum(["sample", "eval", "live"]),
+  groundTruth: z
+    .object({
+      bugItemIds: z.array(z.string()),
+      caughtByTriage: z.boolean(),
+      fixes: z.array(z.object({ sha: z.string(), subject: z.string(), evidence: z.enum(["deleted", "adjacent"]) })),
+    })
+    .optional(),
+});
+
+export const triageFile = z.object({
+  kind: z.literal("triage"),
+  name: z.string().min(1),
+  generated_at: z.string(),
+  model: z.string(),
+  threshold: z.number(),
+  alpha: z.number(),
+  summary: z.object({
+    prs: z.number(),
+    repos: z.number(),
+    missed: z.number(),
+    read_share: z.number(),
+    held_out_missed: z.number(),
+    held_out_read_share: z.number(),
+  }),
+  prs: z.array(prTriageSchema),
+});
+export type TriageFile = z.infer<typeof triageFile>;
 
 /** Lines a reviewer must read vs the whole PR (added + removed lines). */
 export function triageLoad(pr: PrTriage): { readLines: number; totalLines: number } {

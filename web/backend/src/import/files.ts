@@ -6,6 +6,7 @@ import { importCensus } from "./census";
 import { readUsageLog } from "./legacy";
 import { importCalibration } from "./calibration";
 import { importRealism } from "./realism";
+import { importTriage } from "./triage";
 
 export interface ImportSummary {
   runsCreated: number;
@@ -14,6 +15,8 @@ export interface ImportSummary {
   dryRunsIgnored: number;
   realism: number;
   calibration: number;
+  /** Triage sets newly imported or replaced (unchanged files are skipped). */
+  triage: number;
   failed: { file: string; error: string }[];
 }
 
@@ -29,7 +32,7 @@ async function jsonFiles(dir: string, prefix = ""): Promise<string[]> {
 }
 
 export async function importRepository(db: Db, root: string): Promise<ImportSummary> {
-  const summary: ImportSummary = { runsCreated: 0, runsSkipped: 0, dryRunsIgnored: 0, realism: 0, calibration: 0, failed: [] };
+  const summary: ImportSummary = { runsCreated: 0, runsSkipped: 0, dryRunsIgnored: 0, realism: 0, calibration: 0, triage: 0, failed: [] };
   const usage = await readUsageLog(path.join(root, "logs", "usage.jsonl"));
 
   for (const file of await jsonFiles(path.join(root, "runs"))) {
@@ -62,6 +65,16 @@ export async function importRepository(db: Db, root: string): Promise<ImportSumm
       if (raw.kind !== "calibration") continue;
       await importCalibration(db, raw);
       summary.calibration++;
+    } catch (err) {
+      summary.failed.push({ file: path.relative(root, file), error: String(err).slice(0, 400) });
+    }
+  }
+  // triage sets (data/triage_<name>.json, from scripts/export_triage.py)
+  for (const file of await jsonFiles(path.join(root, "data"), "triage_")) {
+    try {
+      const raw = JSON.parse(await readFile(file, "utf8")) as { kind?: unknown };
+      if (raw.kind !== "triage") continue;
+      if ((await importTriage(db, raw)).created) summary.triage++;
     } catch (err) {
       summary.failed.push({ file: path.relative(root, file), error: String(err).slice(0, 400) });
     }

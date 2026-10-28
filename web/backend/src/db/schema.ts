@@ -14,7 +14,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { CalibrationVariant } from "@bugcensus/shared";
+import type { CalibrationVariant, PrTriage, TriageSetInfo } from "@bugcensus/shared";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -230,6 +230,34 @@ export const calibrationUnits = pgTable("calibration_units", {
   pred: jsonb("pred").notNull(),
 });
 
+export const triageSets = pgTable("triage_sets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  generatedAt: ts("generated_at").notNull(),
+  model: text("model").notNull(),
+  threshold: doublePrecision("threshold").notNull(),
+  alpha: doublePrecision("alpha").notNull(),
+  summary: jsonb("summary").$type<TriageSetInfo["summary"]>().notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const triagePrs = pgTable("triage_prs", {
+  id: serial("id").primaryKey(),
+  setId: uuid("set_id")
+    .notNull()
+    .references(() => triageSets.id, { onDelete: "cascade" }),
+  prId: text("pr_id").notNull(),
+  repo: text("repo").notNull(),
+  title: text("title").notNull(),
+  openedAt: text("opened_at").notNull(),
+  reviewCount: integer("review_count").notNull(),
+  skipCount: integer("skip_count").notNull(),
+  readLines: integer("read_lines").notNull(),
+  totalLines: integer("total_lines").notNull(),
+  caughtByTriage: boolean("caught_by_triage"),
+  payload: jsonb("payload").$type<PrTriage>().notNull(),
+});
+
 export const tables = {
   jobs,
   runs,
@@ -243,4 +271,6 @@ export const tables = {
   realismFamilies,
   calibrationExperiments,
   calibrationUnits,
+  triageSets,
+  triagePrs,
 };

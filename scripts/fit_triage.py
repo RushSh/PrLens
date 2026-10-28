@@ -105,6 +105,34 @@ def pick(prs, alpha: float) -> float:
     return best
 
 
+def cross_fit(prs) -> tuple[list, np.ndarray, np.ndarray]:
+    """Give every region an out-of-fold bug probability u["p"] (fit without its repo); returns (units, X, y)."""
+    repos = sorted({p["repo"] for p in prs})
+    units = [(p, u) for p in prs for u in p["units"] if not u["skip"]]
+    X = np.array([feats(u) for _, u in units])
+    y = np.array([float(u["bug"]) for _, u in units])
+    for repo in repos:
+        tr = np.array([p["repo"] != repo for p, _ in units])
+        m = fit(X[tr], y[tr])
+        for (p, u), pv in zip([x for x, keep in zip(units, ~tr) if keep], predict(m, X[~tr])):
+            u["p"] = float(pv)
+    for p in prs:
+        for u in p["units"]:
+            u.setdefault("p", 0.0)
+    return units, X, y
+
+
+def held_out(prs, alpha: float) -> tuple[int, int, int]:
+    """Choose the threshold without each repo, apply it to that repo: (missed PRs, lines read, total lines)."""
+    hk = hr = ht = 0
+    for repo in sorted({p["repo"] for p in prs}):
+        rest = [p for p in prs if p["repo"] != repo]
+        mine = [p for p in prs if p["repo"] == repo]
+        k, r, tot, _ = skip_outcome(mine, pick(rest, alpha))
+        hk, hr, ht = hk + k, hr + r, ht + tot
+    return hk, hr, ht
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="spark_open")
@@ -113,17 +141,7 @@ def main() -> None:
     args = ap.parse_args()
     prs = load(args.model)
     repos = sorted({p["repo"] for p in prs})
-    units = [(p, u) for p in prs for u in p["units"] if not u["skip"]]
-    X = np.array([feats(u) for _, u in units])
-    y = np.array([float(u["bug"]) for _, u in units])
-    for repo in repos:  # out-of-fold scores
-        tr = np.array([p["repo"] != repo for p, _ in units])
-        m = fit(X[tr], y[tr])
-        for (p, u), pv in zip([x for x, keep in zip(units, ~tr) if keep], predict(m, X[~tr])):
-            u["p"] = float(pv)
-    for p in prs:
-        for u in p["units"]:
-            u.setdefault("p", 0.0)
+    units, X, y = cross_fit(prs)
     pos = [u["p"] for _, u in units if u["bug"]]
     neg = [u["p"] for _, u in units if not u["bug"]]
     auc = sum((a > b) + 0.5 * (a == b) for a in pos for b in neg) / (len(pos) * len(neg))
@@ -148,13 +166,7 @@ def main() -> None:
           f"read {r / tot:.0%} of lines (median PR {float(np.median(sh)):.0%})")
 
     # honest check: choose the threshold without the repo being judged
-    hk = hr = ht = 0
-    for repo in repos:
-        rest = [p for p in prs if p["repo"] != repo]
-        mine = [p for p in prs if p["repo"] == repo]
-        tr = pick(rest, args.alpha)
-        k, r, tot, _ = skip_outcome(mine, tr)
-        hk, hr, ht = hk + k, hr + r, ht + tot
+    hk, hr, ht = held_out(prs, args.alpha)
     print(f"Held out by repo: {hk}/{len(prs)} missed ({hk / len(prs):.0%}), read {hr / ht:.0%} of lines")
 
     if args.save:
