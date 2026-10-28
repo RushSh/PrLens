@@ -1,7 +1,7 @@
 """Fit the triage combiner and find the skip threshold, on the traced PRs and Spark Open region scores.
 
-    python scripts/fit_triage.py                 # cross-fitted by repo: gate numbers, skip threshold, held-out check
-    python scripts/fit_triage.py --save          # also fit on everything and write data/triage/combiner.json
+    prlens fit                 # cross-fitted by repo: gate numbers, skip threshold, held-out check
+    prlens fit --save          # also fit on everything and write data/triage/combiner.json
 
 Combiner: logistic regression (small L2) on model risk (as log-odds), logic density, test file, region size and
 must-review rule. Every number printed is out-of-fold: a repo is never scored by a fit that saw it.
@@ -22,10 +22,8 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import beta
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-sys.path.insert(0, str(ROOT / "scripts"))
-from trace_prs import OUT as PRS, is_test, logic_density, read_until  # noqa: E402
+from .bugdata import ROOT
+from .trace import OUT as PRS, is_test, logic_density, read_until
 
 FEATURES = ["model log-odds", "log logic", "test file", "log size", "must-review rule"]
 
@@ -133,12 +131,12 @@ def held_out(prs, alpha: float) -> tuple[int, int, int]:
     return hk, hr, ht
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="spark_open")
     ap.add_argument("--alpha", type=float, default=0.2, help="miss-rate bound (90%% confidence)")
     ap.add_argument("--save", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     prs = load(args.model)
     repos = sorted({p["repo"] for p in prs})
     units, X, y = cross_fit(prs)

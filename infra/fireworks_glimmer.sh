@@ -15,11 +15,11 @@ set -euo pipefail
 
 MODEL="accounts/fireworks/models/muse-glimmer-30b"
 # The deployment in .env (FIREWORKS_GLIMMER_MODEL=accounts/<acct>/deployments/<id>) wins, so status/down
-# act on the deployment BugCensus is actually using, even one created in the Fireworks console.
+# act on the deployment PR Lens is actually using, even one created in the Fireworks console.
 ENV_MODEL=$(grep -E '^FIREWORKS_GLIMMER_MODEL=' "$(dirname "$0")/../.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
 ENV_ID=""
 case "$ENV_MODEL" in */deployments/*) ENV_ID="${ENV_MODEL##*/}" ;; esac
-DEPLOYMENT_ID="${FIREWORKS_DEPLOYMENT_ID:-${ENV_ID:-bugcensus-glimmer}}"
+DEPLOYMENT_ID="${FIREWORKS_DEPLOYMENT_ID:-${ENV_ID:-prlens-glimmer}}"
 SCALE_TO_ZERO="${SCALE_TO_ZERO:-15m}"
 PRICE_PER_HOUR="8.00"   # NVIDIA H200 141GB, 1 GPU, as quoted on Oct 27 2026; check your Fireworks console
 

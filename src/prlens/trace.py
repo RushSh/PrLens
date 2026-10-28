@@ -1,7 +1,7 @@
 """Real PRs with known bugs, for the PR Reviewer triage.
 
-    python scripts/trace_prs.py trace      # mined bug fixes -> the commits that introduced them -> data/triage/prs.jsonl
-    python scripts/trace_prs.py baseline   # free baseline: no-model rules + simple rankings, against the gate
+    prlens trace      # mined bug fixes -> the commits that introduced them -> data/triage/prs.jsonl
+    prlens baseline   # free baseline: no-model rules + simple rankings, against the gate
 
 Trace-back (SZZ): for each fix, `git blame` the lines the fix deleted or changed, as they stood just before the fix
 (ignoring whitespace, blank and comment lines). The commit most of them come from introduced the bug. A fix that only
@@ -22,11 +22,9 @@ import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
 
-from bugcensus.bugdata import DEFAULT_RAW, INDEX, find_repo as _find_repo  # noqa: E402
-from bugcensus.hunks import Hunk, defs_in, parse_diff, regions, review_rules, skip_category  # noqa: E402
+from .bugdata import DEFAULT_RAW, INDEX, ROOT, find_repo as _find_repo
+from .hunks import Hunk, defs_in, parse_diff, regions, review_rules, skip_category
 
 OUT = ROOT / "data" / "triage" / "prs.jsonl"
 CACHE = ROOT / "data" / "work" / "trace_blame.json"
@@ -112,12 +110,6 @@ def is_root(repo: Path, sha: str) -> bool:
 
 def trace(args) -> None:
     bugs = [json.loads(l) for l in open(INDEX)]
-    calib = set()
-    cu = ROOT / "data" / "calibration_units.jsonl"
-    if cu.exists():
-        for l in open(cu):
-            u = json.loads(l)
-            calib.update(blk["bug_id"] for blk in u.get("blocks", []) if blk.get("form") == "buggy")
     drop = Counter()
     prs: dict[tuple[str, str], dict] = {}
     CACHE.parent.mkdir(parents=True, exist_ok=True)
@@ -247,7 +239,6 @@ def trace(args) -> None:
             "fix_subject": b.get("subject", ""),
             "evidence": "adjacent" if adjacent else "deleted",
             "vote_share": round(votes[sha] / sum(votes.values()), 2),
-            "in_calibration": b["bug_id"] in calib,
             "hunks": sorted(hit),
             "lines": [[r.get("file"), r["orig_line"]] for r in mine],
         })
@@ -360,7 +351,7 @@ def baseline(args) -> None:
         print(f"{name:30s} {res[1/3]:13.0%} {res[1/2]:13.0%}")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     t = sub.add_parser("trace")
@@ -370,7 +361,7 @@ def main() -> None:
     b.add_argument("--strict", action="store_true", help="only PRs traced from deleted/changed lines")
     b.add_argument("--unit", choices=["hunk", "region"], default="hunk")
     b.set_defaults(fn=baseline)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     args.fn(args)
 
 

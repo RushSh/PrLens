@@ -7,7 +7,7 @@ For each candidate (from mine_bugs.py):
 Writes confirmed bugs to --out. Slow (one install per repo per run); run it in the background.
 
 Usage:
-  python scripts/validate_bugs.py --candidates data/candidates.jsonl --repos scripts/repos.txt --out data/bugs.jsonl
+  prlens validate --candidates data/candidates.jsonl --repos data/repos/repos.txt --out data/bugs.jsonl
 """
 from __future__ import annotations
 
@@ -23,14 +23,14 @@ def sh(cmd: str, cwd: Path, timeout: int = 900) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, shell=True, cwd=cwd, capture_output=True, text=True, timeout=timeout)
 
 
-def main():
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--candidates", default="data/candidates.jsonl")
-    ap.add_argument("--repos", default="scripts/repos.txt")
+    ap.add_argument("--repos", default="data/repos/repos.txt")
     ap.add_argument("--workdir", default="data/raw")
     ap.add_argument("--out", default="data/bugs.jsonl")
     ap.add_argument("--limit", type=int, default=0)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     install = {}
     for raw in Path(args.repos).read_text().splitlines():
@@ -44,7 +44,7 @@ def main():
     with open(args.out, "a") as out:
         for c in cands:
             repo = Path(args.workdir) / c["name"]
-            tmp = Path(tempfile.mkdtemp(prefix="bugcensus-val-"))
+            tmp = Path(tempfile.mkdtemp(prefix="prlens-val-"))
             wt = tmp / "wt"
             try:
                 sh(f"git worktree add --detach {wt} {c['sha']}", repo)

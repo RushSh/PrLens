@@ -1,9 +1,9 @@
 """Score each region of each traced PR for bug risk with one model, then measure it against the gate.
 
-    python scripts/score_regions.py run --model spark_open --bench 20 --plan-only   # what a 20-call test would do
-    python scripts/score_regions.py run --model spark_open --bench 20               # the test: speed, tokens, parse rate
-    python scripts/score_regions.py run --model spark_open                          # every region (resumes)
-    python scripts/score_regions.py eval --model spark_open                         # gate numbers vs the free rankings
+    prlens score --model spark_open --bench 20 --plan-only   # what a 20-call test would do
+    prlens score --model spark_open --bench 20               # the test: speed, tokens, parse rate
+    prlens score --model spark_open                          # every region (resumes)
+    prlens score-eval --model spark_open                         # gate numbers vs the free rankings
 
 The model sees what a reviewer would: the PR's commit message, the file list, and the hunk with the region marked.
 Nothing from the later fix is shown. Results go to data/triage/scores/<model>.jsonl, one line per region.
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import statistics
 import sys
@@ -19,12 +20,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-sys.path.insert(0, str(ROOT / "scripts"))
 
-from bugcensus.llm import chat, confirm, plan_line, spec  # noqa: E402
-from trace_prs import OUT as PRS, is_test, logic_density, read_until  # noqa: E402
+from .bugdata import ROOT
+from .llm import chat, confirm, plan_line, spec
+from .trace import OUT as PRS, is_test, logic_density, read_until
 
 SCORES = ROOT / "data" / "triage" / "scores"
 
@@ -74,6 +73,22 @@ def prompt_for(p: dict, h: dict, g: dict) -> str:
     return PROMPT.format(message=msg[:1500], files=files[:800], file=h["file"], hunk=f"{h['header']}\n" + render(p, h, g))
 
 
+def score_region(s, p: dict, h: dict, g: dict) -> dict:
+    """One model call for one region: risk (0..1, None on failure), reason, error, tokens and time."""
+    r = chat(s, prompt_for(p, h, g), purpose="triage-region")
+    js = r.json() if not r.error else None
+    risk = js.get("risk") if isinstance(js, dict) else None
+    try:
+        risk = None if risk is None else max(0.0, min(1.0, float(risk)))
+    except (TypeError, ValueError):
+        risk = None
+    err = r.error or (None if risk is not None else "no risk in reply")
+    reason = js.get("reason", "") if isinstance(js, dict) else ""
+    return {"model": s.model_id, "risk": risk, "reason": reason if isinstance(reason, str) else str(reason),
+            "error": err, "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
+            "seconds": round(r.seconds, 2)}
+
+
 def run(args) -> None:
     s = spec(args.model)
     prs = [json.loads(l) for l in open(PRS)]
@@ -91,7 +106,6 @@ def run(args) -> None:
         k = min(len(bugs), args.bench // 2)
         todo = rng.sample(bugs, k) + rng.sample(rest, min(len(rest), args.bench - k))
     avg_in = int(statistics.mean(len(prompt_for(*u)) for u in todo) / 4) if todo else 0
-    import os
     os.environ.setdefault("PLAN_INPUT_TOKENS", str(avg_in))
     line, _ = plan_line(s, len(todo), args.out_tokens)
     confirm(f"Score {len(todo)} regions with {s.name} ({s.model_id} on {s.provider}); "
@@ -102,17 +116,7 @@ def run(args) -> None:
 
     def one(u):
         p, h, g = u
-        r = chat(s, prompt_for(p, h, g), purpose="triage-region")
-        js = r.json() if not r.error else None
-        risk = js.get("risk") if isinstance(js, dict) else None
-        try:
-            risk = None if risk is None else max(0.0, min(1.0, float(risk)))
-        except (TypeError, ValueError):
-            risk = None
-        err = r.error or (None if risk is not None else "no risk in reply")
-        return {"region": f"{p['pr_id']}|{g['id']}", "pr_id": p["pr_id"], "model": s.model_id, "risk": risk,
-                "reason": (js or {}).get("reason", "") if isinstance(js, dict) else "", "error": err,
-                "input_tokens": r.input_tokens, "output_tokens": r.output_tokens, "seconds": round(r.seconds, 2)}
+        return dict(score_region(s, p, h, g), region=f"{p['pr_id']}|{g['id']}", pr_id=p["pr_id"])
 
     t0 = time.time()
     with ThreadPoolExecutor(args.workers) as ex, open(out, "a") as fh:
@@ -151,7 +155,7 @@ def evaluate(args) -> None:
             x = json.loads(l)
             if x["risk"] is not None:
                 sc.setdefault(x["region"], {})[m] = x["risk"]
-    # region units, as in trace_prs baseline --unit region
+    # region units, as in prlens baseline --unit region
     for p in prs:
         p["units"] = []
         for h in p["hunks"]:
@@ -191,7 +195,7 @@ def evaluate(args) -> None:
         print(f"\nregion AUC (bug vs other): {auc:.2f}  (bug regions {len(pos)}, others {len(neg)})")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
@@ -205,7 +209,7 @@ def main() -> None:
     e = sub.add_parser("eval")
     e.add_argument("--model", nargs="+", default=["spark_open"])
     e.set_defaults(fn=evaluate)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     args.fn(args)
 
 

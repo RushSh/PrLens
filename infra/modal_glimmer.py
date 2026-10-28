@@ -11,7 +11,7 @@ import os
 
 import modal
 
-app = modal.App("bugcensus-glimmer-download")
+app = modal.App("prlens-glimmer-download")
 volume = modal.Volume.from_name("glimmer-weights", create_if_missing=True)
 image = modal.Image.debian_slim(python_version="3.11").pip_install("huggingface_hub[hf_transfer]>=0.24")
 

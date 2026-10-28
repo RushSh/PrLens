@@ -1,6 +1,6 @@
 """Write the traced PRs as PR Reviewer triage data for the dashboard: data/triage_eval.json.
 
-    python scripts/export_triage.py            # after trace_prs.py trace and score_regions.py run
+    prlens export            # after prlens trace and prlens score
 
 Each PR is laid out in the dashboard's PrTriage shape (web/shared/src/triage.ts). Regions get the combiner's
 out-of-fold bug chance (fit without the PR's repo), so what the tab shows is what triage would have done on a
@@ -17,11 +17,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-sys.path.insert(0, str(ROOT / "scripts"))
-from fit_triage import cross_fit, held_out, load, pick, skip_outcome  # noqa: E402
-from trace_prs import is_test, logic_density  # noqa: E402
+from .bugdata import ROOT
+from .fit import cross_fit, held_out, load, pick, skip_outcome, ucb
+from .trace import is_test, logic_density, read_until
 
 OUT = ROOT / "data" / "triage_eval.json"
 RULE_CODES = {"security_sensitive", "public_api", "data_migration"}
@@ -111,11 +109,51 @@ def build(pr, t: float, guarantee: dict) -> dict:
     }
 
 
-def main() -> None:
+def evaluation(prs, t: float, alpha: float) -> dict:
+    """What the Evaluation tab shows: the reading-vs-missing curve, per-repo results, ranking quality, PR sizes."""
+    import numpy as np
+
+    n = len(prs)
+    ps = sorted({u["p"] for p in prs for u in p["units"] if not u["skip"]})
+    grid = sorted({0.0, *np.quantile(ps, np.linspace(0, 1, 60)).tolist(), t})
+    sweep = []
+    for th in grid:
+        k, r, tot, _ = skip_outcome(prs, th)
+        sweep.append({"threshold": round(th, 5), "missed": k, "read_share": round(r / tot, 4),
+                      "bound": round(ucb(k, n), 4)})
+    by_repo = []
+    for repo in sorted({p["repo"] for p in prs}):
+        mine = [p for p in prs if p["repo"] == repo]
+        k, r, tot, _ = skip_outcome(mine, t)
+        by_repo.append({"repo": repo, "prs": len(mine), "missed": k, "read_share": round(r / tot, 4),
+                        "lines": tot})
+    gate = {}
+    for name, frac in (("quarter", 1 / 4), ("third", 1 / 3), ("half", 1 / 2)):
+        order = lambda p: sorted([u for u in p["units"] if not u["skip"]], key=lambda u: -u["p"])  # noqa: E731
+        gate[name] = round(sum(read_until(p["units"], order(p), frac * p["lines"]) for p in prs) / n, 4)
+    pos = [u["p"] for p in prs for u in p["units"] if not u["skip"] and u["bug"]]
+    neg = [u["p"] for p in prs for u in p["units"] if not u["skip"] and not u["bug"]]
+    auc = sum((a > b) + 0.5 * (a == b) for a in pos for b in neg) / max(1, len(pos) * len(neg))
+    rpos = [u["risk"] or 0 for p in prs for u in p["units"] if not u["skip"] and u["bug"]]
+    rneg = [u["risk"] or 0 for p in prs for u in p["units"] if not u["skip"] and not u["bug"]]
+    auc_model = sum((a > b) + 0.5 * (a == b) for a in rpos for b in rneg) / max(1, len(rpos) * len(rneg))
+    sizes = sorted(p["lines"] for p in prs)
+    return {
+        "sweep": sweep, "by_repo": by_repo, "gate": gate,
+        "auc": {"combined": round(auc, 3), "model": round(auc_model, 3)},
+        "pr_lines": {"min": sizes[0], "median": sizes[n // 2], "p75": sizes[int(0.75 * (n - 1))], "max": sizes[-1]},
+        "languages": {"python": n},
+        "evidence": {"deleted": sum(b["evidence"] == "deleted" for p in prs for b in p["bugs"]),
+                     "adjacent": sum(b["evidence"] == "adjacent" for p in prs for b in p["bugs"])},
+        "alpha": alpha, "confidence": 0.9,
+    }
+
+
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="spark_open")
     ap.add_argument("--alpha", type=float, default=0.2)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     prs = load(args.model)
     cross_fit(prs)
     t = pick(prs, args.alpha)
@@ -138,6 +176,7 @@ def main() -> None:
         "model": args.model, "threshold": t, "alpha": args.alpha,
         "summary": {"prs": len(prs), "repos": repos, "missed": k, "read_share": r / tot,
                     "held_out_missed": hk, "held_out_read_share": hr / ht},
+        "evaluation": evaluation(prs, t, args.alpha),
         "prs": [build(p, t, guarantee) for p in prs],
     }
     OUT.write_text(json.dumps(out))

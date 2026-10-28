@@ -1,4 +1,4 @@
-"""Mine recent bug-fix commits that come with a test, for the realism test and calibration plot.
+"""Mine recent bug-fix commits that come with a test: the raw material for the evaluation PRs.
 
 Keeps a commit only if it:
   - is not a merge and its message mentions fix/bug/regression/crash;
@@ -8,7 +8,7 @@ Keeps a commit only if it:
   - changes or adds at least one test file (the test proves the bug is real; checked by validate_bugs.py).
 
 Usage:
-  python scripts/mine_bugs.py --repos scripts/repos.txt --since 2026-06-01 --out data/candidates.jsonl
+  prlens mine --repos data/repos/repos.txt --since 2026-06-01 --out data/candidates.jsonl
 Output: one JSON object per candidate commit.
 """
 from __future__ import annotations
@@ -104,14 +104,14 @@ def mine_repo(url: str, workdir: Path, since: str, max_src_lines: int) -> list[d
     return out
 
 
-def main():
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--repos", default="scripts/repos.txt")
+    ap.add_argument("--repos", default="data/repos/repos.txt")
     ap.add_argument("--since", default="2026-06-01")
     ap.add_argument("--out", default="data/candidates.jsonl")
     ap.add_argument("--workdir", default="data/raw")
     ap.add_argument("--max-src-lines", type=int, default=40)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     workdir = Path(args.workdir)
     workdir.mkdir(parents=True, exist_ok=True)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)

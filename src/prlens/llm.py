@@ -1,14 +1,31 @@
 """One chat call to any configured model, with the same provider rules as the reviewers (JSON mode only
 where supported, token caps for open-weight models, Fireworks cold-start retries) and usage logging.
-Used by the decoy writer and the judge; reviews themselves go through review.LLMReviewer."""
+Used to score PR regions (prlens score)."""
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from .config import ModelSpec, effort_for, max_tokens_for, registry
+
+
+_FINAL_MARKERS = ("to=user<|message|>", "<|channel|>final<|message|>")
+_SPECIAL = re.compile(r"<\|[a-z_]+\|>")
+
+
+def final_answer(text: str) -> str:
+    """Keep only the final answer when a model returns its reasoning channel too (e.g. Muse Glimmer
+    served locally): everything after the last final-answer marker, with special tokens removed."""
+    if not text:
+        return ""
+    for marker in _FINAL_MARKERS:
+        if marker in text:
+            text = text.rsplit(marker, 1)[1]
+            break
+    return _SPECIAL.sub("", text).strip()
 
 
 @dataclass
@@ -45,8 +62,6 @@ def spec(name: str) -> ModelSpec:
 def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
          usage_log: Path | None = Path("logs/usage.jsonl")) -> Reply:
     from openai import APIStatusError, OpenAI
-
-    from .review import final_answer
 
     if not s.api_key:
         return Reply("", None, None, None, 0.0, f"{s.api_key_env} is not set")

@@ -1,4 +1,4 @@
-from bugcensus.hunks import parse_diff, path_category, regions, review_rules, skip_category
+from prlens.hunks import parse_diff, path_category, regions, review_rules, skip_category
 
 OLD = "def f(a, b):\n    return a + b\n\n\ndef g(x):\n    return x\n"
 
