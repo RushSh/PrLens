@@ -104,6 +104,16 @@ def plan_line(s: ModelSpec, calls: int, out_tokens_per_call: int, scale: float =
         hours = calls * out_tokens_per_call / tps / 3600 + 0.05
         cost = hours * float(os.getenv("FIREWORKS_PRICE_PER_HOUR", "8"))
         return f"  {s.name}: {calls} calls, ~{hours:.2f} GPU-hours, ~${cost:,.2f} (needs a running deployment)", cost
+    if s.provider == "baseten":
+        import os
+
+        # per-token prices (US$ per million); defaults from a third-party tracker on Oct 28 2026, override in .env
+        p_in = float(os.getenv("BASETEN_PRICE_IN", "1.25"))
+        p_out = float(os.getenv("BASETEN_PRICE_OUT", "4.25"))
+        in_tok = int(os.getenv("PLAN_INPUT_TOKENS", "1100"))
+        cost = calls * (in_tok * p_in + out_tokens_per_call * p_out) / 1e6 * scale
+        return (f"  {s.name}: {calls} calls, ~${cost:,.2f} on Baseten at ${p_in}/M in, ${p_out}/M out "
+                f"(assumes ~{out_tokens_per_call} output tokens a call; the test measures the real number)"), cost
     if s.provider == "mlx-local":
         return f"  {s.name}: {calls} calls on this Mac, free, ~{calls * out_tokens_per_call / 17.7 / 3600:.1f} hours", 0.0
     return f"  {s.name}: {calls} calls, cost not measured", 0.0
