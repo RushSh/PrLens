@@ -62,6 +62,7 @@ def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
         kwargs["reasoning_effort"] = effort
     t0 = time.time()
     deadline = t0 + 600
+    backoff = 2.0
     while True:
         try:
             resp = client.chat.completions.create(model=s.model_id, messages=[{"role": "user", "content": prompt}], **kwargs)
@@ -69,6 +70,18 @@ def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
         except APIStatusError as exc:
             if s.provider == "fireworks" and exc.status_code == 503 and time.time() < deadline:
                 time.sleep(15)
+                continue
+            if exc.status_code == 429 and time.time() < deadline:
+                # rate limited: wait as told (Retry-After), else back off exponentially with jitter
+                import random
+
+                wait = None
+                try:
+                    wait = float(exc.response.headers.get("retry-after", ""))
+                except (AttributeError, TypeError, ValueError):
+                    pass
+                time.sleep(min(60.0, wait if wait else backoff) + random.uniform(0, 1))
+                backoff = min(60.0, backoff * 2)
                 continue
             return Reply("", None, None, None, time.time() - t0, f"{type(exc).__name__}: {exc}")
         except Exception as exc:  # network and the like: report, never crash a batch

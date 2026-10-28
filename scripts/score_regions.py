@@ -197,7 +197,7 @@ def main() -> None:
     r = sub.add_parser("run")
     r.add_argument("--model", default="spark_open")
     r.add_argument("--bench", type=int, default=0, help="score only this many regions (half of them bug regions)")
-    r.add_argument("--workers", type=int, default=8)
+    r.add_argument("--workers", type=int, default=4)
     r.add_argument("--out-tokens", type=int, default=1000, help="output tokens a call, for the cost estimate")
     r.add_argument("--yes", action="store_true")
     r.add_argument("--plan-only", action="store_true")
