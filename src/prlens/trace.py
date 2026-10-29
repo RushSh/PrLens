@@ -25,6 +25,7 @@ from pathlib import Path
 
 from .bugdata import DEFAULT_RAW, INDEX, ROOT, find_repo as _find_repo
 from .hunks import Hunk, defs_in, parse_diff, regions, review_rules, skip_category
+from .languages import is_test as is_test_path, language_of, logic_density as lang_logic_density
 
 OUT = ROOT / "data" / "triage" / "prs.jsonl"
 CACHE = ROOT / "data" / "work" / "trace_blame.json"
@@ -38,7 +39,7 @@ def find_repo(name: str):
     return _find_repo(name, RAW_DIRS)
 
 
-REFORMAT_RE = re.compile(r"\b(black|ruff format|reformat|isort|pre-commit autoupdate|blacken|pyupgrade|autopep8)\b", re.I)
+REFORMAT_RE = re.compile(r"\b(black|ruff format|reformat|isort|pre-commit autoupdate|blacken|pyupgrade|autopep8|prettier|biome format|eslint --fix|dotnet format|lint fixes)\b", re.I)
 
 
 class GitTimeout(Exception):
@@ -99,9 +100,18 @@ def blame(repo: Path, rev: str, path: str, lines: list[int]) -> list[dict]:
     return recs
 
 
-def meaningful(text: str) -> bool:
+PY_TRIVIAL = {"(", ")", "[", "]", "{", "}", "):", "else:", "try:", "pass"}
+C_TRIVIAL = {"(", ")", "[", "]", "{", "}", "};", "});", ");", "},", "})", "]);", "else", "else {", "} else {", "try", "try {",
+             "finally", "finally {", "default:", "break;"}
+
+
+def meaningful(text: str, path: str = "") -> bool:
+    """Lines worth blaming: not blank, not comments, not lone brackets (per language; Python's rule is unchanged)."""
     t = text.strip()
-    return bool(t) and not t.startswith("#") and t not in {"(", ")", "[", "]", "{", "}", "):", "else:", "try:", "pass"}
+    lang = language_of(path) if path else None
+    if lang is None or lang.name == "python":
+        return bool(t) and not t.startswith("#") and t not in PY_TRIVIAL
+    return bool(t) and not t.startswith(("//", "/*", "*")) and t not in C_TRIVIAL
 
 
 def is_root(repo: Path, sha: str) -> bool:
@@ -138,7 +148,7 @@ def trace(args) -> None:
             drop["no clone"] += 1
             continue
         adjacent = cache[b["bug_id"]]["adjacent"]
-        recs = [r for r in cache[b["bug_id"]]["recs"] if meaningful(r.get("text", ""))]
+        recs = [r for r in cache[b["bug_id"]]["recs"] if meaningful(r.get("text", ""), b["file"])]
         if cache[b["bug_id"]].get("timeout"):
             drop["blame took over 45 s"] += 1
             continue
@@ -200,6 +210,7 @@ def trace(args) -> None:
             pr = prs[key] = {
                 "pr_id": f"{b['repo']}@{sha[:10]}",
                 "repo": b["repo"],
+                "language": b.get("language", "python"),
                 "sha": sha,
                 "subject": subject,
                 "message": meta[2].strip() if len(meta) > 2 else subject,
@@ -265,13 +276,19 @@ LOGIC_RE = re.compile(r"(\bif\b|\belif\b|\bwhile\b|\bfor\b|\band\b|\bor\b|\bnot\
 
 
 def logic_density(h: dict) -> float:
-    changed = [l[3] for l in h["lines"] if l[0] != "ctx" and l[3].strip() and not l[3].strip().startswith("#")]
-    return sum(len(LOGIC_RE.findall(t)) for t in changed)
+    """Logic operators on the changed lines (the language's own; Python's are the combiner's original feature)."""
+    changed = [l[3] for l in h["lines"] if l[0] != "ctx" and l[3].strip() and not l[3].strip().startswith(("#", "//"))]
+    lang = language_of(h["file"])
+    if lang is None or lang.name == "python":
+        return sum(len(LOGIC_RE.findall(t)) for t in changed)
+    return lang_logic_density(lang, changed)
 
 
 def is_test(h: dict) -> bool:
     p = h["file"].lower()
-    return "/test" in "/" + p or p.rsplit("/", 1)[-1].startswith("test")
+    if p.endswith(".py") or language_of(p) is None:
+        return "/test" in "/" + p or p.rsplit("/", 1)[-1].startswith("test")  # the rule the Python combiner was fit with
+    return is_test_path(h["file"])
 
 
 def read_until(hunks: list[dict], order: list[dict], budget: float) -> bool:

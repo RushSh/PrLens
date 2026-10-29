@@ -30,6 +30,7 @@ interface ActionDef extends Omit<PipelineAction, "fields"> {
 interface Options {
   repoLists: string[];
   candidateFiles: string[];
+  bugFiles: string[];
 }
 
 /** A GitHub pull request page; nothing else reaches the command line. */
@@ -56,6 +57,18 @@ const MODEL_FIELD: ActionField = {
   ],
 };
 const opts = (files: string[]) => files.map((f) => ({ value: f, label: f }));
+const language = z.enum(["python", "typescript", "csharp"]);
+const LANGUAGE_FIELD: ActionField = {
+  name: "language",
+  label: "Language",
+  type: "select",
+  default: "python",
+  options: [
+    { value: "python", label: "Python" },
+    { value: "typescript", label: "TypeScript" },
+    { value: "csharp", label: "C#" },
+  ],
+};
 const yes = ["--yes"];
 
 const ACTIONS: ActionDef[] = [
@@ -86,18 +99,21 @@ const ACTIONS: ActionDef[] = [
     lane: "cpu",
     paid: false,
     fields: (o) => [
+      LANGUAGE_FIELD,
       { name: "repos", label: "Repositories", type: "select", options: opts(o.repoLists), required: true },
-      { name: "since", label: "Fixes since (YYYY-MM-DD)", type: "text", default: "2026-01-01" },
+      { name: "since", label: "Fixes since (YYYY-MM-DD)", type: "text", default: "2025-06-01" },
       { name: "out", label: "Save candidates to", type: "text", default: "data/candidates_new.jsonl" },
     ],
-    argv: (p) => ["mine", "--repos", String(p.repos), "--since", String(p.since), "--out", String(p.out)],
-    schema: obj({ repos: dataFile, since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), out: dataFile }),
+    argv: (p) => ["mine", "--language", String(p.language), "--repos", String(p.repos), "--since", String(p.since), "--out", String(p.out)],
+    schema: obj({ language, repos: dataFile, since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), out: dataFile }),
   },
   {
     id: "validate",
     group: "1. Bug data",
     title: "Confirm bugs with their tests",
-    description: "Keeps a candidate only if its tests fail before the fix and pass after. Slow: installs each repo.",
+    description:
+      "Keeps a candidate only if its tests fail before the fix and pass after (Python: pytest; TypeScript: vitest or jest; " +
+      "C#: dotnet test, .NET 10 SDK). Resumable; installs each repository once.",
     lane: "cpu",
     paid: false,
     fields: (o) => [
@@ -107,6 +123,17 @@ const ACTIONS: ActionDef[] = [
     ],
     argv: (p) => ["validate", "--candidates", String(p.candidates), "--repos", String(p.repos), "--out", String(p.out)],
     schema: obj({ candidates: dataFile, repos: dataFile, out: dataFile }),
+  },
+  {
+    id: "index",
+    group: "1. Bug data",
+    title: "Add confirmed bugs to the index",
+    description: "Appends confirmed bugs to data/bug_fixes.jsonl, which tracing reads. Safe to repeat.",
+    lane: "cpu",
+    paid: false,
+    fields: (o) => [{ name: "bugs", label: "Confirmed bugs", type: "select", options: opts(o.bugFiles), required: true }],
+    argv: (p) => ["index", "--bugs", String(p.bugs)],
+    schema: obj({ bugs: dataFile }),
   },
   {
     id: "trace",
@@ -160,25 +187,27 @@ const ACTIONS: ActionDef[] = [
     lane: "cpu",
     paid: false,
     fields: () => [
+      LANGUAGE_FIELD,
       { ...MODEL_FIELD, label: "Scores from" },
       { name: "alpha", label: "Miss bound (0.2 = at most 20%)", type: "number", default: 0.2 },
     ],
-    argv: (p) => ["fit", "--model", String(p.model), "--alpha", String(p.alpha), "--save"],
-    schema: obj({ model, alpha: num(0.01, 0.5) }),
+    argv: (p) => ["fit", "--language", String(p.language), "--model", String(p.model), "--alpha", String(p.alpha), "--save"],
+    schema: obj({ language, model, alpha: num(0.01, 0.5) }),
   },
   {
     id: "export",
     group: "3. Score and calibrate",
     title: "Publish the evaluation set to the dashboard",
-    description: "Writes data/triage_eval.json; the PR list and the Evaluation tab update on their own.",
+    description: "Writes data/triage_eval.json (Python) or data/triage_eval_<language>.json; the dashboard updates on its own.",
     lane: "cpu",
     paid: false,
     fields: () => [
+      LANGUAGE_FIELD,
       { ...MODEL_FIELD, label: "Scores from" },
       { name: "alpha", label: "Miss bound", type: "number", default: 0.2 },
     ],
-    argv: (p) => ["export", "--model", String(p.model), "--alpha", String(p.alpha)],
-    schema: obj({ model, alpha: num(0.01, 0.5) }),
+    argv: (p) => ["export", "--language", String(p.language), "--model", String(p.model), "--alpha", String(p.alpha)],
+    schema: obj({ language, model, alpha: num(0.01, 0.5) }),
   },
   // ------------------------------------------------------------------ infrastructure
   {
@@ -224,6 +253,7 @@ async function options(root: string): Promise<Options> {
   return {
     repoLists: await listFiles(path.join(root, "data", "repos"), (f) => f.endsWith(".txt"), "data/repos"),
     candidateFiles: await listFiles(path.join(root, "data"), (f) => /^candidates.*\.jsonl$/.test(f), "data"),
+    bugFiles: await listFiles(path.join(root, "data"), (f) => /^bugs.*\.jsonl$/.test(f) && !f.includes(".rejected"), "data"),
   };
 }
 

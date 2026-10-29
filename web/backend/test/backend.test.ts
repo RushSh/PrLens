@@ -129,8 +129,8 @@ describe("api and pipeline", () => {
     const badUrl = { url: "https://github.com/o/r/pull/1; rm -rf /", model: "spark_open" };
     expect((await post({ action: "triage-pr", params: badUrl, confirmToken: confirmToken("triage-pr", badUrl) })).statusCode).toBe(400);
     expect((await post({ action: "nope", params: {} })).statusCode).toBe(400);
-    expect((await post({ action: "fit", params: { model: "spark_open", alpha: 0.2 } })).statusCode).toBe(201);
-    expect(queued[1]!.args).toEqual(["-m", "prlens", "fit", "--model", "spark_open", "--alpha", "0.2", "--save"]);
+    expect((await post({ action: "fit", params: { language: "typescript", model: "spark_open", alpha: 0.2 } })).statusCode).toBe(201);
+    expect(queued[1]!.args).toEqual(["-m", "prlens", "fit", "--language", "typescript", "--model", "spark_open", "--alpha", "0.2", "--save"]);
     await app.close();
   });
 

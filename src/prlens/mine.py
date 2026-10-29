@@ -2,14 +2,16 @@
 
 Keeps a commit only if it:
   - is not a merge and its message mentions fix/bug/regression/crash;
-  - is newer than --since (after the models' training data, to avoid "remembered" bugs);
-  - changes 1-2 non-test Python source files, at most --max-src-lines lines in them,
-    touching at most 2 functions (in the pre-fix version);
-  - changes or adds at least one test file (the test proves the bug is real; checked by validate_bugs.py).
+  - is newer than --since (prefer dates after the models' training data, to avoid "remembered" bugs);
+  - changes 1-2 non-test source files of the language, at most --max-src-lines lines in them
+    (Python: also at most 2 functions in the pre-fix version);
+  - changes or adds at least one test file of the language (the test proves the bug is real; `prlens validate`
+    checks it).
 
 Usage:
-  prlens mine --repos data/repos/repos.txt --since 2026-06-01 --out data/candidates.jsonl
-Output: one JSON object per candidate commit.
+  prlens mine --repos data/repos/typescript.txt --language typescript --since 2025-06-01 --out data/candidates_ts.jsonl
+Repository lists: one `url | install command | test command` per line (the last two optional; {files} in the test
+command is replaced by the changed test files). Output: one JSON object per candidate commit.
 """
 from __future__ import annotations
 
@@ -20,17 +22,13 @@ import re
 import subprocess
 from pathlib import Path
 
+from .languages import LANGUAGES, is_test, language_of
+
 FIX_RE = r"fix|bug|regression|crash|incorrect|wrong"
 
 
 def git(repo: Path, *args: str) -> str:
     return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=True).stdout
-
-
-def is_test(path: str) -> bool:
-    name = Path(path).name
-    return "test" in Path(path).parts[0:-1] or name.startswith("test_") or name.endswith("_test.py") \
-        or "/tests/" in f"/{path}" or "/test/" in f"/{path}"
 
 
 def changed_ranges_old(repo: Path, sha: str, path: str) -> list[tuple[int, int]]:
@@ -53,8 +51,7 @@ def functions_touched(source: str, ranges: list[tuple[int, int]]) -> list[dict]:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             for a, b in ranges:
                 if node.lineno <= b and a <= node.end_lineno:
-                    # keep the innermost function for this range
-                    key = (a, b)
+                    key = (a, b)  # keep the innermost function for this range
                     prev = hits.get(key)
                     if prev is None or node.lineno >= prev.lineno:
                         hits[key] = node
@@ -62,7 +59,8 @@ def functions_touched(source: str, ranges: list[tuple[int, int]]) -> list[dict]:
     return [{"name": n, "start": s, "end": e} for n, s, e in sorted(names, key=lambda x: x[1])]
 
 
-def mine_repo(url: str, workdir: Path, since: str, max_src_lines: int) -> list[dict]:
+def mine_repo(url: str, workdir: Path, since: str, max_src_lines: int, language: str) -> list[dict]:
+    lang = LANGUAGES[language]
     name = url.rstrip("/").split("/")[-1].removesuffix(".git")
     repo = workdir / name
     if not repo.exists():
@@ -78,7 +76,7 @@ def mine_repo(url: str, workdir: Path, since: str, max_src_lines: int) -> list[d
         src, tests, src_lines = [], [], 0
         for row in stats:
             parts = row.split("\t")
-            if len(parts) != 3 or not parts[2].endswith(".py"):
+            if len(parts) != 3 or language_of(parts[2]) is not lang:
                 continue
             added, deleted, path = parts
             if is_test(path):
@@ -88,25 +86,35 @@ def mine_repo(url: str, workdir: Path, since: str, max_src_lines: int) -> list[d
                 src_lines += int(added if added.isdigit() else 0) + int(deleted if deleted.isdigit() else 0)
         if not tests or not (1 <= len(src) <= 2) or src_lines > max_src_lines:
             continue
-        funcs = []
+        funcs, new_file = [], False
         for path in src:
             try:
                 old = git(repo, "show", f"{sha}^:{path}")
             except subprocess.CalledProcessError:
-                funcs = []  # new file: not a bug fix in existing code
+                new_file = True  # new file: not a bug fix in existing code
                 break
-            for f in functions_touched(old, changed_ranges_old(repo, sha, path)):
-                funcs.append({"file": path, **f})
-        if not (1 <= len(funcs) <= 2):
+            if language == "python":
+                funcs += [{"file": path, **f} for f in functions_touched(old, changed_ranges_old(repo, sha, path))]
+        if new_file or (language == "python" and not (1 <= len(funcs) <= 2)):
             continue
-        out.append({"repo": url, "name": name, "sha": sha, "date": date, "subject": subject,
+        out.append({"repo": url, "name": name, "language": language, "sha": sha, "date": date, "subject": subject,
                     "src_files": src, "test_files": tests, "src_lines_changed": src_lines, "functions": funcs})
     return out
 
 
+def repo_lines(path: str) -> list[list[str]]:
+    rows = []
+    for raw in Path(path).read_text().splitlines():
+        raw = raw.strip()
+        if raw and not raw.startswith("#"):
+            rows.append([x.strip() for x in raw.split("|")])
+    return rows
+
+
 def main(argv: list[str] | None = None) -> None:
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repos", default="data/repos/repos.txt")
+    ap.add_argument("--language", choices=sorted(LANGUAGES), default="python")
     ap.add_argument("--since", default="2026-06-01")
     ap.add_argument("--out", default="data/candidates.jsonl")
     ap.add_argument("--workdir", default="data/raw")
@@ -117,22 +125,15 @@ def main(argv: list[str] | None = None) -> None:
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     total = 0
     with open(args.out, "w") as f:
-        for raw in Path(args.repos).read_text().splitlines():
-            raw = raw.strip()
-            if not raw or raw.startswith("#"):
-                continue
-            url = raw.split("|")[0].strip()
+        for row in repo_lines(args.repos):
+            url = row[0]
             try:
-                rows = mine_repo(url, workdir, args.since, args.max_src_lines)
+                rows = mine_repo(url, workdir, args.since, args.max_src_lines, args.language)
             except subprocess.CalledProcessError as exc:
-                print(f"{url}: git failed: {exc.stderr[:200] if exc.stderr else exc}")
+                print(f"{url}: git failed: {exc.stderr[:200] if exc.stderr else exc}", flush=True)
                 continue
             for r in rows:
                 f.write(json.dumps(r) + "\n")
             total += len(rows)
-            print(f"{url}: {len(rows)} candidates")
+            print(f"{url}: {len(rows)} candidates", flush=True)
     print(f"total {total} candidates -> {args.out}")
-
-
-if __name__ == "__main__":
-    main()

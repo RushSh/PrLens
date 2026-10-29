@@ -109,7 +109,7 @@ def build(pr, t: float, guarantee: dict) -> dict:
         "author": {"name": pr["author"] or "unknown", "kind": "human"}, "openedAt": pr["date"],
         "taskSummary": msg[:600], "panel": ["Spark Open (Baseten)", "combiner", "rules"],
         "toReview": to_review, "skipped": skipped, "hunks": hunks, "guarantee": guarantee, "source": "eval",
-        "skipThreshold": round(t, 5),
+        "skipThreshold": round(t, 5), "language": pr.get("language", "python"),
         "groundTruth": {"bugItemIds": bug_ids, "caughtByTriage": caught, "fixes": [
             {"sha": b["fix_sha"][:10], "subject": b["fix_subject"], "evidence": b["evidence"]} for b in pr["bugs"]]},
     }
@@ -148,7 +148,7 @@ def evaluation(prs, t: float, alpha: float) -> dict:
         "sweep": sweep, "by_repo": by_repo, "gate": gate,
         "auc": {"combined": round(auc, 3), "model": round(auc_model, 3)},
         "pr_lines": {"min": sizes[0], "median": sizes[n // 2], "p75": sizes[int(0.75 * (n - 1))], "max": sizes[-1]},
-        "languages": {"python": n},
+        "languages": {lang: sum(p.get("language", "python") == lang for p in prs) for lang in sorted({p.get("language", "python") for p in prs})},
         "evidence": {"deleted": sum(b["evidence"] == "deleted" for p in prs for b in p["bugs"]),
                      "adjacent": sum(b["evidence"] == "adjacent" for p in prs for b in p["bugs"])},
         "alpha": alpha, "confidence": 0.9,
@@ -160,8 +160,13 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="spark_open")
     ap.add_argument("--alpha", type=float, default=0.2)
+    ap.add_argument("--language", default="python")
     args = ap.parse_args(argv)
-    prs = load(args.model)
+    prs = load(args.model, args.language)
+    if not prs:
+        raise SystemExit(f"no scored {args.language} PRs yet")
+    target = OUT if args.language == "python" else OUT.with_name(f"triage_eval_{args.language}.json")
+    set_name = "eval" if args.language == "python" else f"eval-{args.language}"
     cross_fit(prs)
     t = pick(prs, args.alpha)
     k, r, tot, _ = skip_outcome(prs, t)
@@ -179,17 +184,17 @@ def main(argv: list[str] | None = None) -> None:
                  "calibratedOn": f"{len(prs)} real bug-introducing commits in {repos} repos; held out by repo, "
                                  f"{hk} of {len(prs)} bugs landed in the skipped part"}
     out = {
-        "kind": "triage", "name": "eval", "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "kind": "triage", "name": set_name, "language": args.language, "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "model": args.model, "threshold": t, "alpha": args.alpha,
         "summary": {"prs": len(prs), "repos": repos, "missed": k, "read_share": r / tot,
                     "held_out_missed": hk, "held_out_read_share": hr / ht},
         "evaluation": evaluation(prs, t, args.alpha),
         "prs": [build(p, t, guarantee) for p in prs],
     }
-    OUT.write_text(json.dumps(out))
+    target.write_text(json.dumps(out))
     caught = sum(x["groundTruth"]["caughtByTriage"] for x in out["prs"])
-    print(f"wrote {OUT.relative_to(ROOT)}: {len(prs)} PRs, threshold {t:.3f}, bug kept for review in "
-          f"{caught}/{len(prs)}, {r / tot:.0%} of lines to read ({OUT.stat().st_size / 1e6:.1f} MB)")
+    print(f"wrote {target.relative_to(ROOT)}: {len(prs)} {args.language} PRs, threshold {t:.3f}, bug kept for review in "
+          f"{caught}/{len(prs)}, {r / tot:.0%} of lines to read ({target.stat().st_size / 1e6:.1f} MB)")
 
 
 if __name__ == "__main__":

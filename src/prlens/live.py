@@ -25,7 +25,8 @@ import numpy as np
 
 from .bugdata import ROOT
 from .export import build
-from .fit import feats, predict
+from .fit import combiner_path, feats, predict
+from .languages import language_of
 from .hunks import defs_in, parse_diff, regions, review_rules, skip_category
 from .llm import confirm, plan_line, spec
 from .score import prompt_for, score_region
@@ -68,7 +69,7 @@ def fetch(owner: str, repo: str, number: int) -> dict:
     hunks = []
     for f in files:
         old_src = None
-        if f.old_path and f.old_path.endswith(PY_EXT):
+        if f.old_path and language_of(f.old_path) is not None:
             try:
                 old_src = gh(f"https://raw.githubusercontent.com/{owner}/{repo}/{base}/{f.old_path}", accept="*/*")
             except SystemExit:
@@ -123,7 +124,7 @@ def main(argv: list[str] | None = None) -> None:
     confirm(f"{pr['repo']} #{number}: {pr['subject']}\n"
             f"{len(pr['hunks'])} hunks, {pr['lines']} changed lines; {skipped} hunks skipped without a model; "
             f"{len(todo)} regions to score with {s.name} ({s.model_id} on {s.provider}).\n{line}\n"
-            f"File types: {', '.join(langs) or 'none'} (the skip promise is calibrated on Python only).\n"
+            f"File types: {', '.join(langs) or 'none'} (each language is calibrated on its own evaluation set).\n"
             + (f"Skip threshold: bug chance under {args.threshold:.2%} (this repository's adaptive threshold)."
                if args.threshold is not None else "Skip threshold: the evaluation set's."),
             args.yes, args.plan_only)
@@ -135,7 +136,15 @@ def main(argv: list[str] | None = None) -> None:
     if errors and len(errors) == len(results):
         raise SystemExit(f"every call failed, e.g. {errors[0]['error'][:300]}")
 
-    comb = json.loads(COMBINER.read_text())
+    # the PR's main language (by changed lines) picks the calibration; Python's is the fallback
+    weight: dict[str, int] = {}
+    for h in pr["hunks"]:
+        lg = language_of(h["file"])
+        if lg and not h["skip"]:
+            weight[lg.name] = weight.get(lg.name, 0) + h["added"] + h["removed"]
+    language = max(weight, key=weight.get) if weight else "python"
+    calibrated = combiner_path(language).exists()
+    comb = json.loads((combiner_path(language) if calibrated else COMBINER).read_text())
     by_id = {g["id"]: r for (h, g), r in zip(todo, results)}
     pr["units"] = []
     for h in pr["hunks"]:
@@ -146,15 +155,17 @@ def main(argv: list[str] | None = None) -> None:
             # a failed call counts as maximal uncertainty: it goes to review rather than being skipped
             u["p"] = 1.0 if (not h["skip"] and r.get("risk") is None) else float(predict(comb, np.array([feats(u)]))[0])
             pr["units"].append(u)
-    ev = json.loads(EVAL.read_text()) if EVAL.exists() else None
-    note = (f"Python evaluation set ({ev['summary']['prs']} PRs; held out by repo, {ev['summary']['held_out_missed']} "
-            f"of {ev['summary']['prs']} bugs were skipped)") if ev else "the evaluation set"
-    if any(not h["file"].endswith(PY_EXT) for h in pr["hunks"] if not h["skip"]):
-        note += "; not yet calibrated for the non-Python files in this PR"
+    ev_path = EVAL if language == "python" else EVAL.with_name(f"triage_eval_{language}.json")
+    ev = json.loads(ev_path.read_text()) if calibrated and ev_path.exists() else None
+    note = (f"{language} evaluation set ({ev['summary']['prs']} PRs; held out by repo, {ev['summary']['held_out_missed']} "
+            f"of {ev['summary']['prs']} bugs were skipped)") if ev else "the Python evaluation set"
+    if not calibrated:
+        note += f"; not yet calibrated for {language}"
     guarantee = {"missBound": comb.get("alpha", 0.2), "confidence": 0.9, "calibratedOn": note}
     threshold = comb["threshold"] if args.threshold is None else args.threshold
     out = build(pr, threshold, guarantee)
     out.pop("groundTruth", None)
+    out["language"] = language
     out.update(number=number, branch=pr["branch"], base=pr["base"], url=pr["url"], source="live", openedAt=pr["date"],
                taskSummary=pr["message"][:1500] or pr["subject"], panel=[s.name, "combiner", "rules"],
                author={"name": pr["author"], "kind": "ai_agent" if pr["author_is_bot"] else "human",

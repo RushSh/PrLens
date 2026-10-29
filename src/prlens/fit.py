@@ -28,13 +28,16 @@ from .trace import OUT as PRS, is_test, logic_density, read_until
 FEATURES = ["model log-odds", "log logic", "test file", "log size", "must-review rule"]
 
 
-def load(model: str):
+def load(model: str, language: str | None = "python"):
+    """Traced PRs with their region scores; `language` keeps only that language's PRs (None: all)."""
     sc = {}
     for l in open(ROOT / "data" / "triage" / "scores" / f"{model}.jsonl"):
         x = json.loads(l)
         if x["risk"] is not None:
             sc[x["region"]] = x["risk"]
     prs = [json.loads(l) for l in open(PRS)]
+    if language:
+        prs = [p for p in prs if p.get("language", "python") == language]
     for p in prs:
         p["units"] = []
         for h in p["hunks"]:
@@ -131,13 +134,22 @@ def held_out(prs, alpha: float) -> tuple[int, int, int]:
     return hk, hr, ht
 
 
+def combiner_path(language: str) -> Path:
+    """Python keeps the original file name; other languages get their own."""
+    name = "combiner.json" if language == "python" else f"combiner_{language}.json"
+    return ROOT / "data" / "triage" / name
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="spark_open")
     ap.add_argument("--alpha", type=float, default=0.2, help="miss-rate bound (90%% confidence)")
     ap.add_argument("--save", action="store_true")
+    ap.add_argument("--language", default="python", help="python, typescript or csharp: each is calibrated on its own")
     args = ap.parse_args(argv)
-    prs = load(args.model)
+    prs = load(args.model, args.language)
+    if len(prs) < 20:
+        raise SystemExit(f"only {len(prs)} {args.language} PRs with scores; need at least 20 to calibrate")
     repos = sorted({p["repo"] for p in prs})
     units, X, y = cross_fit(prs)
     pos = [u["p"] for _, u in units if u["bug"]]
@@ -169,9 +181,9 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.save:
         m = fit(X, y)
-        m.update(features=FEATURES, model=args.model, threshold=t, alpha=args.alpha, prs=len(prs),
-                 note="fit on all traced PRs; threshold from out-of-fold scores")
-        out = ROOT / "data" / "triage" / "combiner.json"
+        m.update(features=FEATURES, model=args.model, threshold=t, alpha=args.alpha, prs=len(prs), language=args.language,
+                 note="fit on all traced PRs of this language; threshold from out-of-fold scores")
+        out = combiner_path(args.language)
         out.write_text(json.dumps(m, indent=2))
         print(f"wrote {out.relative_to(ROOT)}; weights {dict(zip(['bias'] + FEATURES, [round(w, 2) for w in m['w']]))}")
 

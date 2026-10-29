@@ -2,6 +2,7 @@
 
     mine        find recent bug-fix commits that come with a test          (prlens.mine)
     validate    keep those whose tests fail before the fix and pass after  (prlens.validate)
+    index       add confirmed bugs to data/bug_fixes.jsonl                 (prlens.index)
     trace       trace each fix to the commit that introduced the bug      (prlens.trace)
     baseline    no-model rules and simple rankings on the traced PRs       (prlens.trace)
     score       score every region with a model (paid; asks first)         (prlens.score)
@@ -22,6 +23,7 @@ import sys
 STEPS: dict[str, tuple[str, list[str]]] = {
     "mine": ("mine", []),
     "validate": ("validate", []),
+    "index": ("index", []),
     "trace": ("trace", ["trace"]),
     "baseline": ("trace", ["baseline"]),
     "score": ("score", ["run"]),

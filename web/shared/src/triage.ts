@@ -143,6 +143,8 @@ export interface PrTriage {
   groundTruth?: TriageGroundTruth;
   /** Each scored hunk's full diff, so files can be shown whole; items point into them (id prefix, flagged lines). */
   hunks?: { id: string; file: string; header: string; diff: DiffLine[] }[];
+  /** "python" | "typescript" | "csharp": the language whose calibration was used. */
+  language?: string;
   /** The skip threshold this PR was triaged with (bug chance under it is skipped; 0 = nothing skipped on score). */
   skipThreshold?: number;
   /** Link to the PR on GitHub (live PRs). */
@@ -281,6 +283,7 @@ export const prTriageSchema: z.ZodType<PrTriage> = z.object({
   source: z.enum(["sample", "eval", "live"]),
   hunks: z.array(z.object({ id: z.string(), file: z.string(), header: z.string(), diff: z.array(diffLine) })).optional(),
   skipThreshold: z.number().optional(),
+  language: z.string().optional(),
   url: z.string().url().optional(),
   base: z.string().optional(),
   groundTruth: z
@@ -310,6 +313,7 @@ const driftReplay = z.object({
 export const triageFile = z.object({
   kind: z.literal("triage"),
   name: z.string().min(1),
+  language: z.string().optional(),
   generated_at: z.string(),
   model: z.string(),
   threshold: z.number(),

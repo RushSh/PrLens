@@ -9,10 +9,11 @@
 """
 from __future__ import annotations
 
-import ast
 import re
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
+
+from .languages import BOUNDARY_RE as LANG_BOUNDARY, defined_names, formatting_proof, is_test, language_of, public_names, LANGUAGES
 
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$")
 
@@ -121,14 +122,15 @@ def parse_diff(text: str) -> list[FileDiff]:
 
 # ---------------------------------------------------------------- skip rules (no model)
 
-LOCK_NAMES = {"poetry.lock", "pdm.lock", "uv.lock", "Pipfile.lock", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "Cargo.lock"}
+LOCK_NAMES = {"poetry.lock", "pdm.lock", "uv.lock", "Pipfile.lock", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+              "Cargo.lock", "bun.lockb", "bun.lock", "packages.lock.json", "npm-shrinkwrap.json"}
 DOC_NAMES = {"changelog", "changes", "history", "news", "authors", "contributors", "readme", "license", "copying", "notice"}
 DOC_EXT = {".md", ".rst", ".txt", ".adoc"}
 CONFIG_NAMES = {"tox.ini", ".flake8", "mypy.ini", ".coveragerc", ".gitignore", ".gitattributes", ".editorconfig",
                 ".pre-commit-config.yaml", ".readthedocs.yml", ".readthedocs.yaml", "codecov.yml", ".codecov.yml",
                 "manifest.in", ".git-blame-ignore-revs", "noxfile.py", ".mailmap", "dependabot.yml"}
 CONFIG_DIRS = {".github", ".circleci", ".gitlab", ".azure-pipelines", ".ci"}
-GENERATED_MARK = ("_pb2.py", "_pb2_grpc.py", ".min.js", ".min.css")
+GENERATED_MARK = ("_pb2.py", "_pb2_grpc.py", ".min.js", ".min.css", ".d.ts", ".designer.cs", ".g.cs", ".g.i.cs")
 GENERATED_DIRS = {"vendor", "_vendor", "vendored", "generated", "_generated"}
 
 
@@ -146,29 +148,10 @@ def path_category(path: str) -> str | None:
         return "docs"
     if parts and parts[0] in {"docs", "doc"} and p.suffix.lower() != ".py":
         return "docs"
-    if any(d in {"tests", "test", "testing"} for d in parts) and p.suffix.lower() not in {".py"}:
-        return "test_fixture"
+    if any(d in {"tests", "test", "testing", "__tests__", "fixtures", "testdata"} for d in parts) and language_of(path) is None \
+            and p.suffix.lower() not in {".py"}:
+        return "test_fixture"  # data files under test folders; test code is scored like any code
     return None
-
-
-def _strip_docstrings(tree: ast.AST) -> ast.AST:
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            body = node.body
-            if body and isinstance(body[0], ast.Expr) and isinstance(getattr(body[0], "value", None), ast.Constant) \
-                    and isinstance(body[0].value.value, str):
-                node.body = body[1:] or [ast.Pass()]
-    return tree
-
-
-def _dump(src: str, strip_docs: bool) -> str | None:
-    try:
-        t = ast.parse(src)
-    except (SyntaxError, ValueError):
-        return None
-    if strip_docs:
-        t = _strip_docstrings(t)
-    return ast.dump(t, annotate_fields=False, include_attributes=False)
 
 
 def apply_hunk(old_src: str, h: Hunk) -> str:
@@ -179,22 +162,19 @@ def apply_hunk(old_src: str, h: Hunk) -> str:
     return "\n".join(lines[:start] + new_part + lines[start + h.old_len:]) + "\n"
 
 
-def python_proof(old_src: str | None, h: Hunk) -> str | None:
-    """'formatting' if the hunk leaves the syntax tree unchanged, 'docs' if only docstrings change, else None."""
-    if old_src is None or not h.file.endswith(".py"):
+def proof(old_src: str | None, h: Hunk) -> str | None:
+    """'formatting' if applying the hunk provably changes nothing but layout or comments, 'docs' if only Python
+    docstrings change (see languages.formatting_proof), else None."""
+    if old_src is None or language_of(h.file) is None:
         return None
     try:
         new_src = apply_hunk(old_src, h)
     except Exception:
         return None
-    a, b = _dump(old_src, False), _dump(new_src, False)
-    if a is None or b is None:
-        return None
-    if a == b:
-        return "formatting"
-    if _dump(old_src, True) == _dump(new_src, True):
-        return "docs"
-    return None
+    return formatting_proof(h.file, old_src, new_src)
+
+
+python_proof = proof  # earlier name
 
 
 def skip_category(h: Hunk, old_src: str | None) -> tuple[str, str] | None:
@@ -202,10 +182,10 @@ def skip_category(h: Hunk, old_src: str | None) -> tuple[str, str] | None:
     cat = path_category(h.file)
     if cat:
         return cat, f"{PurePosixPath(h.file).name} is {cat.replace('_', ' ')}"
-    proof = python_proof(old_src, h)
-    if proof == "formatting":
+    result = proof(old_src, h)
+    if result == "formatting":
         return "formatting", "Syntax tree unchanged: whitespace, line breaks or comments only"
-    if proof == "docs":
+    if result == "docs":
         return "docs", "Only docstrings change; the code is identical"
     return None
 
@@ -214,20 +194,21 @@ def skip_category(h: Hunk, old_src: str | None) -> tuple[str, str] | None:
 
 SECURITY_RE = re.compile(r"(\bauth(entication|orization|orize|enticate)?\b|\bpermissions?\b|\bpassw(or)?d\b|\bsecret\b|"
                          r"\bcredentials?\b|\bcrypto\w*|\bhmac\b|\bcsrf\b|\bpickle\.loads?\b|\beval\(|\bexec\(|"
-                         r"\bos\.system\(|shell\s*=\s*True|\bverify\s*=\s*False\b)", re.I)
-DEF_RE = re.compile(r"^(\s*)(async\s+def|def|class)\s+([A-Za-z_]\w*)")
+                         r"\bos\.system\(|shell\s*=\s*True|\bverify\s*=\s*False\b|"
+                         # TypeScript / JavaScript
+                         r"dangerouslySetInnerHTML|\.innerHTML\b|\bnew Function\(|\bchild_process\b|"
+                         # C#
+                         r"\bProcess\.Start\(|\bSqlCommand\b|\bFromSqlRaw\b|\bBinaryFormatter\b|\bAllowAnonymous\b)", re.I)
 
 
-ASSIGN_RE = re.compile(r"^([A-Za-z_]\w*)\s*(?::[^=]+)?=(?!=)")
-
-
-def defs_in(lines, kind: str) -> set[str]:
-    """Public names defined (def/class at module or class level) on lines of this kind; for added lines also
-    module-level assignments, so `Token = namedtuple(...)` replacing `class Token` is not a removal."""
-    names = {m.group(3) for l in lines if l.kind == kind and (m := DEF_RE.match(l.text))
-             and len(m.group(1)) <= 4 and not m.group(3).startswith("_")}
-    if kind == "add":
-        names |= {m.group(1) for l in lines if l.kind == "add" and (m := ASSIGN_RE.match(l.text))}
+def defs_in(lines, kind: str, path: str | None = None) -> set[str]:
+    """Public names defined on lines of this kind; for added lines also assignments, so `Token = namedtuple(...)`
+    replacing `class Token` is not a removal. Without a path, every language's rules are applied (a whole PR)."""
+    texts = [l.text for l in lines if l.kind == kind]
+    langs = [language_of(path)] if path and language_of(path) else list(LANGUAGES.values())
+    names: set[str] = set()
+    for lang in langs:
+        names |= defined_names(lang, texts) if kind == "add" else public_names(lang, texts)
     return names
 
 
@@ -240,17 +221,18 @@ def review_rules(h: Hunk, pr_added_defs: set[str] | None = None) -> list[tuple[s
     changed = [l.text for l in h.lines if l.kind != "ctx"]
     if any(SECURITY_RE.search(t) for t in changed):
         out.append(("security_sensitive", "Touches security-sensitive code"))
-    if h.file.endswith(".py") and "/test" not in "/" + low and not PurePosixPath(low).name.startswith("test"):
-        # a public def whose signature changed, or that was removed outright, breaks callers; a new one does not
-        gone = defs_in(h.lines, "del")
-        # a def line on both sides of the diff means its text changed (whitespace-only edits are skipped earlier)
-        changed = gone & defs_in(h.lines, "add")
-        removed = gone - defs_in(h.lines, "add") - (pr_added_defs or set())
-        if changed:
-            out.append(("public_api", f"Changes the signature of public `{sorted(changed)[0]}`"))
+    lang = language_of(h.file)
+    if lang and not is_test(h.file):
+        # a public definition whose signature changed, or that was removed outright, breaks callers; a new one does not
+        gone = public_names(lang, [l.text for l in h.lines if l.kind == "del"])
+        now = public_names(lang, [l.text for l in h.lines if l.kind == "add"])
+        sig_changed = gone & now  # a definition line on both sides of the diff means its text changed
+        removed = gone - defined_names(lang, [l.text for l in h.lines if l.kind == "add"]) - (pr_added_defs or set())
+        if sig_changed:
+            out.append(("public_api", f"Changes the signature of public `{sorted(sig_changed)[0]}`"))
         elif removed:
             out.append(("public_api", f"Removes public `{sorted(removed)[0]}`"))
-        elif any(l.kind != "ctx" and l.text.startswith("__all__") for l in h.lines):
+        elif lang.name == "python" and any(l.kind != "ctx" and l.text.startswith("__all__") for l in h.lines):
             out.append(("public_api", "Changes __all__"))
     return out
 
@@ -258,7 +240,7 @@ def review_rules(h: Hunk, pr_added_defs: set[str] | None = None) -> list[tuple[s
 # ---------------------------------------------------------------- regions: hunks cut to reviewable size
 
 REGION_MAX = 25
-BOUNDARY_RE = re.compile(r"^\s*(@|def |async def |class )|^\s*$")
+BOUNDARY_RE = LANG_BOUNDARY["python"]  # earlier name; regions() picks the file's language
 
 
 def regions(h: Hunk) -> list[Hunk]:
@@ -276,13 +258,14 @@ def regions(h: Hunk) -> list[Hunk]:
             cur.append(l)
     if cur:
         runs.append(cur)
+    boundary = LANG_BOUNDARY[(language_of(h.file) or LANGUAGES["python"]).name]
     pieces: list[list[Line]] = []
     for run in runs:
         start = 0
         while len(run) - start > REGION_MAX:
             cut = None
             for j in range(min(len(run), start + REGION_MAX + 10) - 1, start + 5, -1):
-                if j - start <= REGION_MAX + 10 and run[j].kind == "add" and BOUNDARY_RE.match(run[j].text):
+                if j - start <= REGION_MAX + 10 and run[j].kind == "add" and boundary.match(run[j].text):
                     cut = j
                     if j - start <= REGION_MAX:
                         break
