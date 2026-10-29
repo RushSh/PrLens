@@ -1,5 +1,5 @@
 {
-  "name": "bugcensus-web",
+  "name": "prlens-web",
   "private": true,
   "type": "module",
   "workspaces": ["shared", "backend", "frontend"],

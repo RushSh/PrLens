@@ -1,12 +1,12 @@
 /**
- * PR Reviewer triage: which parts of a pull request a human should read, and which are safe to skip.
+ * PR Lens triage: which parts of a pull request a human should read, and which are safe to skip.
  *
  * Every hunk of a PR lands in one of two tiers:
  *   - ReviewItem  ("Action required"): needs a human, with the specific reasons and a risk score;
  *   - SkippedItem ("Safe to skip"):     filtered out of the review queue, with its skip category.
  * Rules always win over scores: verified findings, sensitive paths and public API changes are never skipped.
  *
- * These types are the contract between the triage backend and the dashboard tab. scripts/export_triage.py writes
+ * These types are the contract between the triage backend and the dashboard tab. `prlens export` and `prlens triage-pr` write
  * them (data/triage_*.json), the backend validates them with `prTriageSchema` on import and serves them at
  * /api/triage/prs; the tab falls back to sample data when none are imported.
  */
@@ -141,11 +141,19 @@ export interface PrTriage {
   /** "sample": built-in demo data; "eval": real commit with a known bug; "live": a PR triaged on request. */
   source: "sample" | "eval" | "live";
   groundTruth?: TriageGroundTruth;
+  /** Each scored hunk's full diff, so files can be shown whole; items point into them (id prefix, flagged lines). */
+  hunks?: { id: string; file: string; header: string; diff: DiffLine[] }[];
+  /** Link to the PR on GitHub (live PRs). */
+  url?: string;
+  /** Branch the PR merges into (live PRs). */
+  base?: string;
 }
 
 /** One row of the PR list (GET /api/triage/prs). */
 export interface PrTriageSummary {
   id: string;
+  /** Name of the triage set it came from ("eval", "live", ...). */
+  set: string;
   number: number | null;
   title: string;
   repo: string;
@@ -160,22 +168,47 @@ export interface PrTriageSummary {
   caughtByTriage: boolean | null;
 }
 
-/** About the imported triage set, shown above the PR list. */
+/** How well triage did on an evaluation set (scripts write it; the Evaluation tab shows it). */
+export interface TriageEvaluation {
+  /** Lines read vs PRs whose bug was skipped, one point per threshold. */
+  sweep: { threshold: number; missed: number; read_share: number; bound: number }[];
+  by_repo: { repo: string; prs: number; missed: number; read_share: number; lines: number }[];
+  /** Share of PRs whose bug is in what you read, reading the riskiest parts first up to 1/4, 1/3, 1/2 of lines. */
+  gate: { quarter: number; third: number; half: number };
+  auc: { combined: number; model: number };
+  pr_lines: { min: number; median: number; p75: number; max: number };
+  languages: Record<string, number>;
+  evidence: { deleted: number; adjacent: number };
+  alpha: number;
+  confidence: number;
+}
+
+export interface TriageSetSummary {
+  prs: number;
+  repos: number;
+  missed: number;
+  read_share: number;
+  held_out_missed: number;
+  held_out_read_share: number;
+}
+
+/** About one imported triage set. */
 export interface TriageSetInfo {
   name: string;
   generatedAt: string;
   model: string;
   threshold: number;
   alpha: number;
-  summary: { prs: number; repos: number; missed: number; read_share: number; held_out_missed: number; held_out_read_share: number };
+  summary: TriageSetSummary;
+  evaluation: TriageEvaluation | null;
 }
 
 export interface TriageList {
-  set: TriageSetInfo | null;
+  sets: TriageSetInfo[];
   prs: PrTriageSummary[];
 }
 
-// ---- validation of imported files (scripts/export_triage.py)
+// ---- validation of imported files (prlens export / prlens triage-pr)
 
 const diffLine = z.object({
   kind: z.enum(["add", "del", "ctx"]),
@@ -222,6 +255,9 @@ export const prTriageSchema: z.ZodType<PrTriage> = z.object({
   skipped: z.array(skippedItem),
   guarantee: z.object({ missBound: z.number(), confidence: z.number(), calibratedOn: z.string() }).nullable(),
   source: z.enum(["sample", "eval", "live"]),
+  hunks: z.array(z.object({ id: z.string(), file: z.string(), header: z.string(), diff: z.array(diffLine) })).optional(),
+  url: z.string().url().optional(),
+  base: z.string().optional(),
   groundTruth: z
     .object({
       bugItemIds: z.array(z.string()),
@@ -246,6 +282,19 @@ export const triageFile = z.object({
     held_out_missed: z.number(),
     held_out_read_share: z.number(),
   }),
+  evaluation: z
+    .object({
+      sweep: z.array(z.object({ threshold: z.number(), missed: z.number(), read_share: z.number(), bound: z.number() })),
+      by_repo: z.array(z.object({ repo: z.string(), prs: z.number(), missed: z.number(), read_share: z.number(), lines: z.number() })),
+      gate: z.object({ quarter: z.number(), third: z.number(), half: z.number() }),
+      auc: z.object({ combined: z.number(), model: z.number() }),
+      pr_lines: z.object({ min: z.number(), median: z.number(), p75: z.number(), max: z.number() }),
+      languages: z.record(z.string(), z.number()),
+      evidence: z.object({ deleted: z.number(), adjacent: z.number() }),
+      alpha: z.number(),
+      confidence: z.number(),
+    })
+    .optional(),
   prs: z.array(prTriageSchema),
 });
 export type TriageFile = z.infer<typeof triageFile>;

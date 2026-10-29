@@ -3,7 +3,7 @@
  * Realistic in shape (an AI-agent PR, a mixed human/agent PR with a migration, a maintenance PR), but the scores,
  * signals and the skip bound are illustrative, not measured.
  */
-import type { DiffLine, PrTriage, ReviewItem, SkippedItem } from "@bugcensus/shared";
+import type { DiffLine, PrTriage, ReviewItem, SkippedItem } from "@prlens/shared";
 
 /**
  * Build diff lines from a compact notation: each line starts with "+", "-" or " " (context);

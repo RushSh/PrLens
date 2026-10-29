@@ -24,7 +24,7 @@ from .trace import is_test, logic_density, read_until
 OUT = ROOT / "data" / "triage_eval.json"
 RULE_CODES = {"security_sensitive", "public_api", "data_migration"}
 CONTEXT = 3
-MAX_DIFF = 120
+MAX_DIFF = 400
 
 
 def diff_lines(lines, flag_new=(), flag_old=(), window=True):
@@ -52,8 +52,12 @@ def priority(p: float, rules) -> str:
 
 
 def build(pr, t: float, guarantee: dict) -> dict:
-    to_review, skipped, bug_ids = [], [], []
+    to_review, skipped, bug_ids, hunks = [], [], [], []
     for h in pr["hunks"]:
+        if not h["skip"]:
+            # the whole hunk once, so the dashboard can show files the way GitHub does; items point into it
+            hunks.append({"id": h["id"], "file": h["file"], "header": h["header"],
+                          "diff": diff_lines(h["lines"], window=False)})
         if h["skip"]:
             cat, why = h["skip"]
             skipped.append({"id": h["id"], "file": h["file"], "header": h["header"], "added": h["added"],
@@ -103,7 +107,7 @@ def build(pr, t: float, guarantee: dict) -> dict:
         "id": pr["pr_id"], "number": None, "title": pr["subject"], "repo": pr["repo"], "branch": pr["sha"][:10],
         "author": {"name": pr["author"] or "unknown", "kind": "human"}, "openedAt": pr["date"],
         "taskSummary": msg[:600], "panel": ["Spark Open (Baseten)", "combiner", "rules"],
-        "toReview": to_review, "skipped": skipped, "guarantee": guarantee, "source": "eval",
+        "toReview": to_review, "skipped": skipped, "hunks": hunks, "guarantee": guarantee, "source": "eval",
         "groundTruth": {"bugItemIds": bug_ids, "caughtByTriage": caught, "fixes": [
             {"sha": b["fix_sha"][:10], "subject": b["fix_subject"], "evidence": b["evidence"]} for b in pr["bugs"]]},
     }

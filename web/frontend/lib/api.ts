@@ -1,3 +1,5 @@
+import { CLIENT_HEADER } from "@prlens/shared";
+
 /** Typed access to the backend. Server components call the backend directly; the browser goes via /api. */
 const BACKEND = process.env.BACKEND_URL ?? "http://127.0.0.1:4000";
 
@@ -26,8 +28,8 @@ export async function clientFetch<T>(path: string, init: { method?: string; body
   const res = await fetch(path, {
     method: init.method ?? "GET",
     headers: init.body !== undefined
-      ? { "Content-Type": "application/json", "X-BugCensus-Client": "1" }
-      : { "X-BugCensus-Client": "1" },
+      ? { "Content-Type": "application/json", [CLIENT_HEADER]: "1" }
+      : { [CLIENT_HEADER]: "1" },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     cache: "no-store",
   });

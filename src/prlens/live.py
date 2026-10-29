@@ -150,7 +150,7 @@ def main(argv: list[str] | None = None) -> None:
     guarantee = {"missBound": comb.get("alpha", 0.2), "confidence": 0.9, "calibratedOn": note}
     out = build(pr, comb["threshold"], guarantee)
     out.pop("groundTruth", None)
-    out.update(number=number, branch=pr["branch"], source="live", openedAt=pr["date"],
+    out.update(number=number, branch=pr["branch"], base=pr["base"], url=pr["url"], source="live", openedAt=pr["date"],
                taskSummary=pr["message"][:1500] or pr["subject"], panel=[s.name, "combiner", "rules"],
                author={"name": pr["author"], "kind": "ai_agent" if pr["author_is_bot"] else "human",
                        **({"agent": pr["author"]} if pr["author_is_bot"] else {})})

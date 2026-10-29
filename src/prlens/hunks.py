@@ -218,9 +218,17 @@ SECURITY_RE = re.compile(r"(\bauth(entication|orization|orize|enticate)?\b|\bper
 DEF_RE = re.compile(r"^(\s*)(async\s+def|def|class)\s+([A-Za-z_]\w*)")
 
 
+ASSIGN_RE = re.compile(r"^([A-Za-z_]\w*)\s*(?::[^=]+)?=(?!=)")
+
+
 def defs_in(lines, kind: str) -> set[str]:
-    return {m.group(3) for l in lines if l.kind == kind and (m := DEF_RE.match(l.text))
-            and len(m.group(1)) <= 4 and not m.group(3).startswith("_")}
+    """Public names defined (def/class at module or class level) on lines of this kind; for added lines also
+    module-level assignments, so `Token = namedtuple(...)` replacing `class Token` is not a removal."""
+    names = {m.group(3) for l in lines if l.kind == kind and (m := DEF_RE.match(l.text))
+             and len(m.group(1)) <= 4 and not m.group(3).startswith("_")}
+    if kind == "add":
+        names |= {m.group(1) for l in lines if l.kind == "add" and (m := ASSIGN_RE.match(l.text))}
+    return names
 
 
 def review_rules(h: Hunk, pr_added_defs: set[str] | None = None) -> list[tuple[str, str]]:

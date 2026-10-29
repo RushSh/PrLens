@@ -2,13 +2,32 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { Job } from "@bugcensus/shared";
+import type { Job, JobStatus as Status } from "@prlens/shared";
 import { clientFetch } from "@/lib/api";
 import { duration, when } from "@/lib/format";
-import { JobStatus } from "./JobStatus";
+import { prHref } from "@/lib/pr";
+import { CheckIcon, DotIcon, XIcon } from "./Icons";
+import { button, buttonPrimary } from "./ui";
 
-/** Polls a job every 3 s while it is queued or running and shows its log. */
-export function JobLive({ id }: { id: string }) {
+const TONE: Record<Status, string> = {
+  queued: "text-muted",
+  running: "text-attention",
+  succeeded: "text-success",
+  failed: "text-danger",
+  cancelled: "text-muted",
+};
+
+export function JobStatus({ status }: { status: Status }) {
+  return (
+    <span className={`inline-flex items-center gap-1 text-sm font-medium ${TONE[status]}`}>
+      {status === "succeeded" ? <CheckIcon size={14} /> : status === "failed" || status === "cancelled" ? <XIcon size={14} /> : <DotIcon size={14} />}
+      {status}
+    </span>
+  );
+}
+
+/** Polls a job every 2 s while it is queued or running and shows its log. */
+export function JobLive({ id, compact = false }: { id: string; compact?: boolean }) {
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -23,7 +42,7 @@ export function JobLive({ id }: { id: string }) {
         if (stop) return;
         setJob(j);
         setNow(Date.now());
-        if (j.status === "queued" || j.status === "running") timer = setTimeout(poll, 3000);
+        if (j.status === "queued" || j.status === "running") timer = setTimeout(poll, 2000);
       } catch (e) {
         if (!stop) setError(e instanceof Error ? e.message : String(e));
       }
@@ -39,8 +58,8 @@ export function JobLive({ id }: { id: string }) {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [job?.log]);
 
-  if (error) return <p className="text-sm text-red-700">{error}</p>;
-  if (!job) return <p className="text-sm text-stone-500">Loading…</p>;
+  if (error) return <p className="text-sm text-danger">{error}</p>;
+  if (!job) return <p className="text-sm text-muted">Loading…</p>;
 
   const active = job.status === "queued" || job.status === "running";
   const elapsed = job.startedAt
@@ -50,54 +69,48 @@ export function JobLive({ id }: { id: string }) {
   async function cancel() {
     try {
       await clientFetch(`/api/jobs/${id}/cancel`, { method: "POST", body: {} });
-      const j = await clientFetch<Job>(`/api/jobs/${id}`);
-      setJob(j);
+      setJob(await clientFetch<Job>(`/api/jobs/${id}`));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="text-xs text-stone-500">
-            <Link href="/jobs" className="hover:underline">Jobs</Link> / {when(job.createdAt)}
-          </div>
-          <h1 className="text-lg font-semibold">{job.title ?? job.filePath}</h1>
-          {job.kind === "census" && job.filePath ? <div className="font-mono text-sm text-stone-600">{job.filePath}</div> : null}
-          {job.panel.length ? <div className="text-sm text-stone-600">Reviewers: {job.panel.join(", ")}</div> : null}
-          {job.note ? <div className="text-sm text-stone-500">{job.note}</div> : null}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          {!compact ? (
+            <div className="text-xs text-muted">
+              <Link href="/pipeline" className="text-accent hover:underline">Pipeline</Link> / started {when(job.createdAt)}
+            </div>
+          ) : null}
+          <h2 className={`${compact ? "text-base" : "text-xl"} font-semibold text-fg`}>{job.title}</h2>
         </div>
         <div className="flex items-center gap-3">
           <JobStatus status={job.status} />
-          {elapsed !== null ? <span className="tabular text-sm text-stone-600">{duration(elapsed)}</span> : null}
+          {elapsed !== null ? <span className="tabular text-sm text-muted">{duration(elapsed)}</span> : null}
           {active ? (
-            <button type="button" onClick={cancel} className="rounded border border-stone-300 px-3 py-1 text-sm hover:bg-stone-50">
+            <button type="button" onClick={cancel} className={button}>
               Cancel
             </button>
           ) : null}
         </div>
       </div>
-
-      {job.status === "succeeded" && job.kind === "experiment" ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
-          Done. Results appear on their pages (Realism checks, Calibration, Runs) automatically.
+      {job.status === "succeeded" && job.prId ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-success/40 bg-success-subtle px-4 py-3 text-sm">
+          <span>Triaged. The PR is in the list now.</span>
+          <Link href={prHref(job.prId, "files")} className={buttonPrimary}>
+            Open the PR
+          </Link>
         </div>
-      ) : null}
-      {job.status === "succeeded" && job.runId ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
-          Done. <Link href={`/runs/${job.runId}`} className="font-medium underline">Open the run →</Link>
-        </div>
+      ) : job.status === "succeeded" ? (
+        <div className="rounded-md border border-success/40 bg-success-subtle px-4 py-3 text-sm">Done. Results are imported automatically.</div>
       ) : null}
       {job.error && job.status !== "succeeded" ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{job.error}</div>
+        <div className="rounded-md border border-danger/40 bg-danger-subtle px-4 py-3 text-sm text-fg">{job.error}</div>
       ) : null}
-      {job.status === "queued" ? (
-        <p className="text-sm text-stone-500">Waiting for the job before it in the same lane to finish.</p>
-      ) : null}
-
-      <pre ref={logRef} className="max-h-[60vh] overflow-auto rounded-lg bg-stone-900 p-3 font-mono text-xs leading-5 text-stone-100">
+      {job.status === "queued" ? <p className="text-sm text-muted">Waiting for the job before it in the same lane to finish.</p> : null}
+      <pre ref={logRef} className="max-h-[50vh] overflow-auto rounded-md border border-line bg-inset p-3 font-mono text-xs leading-5 text-fg">
         {job.log || "No output yet."}
       </pre>
     </div>

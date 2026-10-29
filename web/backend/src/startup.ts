@@ -2,7 +2,7 @@
  * What the backend does on start so nobody has to run `migrate` or `import` by hand:
  *   1. create the database if it does not exist yet (needs a user allowed to create databases);
  *   2. apply any pending migrations (the same SQL files `npm run migrate` uses);
- *   3. import every saved run and analysis, then watch runs/ and data/ and import new or changed files.
+ *   3. import every saved triage set, then watch data/ and import new or changed ones.
  */
 import { watch, type FSWatcher } from "node:fs";
 import path from "node:path";
@@ -52,10 +52,10 @@ export async function migrateUp(url: string = databaseUrl(), log: (m: string) =>
   return names;
 }
 
-/** Import everything now, then again whenever files under runs/ or data/ change (debounced). */
+/** Import everything now, then again whenever files under data/ change (debounced). */
 export function autoImport(
   db: Db,
-  root: string = env.BUGCENSUS_ROOT,
+  root: string = env.PRLENS_ROOT,
   log: (m: string) => void = console.log,
 ): { now: () => Promise<ImportSummary>; stop: () => void } {
   let timer: NodeJS.Timeout | null = null;
@@ -68,8 +68,8 @@ export function autoImport(
       return running;
     }
     running = importRepository(db, root).then((s) => {
-      if (s.runsCreated || s.triage || s.failed.length) {
-        log(`auto-import: ${s.runsCreated} new runs, ${s.realism} realism, ${s.calibration} calibration, ${s.triage} triage` +
+      if (s.triage || s.failed.length) {
+        log(`auto-import: ${s.triage} triage sets` +
           (s.failed.length ? `, ${s.failed.length} failed (${s.failed.map((f) => f.file).join(", ")})` : ""));
       }
       return s;
@@ -90,7 +90,7 @@ export function autoImport(
   };
 
   const watchers: FSWatcher[] = [];
-  for (const dir of ["runs", "data"]) {
+  for (const dir of ["data"]) {
     try {
       watchers.push(
         watch(path.join(root, dir), (_event, file) => {

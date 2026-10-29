@@ -40,3 +40,12 @@ def test_regions_split_long_runs():
     h = one_hunk(f"diff --git a/m.py b/m.py\n--- a/m.py\n+++ b/m.py\n@@ -1,0 +1,60 @@\n{body}")
     rs = regions(h)
     assert sum(r.added for r in rs) == 60 and max(r.added for r in rs) <= 35
+
+
+def test_a_class_replaced_by_an_assignment_elsewhere_in_the_pr_is_not_a_removal():
+    from prlens.hunks import defs_in
+
+    gone = one_hunk("diff --git a/m.py b/m.py\n--- a/m.py\n+++ b/m.py\n@@ -1,2 +1,0 @@\n-class Token(tuple):\n-    pass\n")
+    elsewhere = one_hunk("diff --git a/m.py b/m.py\n--- a/m.py\n+++ b/m.py\n@@ -9,0 +9,1 @@\n+Token = namedtuple('Token', 'a b')\n")
+    assert [r[0] for r in review_rules(gone)] == ["public_api"]
+    assert review_rules(gone, defs_in(elsewhere.lines, "add")) == []

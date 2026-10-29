@@ -11,15 +11,15 @@ config({ path: path.join(backendDir, ".env"), quiet: true });
 const schema = z.object({
   DB_HOST: z.string().default("localhost"),
   DB_PORT: z.coerce.number().int().default(5432),
-  DB_NAME: z.string().default("bugcensus"),
+  DB_NAME: z.string().default("prlens"),
   DB_USER: z.string().default(process.env.USER ?? "postgres"),
   DB_PASSWORD: z.string().default(""),
   PORT: z.coerce.number().int().default(4000),
   HOST: z.string().default("127.0.0.1"),
-  /** Repository root (where pyproject.toml, runs/ and data/ live). */
-  BUGCENSUS_ROOT: z.string().default(path.resolve(backendDir, "../..")),
-  /** Python with bugcensus installed; defaults to the repo's .venv. */
-  BUGCENSUS_PYTHON: z.string().optional(),
+  /** Repository root (where pyproject.toml and data/ live). */
+  PRLENS_ROOT: z.string().default(path.resolve(backendDir, "../..")),
+  /** Python with prlens installed; defaults to the repo's .venv. */
+  PRLENS_PYTHON: z.string().optional(),
   NODE_ENV: z.string().default("development"),
 });
 
@@ -27,9 +27,9 @@ const parsed = schema.parse(process.env);
 
 export const env = {
   ...parsed,
-  BUGCENSUS_ROOT: path.resolve(parsed.BUGCENSUS_ROOT),
-  BUGCENSUS_PYTHON:
-    parsed.BUGCENSUS_PYTHON ?? path.join(path.resolve(parsed.BUGCENSUS_ROOT), ".venv", "bin", "python"),
+  PRLENS_ROOT: path.resolve(parsed.PRLENS_ROOT),
+  PRLENS_PYTHON:
+    parsed.PRLENS_PYTHON ?? path.join(path.resolve(parsed.PRLENS_ROOT), ".venv", "bin", "python"),
   backendDir,
 };
 

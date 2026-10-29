@@ -1,9 +1,8 @@
-# Database Process Guide (BugCensus dashboard)
+# Database Process Guide (PR Lens dashboard)
 
-Postgres holds every census run, the models that reviewed it, and realism checks, so runs can be
-compared over time. The schema is owned by SQL migrations (node-pg-migrate); queries go through
-Drizzle ORM for type safety. `src/db/schema.ts` mirrors the migrations, and `npm test` fails if the
-two disagree.
+Postgres holds the triaged pull requests (the evaluation set and PRs triaged on request) and the pipeline
+jobs started from the dashboard. The schema is owned by SQL migrations (node-pg-migrate); queries go through
+Drizzle ORM for type safety. `src/db/schema.ts` mirrors the migrations, and `npm test` fails if the two disagree.
 
 ## TL;DR
 
@@ -11,40 +10,30 @@ two disagree.
 |---|---|
 | First setup | copy `.env.example` to `.env` and start the backend: it creates the database, migrates and imports on start |
 | Any schema change | `npm run migrate:create -- describe-your-change`, write the SQL, update `src/db/schema.ts`, `npm run migrate`, `npm test` |
-| Clean slate (dev) | `npm run db:reset` (drops all BugCensus tables, replays every migration), then `npm run import` |
-| Load saved runs | automatic while the backend runs (it watches `runs/` and `data/`); `npm run import` does the same by hand |
+| Clean slate (dev) | `npm run db:reset` (drops all PR Lens tables, replays every migration); the backend re-imports on start |
+| Load triage results | automatic while the backend runs (it watches `data/`); `npm run import` does the same by hand |
 
 ## Rules
 
-- `migrations/1793116800000_initial-schema.sql` is the baseline. Never edit a migration that has run;
-  add a new timestamped file instead (node-pg-migrate records applied files in `pgmigrations`).
+- `migrations/1793131200000_initial-schema.sql` is the baseline (the pre-pivot migrations were squashed into
+  it on Oct 28 2026). Never edit a migration that has run; add a new timestamped file instead
+  (node-pg-migrate records applied files in `pgmigrations`).
 - `DATABASE_URL` (used by node-pg-migrate) must point at the same database as `DB_*` (used by the app):
   `DATABASE_URL=postgres://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:<DB_PORT>/<DB_NAME>`
 - `db:reset` refuses to run with `NODE_ENV=production`. All data is lost, but nothing original is:
-  the run files in `runs/` and `data/` are the source of truth and `npm run import` reloads them.
+  `data/triage_*.json` are the source of truth and are re-imported automatically.
 
 ## Key constraints
 
 | Table | Constraint | Why |
 |---|---|---|
-| `runs` | `UNIQUE(run_key)` | One row per run. `run_key` is the Python `run_id`, or `legacy:<file name>` for runs saved before Oct 27 2026, so importing twice is a no-op. |
-| `run_models` | `UNIQUE(run_id, reviewer)` | A reviewer name means one model within a run. |
-| `realism_experiments` | `UNIQUE(exp_key)` | Re-analysing the same reviews replaces the older analysis instead of duplicating it. |
-| `calibration_experiments` | `UNIQUE(exp_key)` | `tag|name`: re-analysing an experiment under the same name replaces it. |
+| `triage_sets` | `UNIQUE(name)` | One row per set (`eval`, `live`); a newer export replaces the older one, an unchanged file is skipped. |
+| `triage_prs` | `UNIQUE(set_id, pr_id)` | A PR appears once per set; deleting a set deletes its PRs. |
 
 ## Tables
 
 | Table | Description |
 |---|---|
-| `jobs` | Work started from the dashboard: a census (`kind = census`) or an allow-listed experiment step (`kind = experiment`, `action`, `args`), its lane (`models`, `cpu`, `ops`), status and live log |
-| `runs` | One census of one file: verdict, estimate, decoy counts, tokens, prompt and code version, the full report (`raw`) |
-| `run_models` | Which model, provider, reasoning effort and token cap each reviewer used in that run (`inferred` for older runs) |
-| `reviews` | One row per review call (reviewer × version): tokens, time, finish reason, error |
-| `findings` | Every finding from every review call |
-| `suspected_bugs` | Findings from the original version, grouped into suspected bugs |
-| `decoys` | Each planted decoy: family, function, line, caught by whom, matching finding |
-| `realism_experiments` | One realism check (real bugs vs decoys) |
-| `realism_reviewer_stats` | Per reviewer (and panel) catch rates, logit gap, 95% CI |
-| `realism_families` | Panel catch rate per decoy family |
-| `calibration_experiments` | One calibration analysis: models, design, and metrics per estimator variant (`variants`) |
-| `calibration_units` | Per unit: true bugs (k), found, decoys, actual hidden, and each variant's prediction |
+| `triage_sets` | One set of triaged PRs: model, skip threshold, miss bound, summary, and (for the evaluation set) the evaluation curve |
+| `triage_prs` | One triaged PR: list columns (repo, title, lines to read, caught or not) and the full `PrTriage` document (`payload`) |
+| `jobs` | A pipeline step started from the dashboard (allow-listed `action`, `args`), its lane (`models`, `cpu`, `ops`), status, live log, and the PR it produced (`pr_id`) |

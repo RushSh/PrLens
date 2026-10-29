@@ -1,46 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LensIcon } from "@/components/Icons";
+import { NavLinks } from "@/components/NavLinks";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BugCensus",
-  description: "Census runs, reviewer models and realism checks",
+  title: "PR Lens",
+  description: "Which parts of a pull request need a human reviewer, and which are safe to skip",
 };
-
-const NAV = [
-  { href: "/", label: "Runs" },
-  { href: "/new", label: "New run" },
-  { href: "/experiments", label: "Experiments" },
-  { href: "/jobs", label: "Jobs" },
-  { href: "/realism", label: "Realism checks" },
-  { href: "/calibration", label: "Calibration" },
-  { href: "/pr-reviewer", label: "PR Reviewer" },
-];
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen font-sans antialiased">
-        <header className="border-b border-stone-200 bg-white">
-          <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-            <Link href="/" className="text-sm font-bold tracking-tight text-stone-900">
-              BugCensus
+      <body className="min-h-screen font-sans text-sm antialiased">
+        <header className="bg-header text-header-fg">
+          <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 md:px-6">
+            <Link href="/" className="flex items-center gap-2 text-base font-semibold">
+              <LensIcon size={22} />
+              PR Lens
             </Link>
-            <nav className="flex gap-1 overflow-x-auto">
-              {NAV.map((n) => (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className="whitespace-nowrap rounded px-2.5 py-1.5 text-sm text-stone-600 hover:bg-stone-100 hover:text-stone-900"
-                >
-                  {n.label}
-                </Link>
-              ))}
-            </nav>
+            <NavLinks />
           </div>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+        <main className="mx-auto max-w-[1280px] px-4 py-6 md:px-6">{children}</main>
       </body>
     </html>
   );

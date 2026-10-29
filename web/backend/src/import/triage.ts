@@ -1,9 +1,15 @@
-/** Load a triage set (scripts/export_triage.py -> data/triage_<name>.json) into the database. */
+/** Load a triage set (data/triage_<name>.json from `prlens export` or `prlens triage-pr`) into the database. */
 import { eq } from "drizzle-orm";
-import { triageFile, triageLoad } from "@bugcensus/shared";
+import { triageFile, triageLoad } from "@prlens/shared";
 import type { Db } from "../db/client";
 import { triagePrs, triageSets } from "../db/schema";
-import type { ImportResult } from "./census";
+
+
+export interface ImportResult {
+  id: string;
+  /** false when the same file was already imported */
+  created: boolean;
+}
 
 export async function importTriage(db: Db, raw: unknown): Promise<ImportResult> {
   const f = triageFile.parse(raw);
@@ -19,7 +25,15 @@ export async function importTriage(db: Db, raw: unknown): Promise<ImportResult> 
 
     const [row] = await tx
       .insert(triageSets)
-      .values({ name: f.name, generatedAt, model: f.model, threshold: f.threshold, alpha: f.alpha, summary: f.summary })
+      .values({
+        name: f.name,
+        generatedAt,
+        model: f.model,
+        threshold: f.threshold,
+        alpha: f.alpha,
+        summary: f.summary,
+        evaluation: f.evaluation ?? null,
+      })
       .returning({ id: triageSets.id });
     const setId = row!.id;
     const rows = f.prs.map((pr) => {

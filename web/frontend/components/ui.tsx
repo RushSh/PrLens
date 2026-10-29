@@ -1,84 +1,82 @@
+/** Small GitHub-style building blocks shared by every page. */
 import type { ReactNode } from "react";
-import type { RunModel } from "@bugcensus/shared";
+import type { Priority } from "@prlens/shared";
 
-export function verdictTone(verdict: string): string {
-  if (verdict === "CLEAR") return "bg-emerald-50 text-emerald-800 ring-emerald-600/25";
-  if (verdict === "LOOK HERE") return "bg-amber-50 text-amber-800 ring-amber-600/25";
-  if (verdict === "NEEDS REVIEW") return "bg-red-50 text-red-800 ring-red-600/25";
-  if (verdict.startsWith("FIX")) return "bg-orange-50 text-orange-800 ring-orange-600/25";
-  return "bg-stone-100 text-stone-600 ring-stone-500/20";
-}
-
-export function Verdict({ verdict, hidden }: { verdict: string; hidden?: string | null }) {
+export function Box({ title, right, children, className = "" }: { title?: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <span className="inline-flex flex-col gap-0.5">
-      <span className={`inline-flex w-fit items-center rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${verdictTone(verdict)}`}>
-        {verdict}
-      </span>
-      {hidden && verdict !== hidden ? (
-        <span className="text-[11px] text-stone-500">rest of file: {hidden.toLowerCase()}</span>
-      ) : null}
-    </span>
-  );
-}
-
-const PROVIDER: Record<string, { label: string; tone: string }> = {
-  meta: { label: "Meta API", tone: "bg-sky-50 text-sky-800 ring-sky-600/20" },
-  "mlx-local": { label: "local MLX", tone: "bg-violet-50 text-violet-800 ring-violet-600/20" },
-  fireworks: { label: "Fireworks", tone: "bg-orange-50 text-orange-800 ring-orange-600/20" },
-  baseten: { label: "Baseten", tone: "bg-teal-50 text-teal-800 ring-teal-600/20" },
-  fake: { label: "offline test", tone: "bg-stone-100 text-stone-600 ring-stone-500/20" },
-};
-
-export const providerLabel = (p: string) => PROVIDER[p]?.label ?? p;
-
-export function ModelChip({ model, detail = false }: { model: RunModel; detail?: boolean }) {
-  const p = PROVIDER[model.provider] ?? { label: model.provider, tone: "bg-stone-100 text-stone-700 ring-stone-500/20" };
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ring-1 ring-inset ${p.tone}`}
-      title={`${model.modelId} via ${p.label}${model.reasoningEffort ? `, effort ${model.reasoningEffort}` : ""}${model.inferred ? " (inferred: run saved before model details were recorded)" : ""}`}
-    >
-      <span className="font-medium">{model.reviewer}</span>
-      {detail ? <span className="opacity-75">· {model.modelId}</span> : null}
-      <span className="opacity-60">· {p.label}</span>
-      {model.inferred ? <span className="opacity-60">*</span> : null}
-    </span>
-  );
-}
-
-export function Card({ title, children, right }: { title?: ReactNode; children: ReactNode; right?: ReactNode }) {
-  return (
-    <section className="rounded-lg border border-stone-200 bg-white">
+    <section className={`rounded-md border border-line bg-canvas ${className}`}>
       {title ? (
-        <header className="flex items-center justify-between border-b border-stone-200 px-4 py-2.5">
-          <h2 className="text-sm font-semibold text-stone-800">{title}</h2>
+        <header className="flex flex-wrap items-center justify-between gap-2 rounded-t-md border-b border-line bg-subtle px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-fg">{title}</h2>
           {right}
         </header>
       ) : null}
-      <div className="p-4">{children}</div>
+      {children}
     </section>
   );
+}
+
+export type Tone = "neutral" | "accent" | "success" | "danger" | "attention" | "done";
+
+const TONES: Record<Tone, string> = {
+  neutral: "border-line text-muted",
+  accent: "border-accent/40 bg-accent-subtle text-accent",
+  success: "border-success/40 bg-success-subtle text-success",
+  danger: "border-danger/40 bg-danger-subtle text-danger",
+  attention: "border-attention/40 bg-attention-subtle text-attention",
+  done: "border-done/40 bg-done-subtle text-done",
+};
+
+/** A GitHub label pill. */
+export function Pill({ tone = "neutral", children, title }: { tone?: Tone; children: ReactNode; title?: string }) {
+  return (
+    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-px text-xs font-medium ${TONES[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+/** A number in a rounded counter, as on GitHub tabs. */
+export function Counter({ children }: { children: ReactNode }) {
+  return <span className="tabular ml-1.5 rounded-full bg-line-muted px-1.5 py-px text-xs font-medium text-fg">{children}</span>;
+}
+
+export const PRIORITY_TONE: Record<Priority, Tone> = { P0: "danger", P1: "attention", P2: "neutral" };
+
+export function PriorityPill({ priority }: { priority: Priority }) {
+  return <Pill tone={PRIORITY_TONE[priority]}>{priority}</Pill>;
+}
+
+/** A round avatar with the first letter of a name (no external images). */
+export function Avatar({ name, bot = false, size = 32 }: { name: string; bot?: boolean; size?: number }) {
+  const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+  return (
+    <span
+      aria-hidden
+      className={`inline-flex shrink-0 items-center justify-center font-semibold text-white ${bot ? "rounded-md" : "rounded-full"}`}
+      style={{ width: size, height: size, fontSize: size * 0.42, background: bot ? "var(--gh-done)" : `hsl(${hue} 45% 45%)` }}
+    >
+      {(name[0] ?? "?").toUpperCase()}
+    </span>
+  );
+}
+
+export function Empty({ children }: { children: ReactNode }) {
+  return <div className="rounded-md border border-dashed border-line p-8 text-center text-sm text-muted">{children}</div>;
 }
 
 export function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="text-xs text-stone-500">{label}</div>
-      <div className="tabular truncate text-lg font-semibold text-stone-900">{value}</div>
-      {sub ? <div className="text-xs text-stone-500">{sub}</div> : null}
+      <div className="text-xs text-muted">{label}</div>
+      <div className="tabular truncate text-2xl font-semibold text-fg">{value}</div>
+      {sub ? <div className="text-xs text-muted">{sub}</div> : null}
     </div>
   );
 }
 
-export function Empty({ children }: { children: ReactNode }) {
-  return <div className="rounded-lg border border-dashed border-stone-300 bg-white p-8 text-center text-sm text-stone-500">{children}</div>;
-}
-
-export function Th({ children, className = "" }: { children?: ReactNode; className?: string }) {
-  return <th className={`px-3 py-2 text-left text-xs font-medium text-stone-500 ${className}`}>{children}</th>;
-}
-
-export function Td({ children, className = "" }: { children?: ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 align-top text-sm ${className}`}>{children}</td>;
-}
+export const button =
+  "inline-flex items-center gap-1.5 rounded-md border border-line bg-subtle px-3 py-1.5 text-sm font-medium text-fg hover:bg-line-muted disabled:cursor-not-allowed disabled:opacity-50";
+export const buttonPrimary =
+  "inline-flex items-center gap-1.5 rounded-md border border-black/10 bg-success-emph px-3 py-1.5 text-sm font-medium text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50";
+export const input = "w-full rounded-md border border-line bg-canvas px-3 py-1.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";

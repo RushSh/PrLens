@@ -10,7 +10,7 @@ import { createDb } from "../src/db/client";
 const backendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export async function startTestDb() {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "bugcensus-pg-"));
+  const dir = await mkdtemp(path.join(os.tmpdir(), "prlens-pg-"));
   const port = 55000 + Math.floor(Math.random() * 5000);
   const server = new EmbeddedPostgres({
     databaseDir: dir,
@@ -22,8 +22,8 @@ export async function startTestDb() {
   });
   await server.initialise();
   await server.start();
-  await server.createDatabase("bugcensus_test");
-  const url = `postgres://postgres:postgres@localhost:${port}/bugcensus_test`;
+  await server.createDatabase("prlens_test");
+  const url = `postgres://postgres:postgres@localhost:${port}/prlens_test`;
   await runner({
     databaseUrl: url,
     dir: path.join(backendDir, "migrations"),
