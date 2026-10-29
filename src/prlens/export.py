@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .bugdata import ROOT
+from .adaptive import orders
 from .fit import cross_fit, held_out, load, pick, skip_outcome, ucb
 from .trace import is_test, logic_density, read_until
 
@@ -108,6 +109,7 @@ def build(pr, t: float, guarantee: dict) -> dict:
         "author": {"name": pr["author"] or "unknown", "kind": "human"}, "openedAt": pr["date"],
         "taskSummary": msg[:600], "panel": ["Spark Open (Baseten)", "combiner", "rules"],
         "toReview": to_review, "skipped": skipped, "hunks": hunks, "guarantee": guarantee, "source": "eval",
+        "skipThreshold": round(t, 5),
         "groundTruth": {"bugItemIds": bug_ids, "caughtByTriage": caught, "fixes": [
             {"sha": b["fix_sha"][:10], "subject": b["fix_subject"], "evidence": b["evidence"]} for b in pr["bugs"]]},
     }
@@ -150,6 +152,7 @@ def evaluation(prs, t: float, alpha: float) -> dict:
         "evidence": {"deleted": sum(b["evidence"] == "deleted" for p in prs for b in p["bugs"]),
                      "adjacent": sum(b["evidence"] == "adjacent" for p in prs for b in p["bugs"])},
         "alpha": alpha, "confidence": 0.9,
+        "drift": orders(prs),
     }
 
 

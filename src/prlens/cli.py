@@ -7,6 +7,7 @@
     score       score every region with a model (paid; asks first)         (prlens.score)
     score-eval  how well the scores rank the real bugs                     (prlens.score)
     fit         fit the combiner and the skip threshold                    (prlens.fit)
+    adapt       replay the evaluation PRs: fixed vs adaptive skip threshold (prlens.adaptive)
     export      write data/triage_eval.json for the dashboard              (prlens.export)
     triage-pr   triage a live GitHub pull request (paid; asks first)       (prlens.live)
     models      the configured models and whether each is ready            (prlens.models)
@@ -26,6 +27,7 @@ STEPS: dict[str, tuple[str, list[str]]] = {
     "score": ("score", ["run"]),
     "score-eval": ("score", ["eval"]),
     "fit": ("fit", []),
+    "adapt": ("adaptive", []),
     "export": ("export", []),
     "triage-pr": ("live", []),
     "models": ("models", []),

@@ -7,7 +7,7 @@ import { RevealBox } from "@/components/pr/RevealBox";
 import { Avatar, Pill, PriorityPill, buttonPrimary } from "@/components/ui";
 import { pct, when } from "@/lib/format";
 import { itemAnchor, itemLine, prHref, prIdFromKey, skipLabel } from "@/lib/pr";
-import { loadTriagePr } from "@/lib/triage-source";
+import { loadAdaptive, loadTriagePr } from "@/lib/triage-source";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
   const skipCounts = new Map<string, number>();
   for (const s of pr.skipped) skipCounts.set(skipLabel(s.category), (skipCounts.get(skipLabel(s.category)) ?? 0) + 1);
   const isEval = pr.source === "eval";
+  const adaptive = pr.source === "sample" ? null : await loadAdaptive(pr.repo);
 
   return (
     <div className="gap-8 md:grid md:grid-cols-[minmax(0,1fr)_256px]">
@@ -107,6 +108,14 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
             ))}
           </div>
         </Side>
+        {adaptive ? (
+          <Side title="Skip threshold">
+            <p className="text-muted">
+              <span className="font-semibold text-fg">{adaptive.threshold ? pct(adaptive.threshold, 1) : "off"}</span> for {pr.repo}
+              {adaptive.n ? `, after ${adaptive.n} reviewed PR${adaptive.n === 1 ? "" : "s"}` : "; adapts as reviews are finished"}
+            </p>
+          </Side>
+        ) : null}
         <Side title="Scored by">
           <p className="text-muted">{pr.panel.join(", ")}</p>
         </Side>

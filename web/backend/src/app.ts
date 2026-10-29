@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import Fastify, { type FastifyInstance } from "fastify";
 import { z } from "zod";
-import { pipelineRequest, type PipelinePlan } from "@prlens/shared";
+import { feedbackRequest, pipelineRequest, type PipelinePlan } from "@prlens/shared";
 import type { Db } from "./db/client";
 import { env } from "./env";
 import { UserError } from "./errors";
@@ -11,8 +11,18 @@ import { importRepository, type ImportSummary } from "./import/files";
 import { importTriage } from "./import/triage";
 import type { JobRunner } from "./jobs/runner";
 import { availableModels } from "./models";
-import { command, confirmToken, getAction, listActions, parseParams } from "./pipeline";
-import { getJob, getTriagePr, getTriageSet, listJobs, listTriage } from "./queries";
+import { command, confirmToken, getAction, listActions, parseParams, PR_URL } from "./pipeline";
+import {
+  adaptiveAll,
+  adaptiveFor,
+  getFeedback,
+  getJob,
+  getTriagePr,
+  getTriageSet,
+  listJobs,
+  listTriage,
+  recordFeedback,
+} from "./queries";
 
 const uuidParam = z.object({ id: z.string().uuid() });
 
@@ -65,6 +75,31 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     return (await getTriageSet(db, name)) ?? reply.status(404).send({ error: "set not found" });
   });
 
+  // ---- feedback: did a bug turn up in skipped code? Each repository's skip threshold adapts to it.
+  const prParam = z.object({ id: z.string().min(1).max(300) });
+  app.get("/api/triage/prs/:id/feedback", async (req, reply) => {
+    const { id } = prParam.parse(req.params);
+    const pr = await getTriagePr(db, id);
+    if (!pr) return reply.status(404).send({ error: "PR not found" });
+    return { feedback: await getFeedback(db, pr.repo, id), adaptive: await adaptiveFor(db, pr.repo) };
+  });
+  app.post("/api/triage/prs/:id/feedback", async (req, reply) => {
+    const { id } = prParam.parse(req.params);
+    const body = feedbackRequest.parse(req.body);
+    const pr = await getTriagePr(db, id);
+    if (!pr) return reply.status(404).send({ error: "PR not found" });
+    const skipped = new Set(pr.skipped.map((s) => s.id));
+    const unknown = body.itemIds.filter((i) => !skipped.has(i));
+    if (unknown.length) throw new UserError(`not skipped in this PR: ${unknown.join(", ")}`);
+    if (!body.missed && body.itemIds.length) throw new UserError("a clean review cannot point at skipped items");
+    await recordFeedback(db, pr.repo, id, body);
+    return { feedback: await getFeedback(db, pr.repo, id), adaptive: await adaptiveFor(db, pr.repo) };
+  });
+  app.get("/api/adaptive", async (req) => {
+    const { scope } = z.object({ scope: z.string().min(1).max(200).optional() }).parse(req.query);
+    return scope ? adaptiveFor(db, scope) : adaptiveAll(db);
+  });
+
   // ---- imports (`npm run import` and the file watcher read the files directly)
   app.post("/api/import/triage", async (req) => importTriage(db, req.body));
   app.post("/api/import/files", async () => (opts.onImport ? opts.onImport() : importRepository(db, root)));
@@ -93,6 +128,7 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     if (!action.paid) throw new UserError("this step is free and has no plan");
     const params = await parseParams(action, body.params, root);
     const { program, args } = command(action, params, true);
+    args.push(...(await thresholdArgs(action.id, params)));
     try {
       const { stdout, stderr } = await exec(program, args, {
         cwd: root,
@@ -115,6 +151,7 @@ export function buildApp(opts: AppOptions): FastifyInstance {
       throw new UserError("plan this step first and confirm its cost (the settings changed since the plan, or the server restarted)");
     }
     const { program, args } = command(action, params);
+    args.push(...(await thresholdArgs(action.id, params)));
     const id = await opts.runner.enqueue({
       action: action.id,
       title: action.id === "triage-pr" ? `Triage ${String(params.url).replace("https://github.com/", "")}` : action.title,
@@ -126,6 +163,16 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     });
     return reply.status(201).send({ id });
   });
+
+  /** Live triage uses the repository's current adaptive threshold (it starts at the evaluation set's). */
+  async function thresholdArgs(actionId: string, params: Record<string, unknown>): Promise<string[]> {
+    if (actionId !== "triage-pr") return [];
+    const url = String(params.url);
+    if (!PR_URL.test(url)) return [];
+    const [owner, repo] = url.replace("https://github.com/", "").split("/");
+    const state = await adaptiveFor(db, `${owner}/${repo}`);
+    return ["--threshold", state.threshold.toFixed(6)];
+  }
 
   return app;
 }

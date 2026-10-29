@@ -101,6 +101,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("url")
     ap.add_argument("--model", default="spark_open")
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--threshold", type=float, default=None,
+                    help="skip threshold to use (the dashboard passes the repository's adaptive threshold)")
     ap.add_argument("--yes", action="store_true")
     ap.add_argument("--plan-only", action="store_true")
     args = ap.parse_args(argv)
@@ -121,7 +123,9 @@ def main(argv: list[str] | None = None) -> None:
     confirm(f"{pr['repo']} #{number}: {pr['subject']}\n"
             f"{len(pr['hunks'])} hunks, {pr['lines']} changed lines; {skipped} hunks skipped without a model; "
             f"{len(todo)} regions to score with {s.name} ({s.model_id} on {s.provider}).\n{line}\n"
-            f"File types: {', '.join(langs) or 'none'} (the skip promise is calibrated on Python only).",
+            f"File types: {', '.join(langs) or 'none'} (the skip promise is calibrated on Python only).\n"
+            + (f"Skip threshold: bug chance under {args.threshold:.2%} (this repository's adaptive threshold)."
+               if args.threshold is not None else "Skip threshold: the evaluation set's."),
             args.yes, args.plan_only)
 
     with ThreadPoolExecutor(args.workers) as ex:
@@ -148,7 +152,8 @@ def main(argv: list[str] | None = None) -> None:
     if any(not h["file"].endswith(PY_EXT) for h in pr["hunks"] if not h["skip"]):
         note += "; not yet calibrated for the non-Python files in this PR"
     guarantee = {"missBound": comb.get("alpha", 0.2), "confidence": 0.9, "calibratedOn": note}
-    out = build(pr, comb["threshold"], guarantee)
+    threshold = comb["threshold"] if args.threshold is None else args.threshold
+    out = build(pr, threshold, guarantee)
     out.pop("groundTruth", None)
     out.update(number=number, branch=pr["branch"], base=pr["base"], url=pr["url"], source="live", openedAt=pr["date"],
                taskSummary=pr["message"][:1500] or pr["subject"], panel=[s.name, "combiner", "rules"],
@@ -161,7 +166,7 @@ def main(argv: list[str] | None = None) -> None:
     total = read + sum(sum(i["added"] + i["removed"] for i in p["skipped"]) for p in prs)
     OUT.write_text(json.dumps({
         "kind": "triage", "name": "live", "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "model": args.model, "threshold": comb["threshold"], "alpha": comb.get("alpha", 0.2),
+        "model": args.model, "threshold": threshold, "alpha": comb.get("alpha", 0.2),
         "summary": {"prs": len(prs), "repos": len({p["repo"] for p in prs}), "missed": 0,
                     "read_share": read / max(1, total), "held_out_missed": 0, "held_out_read_share": 0},
         "prs": prs,

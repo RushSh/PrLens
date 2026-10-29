@@ -58,4 +58,15 @@ export const jobs = pgTable("jobs", {
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 
-export const tables = { triageSets, triagePrs, jobs };
+export const triageFeedback = pgTable("triage_feedback", {
+  id: serial("id").primaryKey(),
+  scope: text("scope").notNull(),
+  prId: text("pr_id").notNull(),
+  missed: boolean("missed").notNull(),
+  itemIds: text("item_ids").array().notNull().default([]),
+  note: text("note"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const tables = { triageSets, triagePrs, jobs, triageFeedback };

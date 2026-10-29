@@ -7,6 +7,7 @@ import { buildFiles, fileAnchor, itemAnchor, itemLine, segments, skipLabel, type
 import { BugIcon, CheckIcon, ChevronIcon, FileIcon, SkipIcon } from "../Icons";
 import { Pill, PriorityPill } from "../ui";
 import { DiffCols, DiffRows, HunkHeader } from "./DiffRows";
+import { FeedbackPanel } from "./FeedbackPanel";
 import { LensComment } from "./LensComment";
 
 const MARKER = { P0: "bg-danger", P1: "bg-attention", P2: "bg-muted" } as const;
@@ -28,6 +29,7 @@ export function FilesChanged({ pr }: { pr: PrTriage }) {
   const [showSkipped, setShowSkipped] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [side, setSide] = useState<"queue" | "files">("queue");
+  const [reported, setReported] = useState<Set<string>>(new Set());
 
   const bugIds = useMemo(() => new Set(reveal ? (pr.groundTruth?.bugItemIds ?? []) : []), [reveal, pr]);
   const fileHasBug = (f: FileView) => [...f.review, ...f.skipped].some((it) => bugIds.has(it.id));
@@ -132,6 +134,8 @@ export function FilesChanged({ pr }: { pr: PrTriage }) {
           ) : null}
         </div>
 
+        <FeedbackPanel prId={pr.id} reported={[...reported]} onClearReported={() => setReported(new Set())} />
+
         {reveal && pr.groundTruth ? (
           <div
             className={`rounded-md border px-4 py-3 text-sm ${pr.groundTruth.caughtByTriage ? "border-success/40 bg-success-subtle" : "border-danger/40 bg-danger-subtle"}`}
@@ -203,6 +207,8 @@ export function FilesChanged({ pr }: { pr: PrTriage }) {
                         onExpand={(id) => setExpanded((e) => toggle(e, id))}
                         reviewed={reviewed}
                         onReviewed={(id) => setReviewed((r) => toggle(r, id))}
+                        reported={reported}
+                        onReport={(id) => setReported((r) => toggle(r, id))}
                       />
                     ))}
                   </tbody>
@@ -225,6 +231,8 @@ function Hunk({
   onExpand,
   reviewed,
   onReviewed,
+  reported,
+  onReport,
 }: {
   hunk: ViewHunk;
   items: Map<string, ReviewItem | SkippedItem>;
@@ -234,6 +242,8 @@ function Hunk({
   onExpand: (id: string) => void;
   reviewed: Set<string>;
   onReviewed: (id: string) => void;
+  reported: Set<string>;
+  onReport: (id: string) => void;
 }) {
   if (hunk.skipItem) {
     const it = hunk.skipItem;
@@ -241,7 +251,7 @@ function Hunk({
     const show = showSkipped || expanded.has(it.id) || isBug;
     return (
       <>
-        <SkipBar item={it} lines={it.added + it.removed} show={show} isBug={isBug} onToggle={() => onExpand(it.id)} />
+        <SkipBar item={it} lines={it.added + it.removed} show={show} isBug={isBug} onToggle={() => onExpand(it.id)} reported={reported.has(it.id)} onReport={() => onReport(it.id)} />
         {show ? (
           <>
             <HunkHeader header={hunk.header} />
@@ -262,7 +272,7 @@ function Hunk({
           const show = showSkipped || expanded.has(it.id) || isBug;
           return (
             <Fragment key={i}>
-              <SkipBar item={it} lines={it.added + it.removed} show={show} isBug={isBug} onToggle={() => onExpand(it.id)} />
+              <SkipBar item={it} lines={it.added + it.removed} show={show} isBug={isBug} onToggle={() => onExpand(it.id)} reported={reported.has(it.id)} onReport={() => onReport(it.id)} />
               {show ? <DiffRows lines={seg.lines} marker={isBug ? "bg-danger" : "bg-line"} /> : null}
             </Fragment>
           );
@@ -288,7 +298,23 @@ function Hunk({
   );
 }
 
-function SkipBar({ item, lines, show, isBug, onToggle }: { item: SkippedItem; lines: number; show: boolean; isBug: boolean; onToggle: () => void }) {
+function SkipBar({
+  item,
+  lines,
+  show,
+  isBug,
+  onToggle,
+  reported,
+  onReport,
+}: {
+  item: SkippedItem;
+  lines: number;
+  show: boolean;
+  isBug: boolean;
+  onToggle: () => void;
+  reported: boolean;
+  onReport: () => void;
+}) {
   return (
     <tr className={isBug ? "bg-danger-subtle" : "bg-subtle"}>
       <td colSpan={5} className="border-y border-line-muted px-3 py-1.5 font-sans">
@@ -304,7 +330,16 @@ function SkipBar({ item, lines, show, isBug, onToggle }: { item: SkippedItem; li
               <BugIcon size={12} /> the real bug was here
             </Pill>
           ) : null}
-          <button type="button" onClick={onToggle} className="ml-auto text-accent hover:underline" aria-expanded={show}>
+          <button
+            type="button"
+            onClick={onReport}
+            aria-pressed={reported}
+            className={`ml-auto rounded-full border px-2 py-px ${reported ? "border-danger bg-danger-subtle font-semibold text-danger" : "border-line text-muted hover:text-danger"}`}
+            title="Mark that you found a bug in this skipped code"
+          >
+            {reported ? "Bug here ✓" : "Bug here?"}
+          </button>
+          <button type="button" onClick={onToggle} className="text-accent hover:underline" aria-expanded={show}>
             {show ? "Hide" : "Show"}
           </button>
         </div>

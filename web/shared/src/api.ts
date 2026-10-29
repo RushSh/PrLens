@@ -77,3 +77,22 @@ export interface PipelinePlan {
 
 /** The client header every non-GET request must carry (see the backend's onRequest hook). */
 export const CLIENT_HEADER = "X-PRLens-Client";
+
+export const feedbackRequest = z.object({
+  /** true: a bug was found in code this PR skipped; false: review finished and nothing was missed. */
+  missed: z.boolean(),
+  /** The skipped items where the bug was. */
+  itemIds: z.array(z.string().max(300)).max(50).default([]),
+  note: z.string().max(500).optional(),
+});
+export type FeedbackRequest = z.infer<typeof feedbackRequest>;
+
+/** What was recorded for one PR. */
+export interface PrFeedback {
+  prId: string;
+  scope: string;
+  missed: boolean;
+  itemIds: string[];
+  note: string | null;
+  at: string;
+}

@@ -143,6 +143,8 @@ export interface PrTriage {
   groundTruth?: TriageGroundTruth;
   /** Each scored hunk's full diff, so files can be shown whole; items point into them (id prefix, flagged lines). */
   hunks?: { id: string; file: string; header: string; diff: DiffLine[] }[];
+  /** The skip threshold this PR was triaged with (bug chance under it is skipped; 0 = nothing skipped on score). */
+  skipThreshold?: number;
   /** Link to the PR on GitHub (live PRs). */
   url?: string;
   /** Branch the PR merges into (live PRs). */
@@ -181,6 +183,28 @@ export interface TriageEvaluation {
   evidence: { deleted: number; adjacent: number };
   alpha: number;
   confidence: number;
+  /** Fixed vs adaptive skip threshold replayed over the evaluation PRs (see prlens.adaptive). */
+  drift?: {
+    date: DriftReplay;
+    shift: DriftReplay;
+    random: Record<"fixed" | "adaptive" | "read_fixed" | "read_adaptive", { mean: number; p90: number }>;
+  };
+}
+
+/** One replay: per PR after warm-up, the cumulative miss rate of each threshold and the guaranteed ceiling. */
+export interface DriftReplay {
+  warm: number;
+  alpha: number;
+  eta: number;
+  floor: number;
+  start_threshold: number;
+  prs: number;
+  fixed: number[];
+  adaptive: number[];
+  bound: number[];
+  threshold: number[];
+  read_share: { fixed: number; adaptive: number };
+  missed: { fixed: number; adaptive: number };
 }
 
 export interface TriageSetSummary {
@@ -256,6 +280,7 @@ export const prTriageSchema: z.ZodType<PrTriage> = z.object({
   guarantee: z.object({ missBound: z.number(), confidence: z.number(), calibratedOn: z.string() }).nullable(),
   source: z.enum(["sample", "eval", "live"]),
   hunks: z.array(z.object({ id: z.string(), file: z.string(), header: z.string(), diff: z.array(diffLine) })).optional(),
+  skipThreshold: z.number().optional(),
   url: z.string().url().optional(),
   base: z.string().optional(),
   groundTruth: z
@@ -265,6 +290,21 @@ export const prTriageSchema: z.ZodType<PrTriage> = z.object({
       fixes: z.array(z.object({ sha: z.string(), subject: z.string(), evidence: z.enum(["deleted", "adjacent"]) })),
     })
     .optional(),
+});
+
+const driftReplay = z.object({
+  warm: z.number(),
+  alpha: z.number(),
+  eta: z.number(),
+  floor: z.number(),
+  start_threshold: z.number(),
+  prs: z.number(),
+  fixed: z.array(z.number()),
+  adaptive: z.array(z.number()),
+  bound: z.array(z.number()),
+  threshold: z.array(z.number()),
+  read_share: z.object({ fixed: z.number(), adaptive: z.number() }),
+  missed: z.object({ fixed: z.number(), adaptive: z.number() }),
 });
 
 export const triageFile = z.object({
@@ -293,6 +333,13 @@ export const triageFile = z.object({
       evidence: z.object({ deleted: z.number(), adjacent: z.number() }),
       alpha: z.number(),
       confidence: z.number(),
+      drift: z
+        .object({
+          date: driftReplay,
+          shift: driftReplay,
+          random: z.record(z.enum(["fixed", "adaptive", "read_fixed", "read_adaptive"]), z.object({ mean: z.number(), p90: z.number() })),
+        })
+        .optional(),
     })
     .optional(),
   prs: z.array(prTriageSchema),

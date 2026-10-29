@@ -3,7 +3,7 @@
  * sample PRs when the backend has none or cannot be reached.
  */
 import { cache } from "react";
-import { triageLoad, type PrTriage, type PrTriageSummary, type TriageList, type TriageSetInfo } from "@prlens/shared";
+import { triageLoad, type AdaptiveState, type PrTriage, type PrTriageSummary, type TriageList, type TriageSetInfo } from "@prlens/shared";
 import { serverGet } from "./api";
 import { SAMPLE_PRS } from "./triage-sample";
 
@@ -55,6 +55,14 @@ export const loadTriagePr = cache(async (id: string): Promise<PrTriage | null> =
 export const loadEvalSet = cache(async (): Promise<TriageSetInfo | null> => {
   try {
     return await serverGet<TriageSetInfo>("/api/triage/sets/eval");
+  } catch {
+    return null;
+  }
+});
+
+export const loadAdaptive = cache(async (scope: string): Promise<AdaptiveState | null> => {
+  try {
+    return await serverGet<AdaptiveState>(`/api/adaptive?scope=${encodeURIComponent(scope)}`);
   } catch {
     return null;
   }

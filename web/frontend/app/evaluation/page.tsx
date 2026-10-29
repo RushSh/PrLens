@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DriftChart } from "@/components/DriftChart";
 import { EvalChart } from "@/components/EvalChart";
 import { Box, Empty, Pill, Stat } from "@/components/ui";
 import { pct, when } from "@/lib/format";
@@ -46,6 +47,36 @@ export default async function EvaluationPage() {
           </p>
         </div>
       </Box>
+
+      {ev.drift ? (
+        <Box title="A promise that survives drift: the adaptive threshold">
+          <div className="grid gap-6 p-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <DriftChart drift={ev.drift} />
+            <div className="space-y-3 text-sm text-fg">
+              <p>
+                A threshold calibrated once breaks when new PRs differ from old ones: replayed in date order, the fixed threshold
+                skips {pct(ev.drift.date.fixed[ev.drift.date.fixed.length - 1] ?? 0)} of bugs, against a promised {pct(ev.alpha)}.
+              </p>
+              <p>
+                PR Lens moves each repository&apos;s threshold after every reviewed PR (adaptive conformal inference, Gibbs &amp;
+                Candès 2021): a bug found in skipped code tightens it, a clean review loosens it a little.
+              </p>
+              <div className="rounded-md border border-line bg-subtle p-3 font-mono text-xs leading-6">
+                θ<sub>t+1</sub> = θ<sub>t</sub> − η (err<sub>t</sub> − α)
+                <br />
+                miss rate after n PRs ≤ α + (θ<sub>1</sub> − logit(floor) + η(1−α)) / (η n)
+              </div>
+              <p className="text-muted">
+                The ceiling holds for every sequence of PRs, drifting or adversarial, with no assumption that the future looks
+                like the past. Here α = {pct(ev.drift.date.alpha)}, η = {ev.drift.date.eta}, floor = {pct(ev.drift.date.floor, 1)}: after{" "}
+                {ev.drift.date.prs} PRs the ceiling is {pct(ev.drift.date.bound[ev.drift.date.bound.length - 1] ?? 1)}, after 200 it is
+                23%, and it keeps falling toward {pct(ev.alpha)}. Assumes each outcome is reported before the next PR is triaged and
+                that the no-model skips (proven formatting, docs, lock files) hold no functional bug.
+              </p>
+            </div>
+          </div>
+        </Box>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Box title="By repository">

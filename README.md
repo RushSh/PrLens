@@ -34,6 +34,27 @@ own tests fail before it and pass after). PR Lens triaged each without knowing w
 Caveats: Python only so far (TypeScript and C# evaluation sets are in progress); 75 PRs is a small set; most of these
 commits were written by people. The Evaluation tab of the dashboard shows the full curve and per-repository results.
 
+## A promise that survives drift
+
+A threshold calibrated once breaks when new PRs differ from old ones. Replayed in date order, the fixed threshold
+skips 33% of bugs against a promised 20%. PR Lens instead moves each repository's threshold after every reviewed PR:
+a reviewer marks "Bug here" on skipped code (or finishes with "nothing missed"), and
+
+    theta_{t+1} = theta_t - eta * (err_t - alpha)        (threshold = sigmoid(theta); adaptive conformal inference)
+
+For every sequence of PRs, drifting or even adversarial, the miss rate after n PRs is at most
+`alpha + (theta_1 - logit(floor) + eta*(1 - alpha)) / (eta*n)`. That is 31% after 60 PRs and 23% after 200, falling
+toward 20% (proof in `src/prlens/adaptive.py`; the tests check it against an adversary).
+
+| Replay of the 75 evaluation PRs | Fixed threshold | Adaptive threshold |
+| --- | --- | --- |
+| Date order | 33% of bugs skipped | 22% skipped, under the proven ceiling of 31% |
+| Hardest repositories last | 33% | 23% |
+| 200 random orders (no drift) | 7% skipped, 57% of lines read | 17% skipped, **46%** read (worst tenth 20%) |
+
+Assumptions, stated in the product: each outcome is reported before the next PR is triaged, and the no-model skips
+(proven formatting, docs, lock files) hold no functional bug.
+
 ## How it works
 
 1. **Evaluation PRs from real bugs.** `prlens mine` finds recent fix commits that come with a test; `prlens validate`
@@ -77,6 +98,7 @@ Evaluation, Triage a PR, and Pipeline (every `prlens` step, with cost shown befo
 | `prlens score` | Model risk score for every region (resumable, rate limits retried) | paid, asks first |
 | `prlens score-eval` | How well the scores rank the real bugs | free |
 | `prlens fit` | Combiner weights and skip threshold, with a held-out check | free |
+| `prlens adapt` | Replay fixed vs adaptive threshold (date order, drift, random orders) | free |
 | `prlens export` | Publish `data/triage_eval.json` to the dashboard | free |
 | `prlens triage-pr` | Triage a live GitHub PR | paid, asks first |
 

@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { triageLoad, type SkipCategory } from "@prlens/shared";
+import { guaranteeText, triageLoad, type SkipCategory } from "@prlens/shared";
 import { CheckIcon, DotIcon, LensIcon } from "@/components/Icons";
 import { Box } from "@/components/ui";
 import { pct } from "@/lib/format";
 import { prIdFromKey, skipLabel } from "@/lib/pr";
-import { loadEvalSet, loadTriagePr } from "@/lib/triage-source";
+import { loadAdaptive, loadEvalSet, loadTriagePr } from "@/lib/triage-source";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,7 @@ export default async function ChecksPage({ params }: { params: Promise<{ key: st
   const id = prIdFromKey(key);
   const [pr, evalSet] = await Promise.all([id ? loadTriagePr(id) : null, loadEvalSet()]);
   if (!pr) notFound();
+  const adaptive = pr.source === "sample" ? null : await loadAdaptive(pr.repo);
   const { readLines, totalLines } = triageLoad(pr);
   const n = pr.toReview.length;
   const scored = pr.toReview.length + pr.skipped.filter((s) => s.category === "low_score").length;
@@ -26,7 +27,24 @@ export default async function ChecksPage({ params }: { params: Promise<{ key: st
     ["Regions scored by a model", `${scored}, with ${pr.panel[0] ?? "the model"}`],
     ["Need a human", `${n}${forced ? ` (${forced} by rule: migrations, security, public API)` : ""}`],
     ["Skipped", [...cats.entries()].map(([c, k]) => `${k} ${skipLabel(c).toLowerCase()}`).join(", ") || "none"],
-    ["Skip threshold", evalSet ? `bug chance under ${pct(evalSet.threshold, 1)}, chosen on the evaluation set` : "from the evaluation set"],
+    [
+      "Skip threshold used",
+      pr.skipThreshold !== undefined
+        ? pr.skipThreshold > 0
+          ? `bug chance under ${pct(pr.skipThreshold, 1)}`
+          : "none: nothing was skipped on score"
+        : evalSet
+          ? `bug chance under ${pct(evalSet.threshold, 1)}, chosen on the evaluation set`
+          : "from the evaluation set",
+    ],
+    [
+      `Adaptive threshold for ${pr.repo}`,
+      adaptive
+        ? adaptive.n
+          ? `${adaptive.threshold ? pct(adaptive.threshold, 1) : "off"} now (started at ${pct(adaptive.threshold0, 1)}); ${adaptive.n} reviewed PR${adaptive.n === 1 ? "" : "s"}, ${adaptive.misses} with a miss; ${guaranteeText(adaptive)}`
+          : `${pct(adaptive.threshold, 1)}; moves after each review you finish in Files changed; ${guaranteeText(adaptive)}`
+        : "not available",
+    ],
     ["Skip promise", pr.guarantee ? `at most ${pct(pr.guarantee.missBound)} of bugs skipped, ${pct(pr.guarantee.confidence)} confidence; ${pr.guarantee.calibratedOn}` : "none"],
   ];
   if (pr.groundTruth) {

@@ -1,8 +1,8 @@
 /** Read side: database rows -> API shapes from @prlens/shared. */
-import { asc, desc, eq } from "drizzle-orm";
-import type { Job, PrTriage, TriageList, TriageSetInfo } from "@prlens/shared";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { adaptiveState, type AdaptiveState, type Job, type PrFeedback, type PrTriage, type TriageList, type TriageSetInfo } from "@prlens/shared";
 import type { Db } from "./db/client";
-import { jobs, triagePrs, triageSets } from "./db/schema";
+import { jobs, triageFeedback, triagePrs, triageSets } from "./db/schema";
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
@@ -97,4 +97,50 @@ export async function listJobs(db: Db, limit = 30): Promise<Job[]> {
 export async function getJob(db: Db, id: string): Promise<Job | null> {
   const [j] = await db.select().from(jobs).where(eq(jobs.id, id));
   return j ? toJob(j) : null;
+}
+
+// ---- feedback and the adaptive threshold
+
+/** Where every scope's threshold starts: the evaluation set's calibrated threshold (0.06 before one exists). */
+export async function startThreshold(db: Db): Promise<number> {
+  const [s] = await db.select({ t: triageSets.threshold }).from(triageSets).where(eq(triageSets.name, "eval"));
+  return s?.t ?? 0.06;
+}
+
+export async function adaptiveFor(db: Db, scope: string): Promise<AdaptiveState> {
+  const rows = await db
+    .select({ prId: triageFeedback.prId, missed: triageFeedback.missed, at: triageFeedback.createdAt })
+    .from(triageFeedback)
+    .where(eq(triageFeedback.scope, scope))
+    .orderBy(asc(triageFeedback.createdAt), asc(triageFeedback.id));
+  return adaptiveState(scope, await startThreshold(db), rows.map((r) => ({ ...r, at: r.at.toISOString() })));
+}
+
+export async function adaptiveAll(db: Db): Promise<AdaptiveState[]> {
+  const scopes = await db.selectDistinct({ scope: triageFeedback.scope }).from(triageFeedback).orderBy(asc(triageFeedback.scope));
+  return Promise.all(scopes.map((s) => adaptiveFor(db, s.scope)));
+}
+
+/** Record (or change) a PR's outcome. Changing it keeps its place in the order, so history is not rewritten. */
+export async function recordFeedback(
+  db: Db,
+  scope: string,
+  prId: string,
+  f: { missed: boolean; itemIds: string[]; note?: string },
+): Promise<void> {
+  await db
+    .insert(triageFeedback)
+    .values({ scope, prId, missed: f.missed, itemIds: f.itemIds, note: f.note ?? null })
+    .onConflictDoUpdate({
+      target: [triageFeedback.scope, triageFeedback.prId],
+      set: { missed: f.missed, itemIds: f.itemIds, note: f.note ?? null, updatedAt: sql`now()` },
+    });
+}
+
+export async function getFeedback(db: Db, scope: string, prId: string): Promise<PrFeedback | null> {
+  const [r] = await db
+    .select()
+    .from(triageFeedback)
+    .where(and(eq(triageFeedback.scope, scope), eq(triageFeedback.prId, prId)));
+  return r ? { prId: r.prId, scope: r.scope, missed: r.missed, itemIds: r.itemIds, note: r.note, at: r.createdAt.toISOString() } : null;
 }
