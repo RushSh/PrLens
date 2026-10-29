@@ -170,6 +170,22 @@ export interface PrTriageSummary {
   totalLines: number;
   /** null when the real bug is not known. */
   caughtByTriage: boolean | null;
+  /** "python" | "typescript" | "csharp" (older sets without one are Python). */
+  language: string;
+}
+
+/** The languages PR Lens is calibrated for, and the evaluation set that holds each one's numbers. */
+export const EVAL_LANGUAGES = [
+  { key: "python", label: "Python", set: "eval" },
+  { key: "typescript", label: "TypeScript", set: "eval-typescript" },
+  { key: "csharp", label: "C#", set: "eval-csharp" },
+] as const;
+
+export type EvalLanguage = (typeof EVAL_LANGUAGES)[number]["key"];
+
+/** Name of the evaluation set for a language ("eval" for Python, "eval-<language>" otherwise). */
+export function evalSetName(language: string | null | undefined): string {
+  return EVAL_LANGUAGES.find((l) => l.key === language)?.set ?? "eval";
 }
 
 /** How well triage did on an evaluation set (scripts write it; the Evaluation tab shows it). */

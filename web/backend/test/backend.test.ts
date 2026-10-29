@@ -13,6 +13,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 type Fixture = {
   name: string;
   generated_at: string;
+  threshold: number;
   prs: PrTriage[];
   evaluation?: unknown;
 };
@@ -123,7 +124,7 @@ describe("api and pipeline", () => {
     expect((await post({ action: "triage-pr", params, confirmToken: token })).statusCode).toBe(201);
     expect(queued[0]!.lane).toBe("models");
     expect(queued[0]!.args.slice(0, 7)).toEqual(["-m", "prlens", "triage-pr", params.url, "--model", "spark_open", "--yes"]);
-    expect(queued[0]!.args.slice(7, 8)).toEqual(["--threshold"]); // the repository's adaptive threshold
+    expect(queued[0]!.args).toHaveLength(7); // no reviews of this repository yet: its language's calibrated threshold
     expect(queued[0]!.title).toBe("Triage mahmoud/boltons/pull/677");
 
     const badUrl = { url: "https://github.com/o/r/pull/1; rm -rf /", model: "spark_open" };
@@ -170,6 +171,26 @@ describe("adaptive threshold", () => {
     }
     expect(Math.abs(state.missRate! - 0.2)).toBeLessThan(0.01);
     expect(logit(0.5)).toBe(0);
+  });
+
+  it("starts a repository's threshold at its own language's calibrated one", async () => {
+    const raw = await fixture();
+    const ts = structuredClone(raw);
+    ts.name = "eval-typescript";
+    ts.threshold = 0.031;
+    await importTriage(t.db, ts);
+    const live = structuredClone(raw);
+    live.name = "live-ts";
+    delete live.evaluation;
+    const base = { ...live.prs[0]!, source: "live" as const, groundTruth: undefined, repo: "acme/web", language: "typescript" };
+    live.prs = [{ ...base, id: "github:acme/web#1", number: 1 }];
+    await importTriage(t.db, live);
+    const app = buildApp({ db: t.db });
+    const state = (await app.inject({ method: "GET", url: "/api/adaptive?scope=acme/web" })).json() as AdaptiveState;
+    expect(state.threshold).toBeCloseTo(0.031, 9);
+    const list = (await app.inject({ method: "GET", url: "/api/triage/prs" })).json() as TriageList;
+    expect(list.prs.find((p) => p.id === "github:acme/web#1")?.language).toBe("typescript");
+    await app.close();
   });
 
   it("records outcomes per repository and moves that repository's threshold", async () => {

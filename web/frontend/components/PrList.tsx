@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
-import type { PrTriageSummary, TriageList } from "@prlens/shared";
+import { EVAL_LANGUAGES, type PrTriageSummary, type TriageList } from "@prlens/shared";
 import { pct, when } from "@/lib/format";
 import { prHref, prRef } from "@/lib/pr";
 import { CheckIcon, CommitIcon, LensIcon, PullIcon, XIcon } from "./Icons";
@@ -16,17 +16,27 @@ export function PrList({ list, sample }: { list: TriageList; sample: boolean }) 
   const [view, setView] = useState<View>(live.length ? "live" : "eval");
   const [q, setQ] = useState("");
   const [repo, setRepo] = useState("");
+  const [language, setLanguage] = useState("");
   const [outcome, setOutcome] = useState<"" | "caught" | "missed">("");
 
   const rows = view === "live" ? live : evals;
-  const repos = useMemo(() => [...new Set(rows.map((p) => p.repo))].sort(), [rows]);
+  const languages = EVAL_LANGUAGES.filter((l) => rows.some((p) => p.language === l.key));
+  const repos = useMemo(
+    () => [...new Set(rows.filter((p) => !language || p.language === language).map((p) => p.repo))].sort(),
+    [rows, language],
+  );
   const shown = rows.filter(
     (p) =>
       (!q || `${p.title} ${p.repo} ${p.branch}`.toLowerCase().includes(q.toLowerCase())) &&
+      (!language || p.language === language) &&
       (!repo || p.repo === repo) &&
       (!outcome || (outcome === "caught" ? p.caughtByTriage === true : p.caughtByTriage === false)),
   );
-  const evalSet = list.sets.find((s) => s.name === "eval");
+  // the evaluation summary follows the language and repository filters (not the outcome filter it would trivially match)
+  const scope = evals.filter((p) => (!language || p.language === language) && (!repo || p.repo === repo));
+  const kept = scope.filter((p) => p.caughtByTriage).length;
+  const readShare = scope.reduce((a, p) => a + p.readLines, 0) / Math.max(1, scope.reduce((a, p) => a + p.totalLines, 0));
+  const evalLink = `/evaluation${language ? `?lang=${language}` : ""}`;
 
   return (
     <div className="space-y-4">
@@ -60,6 +70,22 @@ export function PrList({ list, sample }: { list: TriageList; sample: boolean }) 
             Evaluation set <Counter>{evals.length}</Counter>
           </TabButton>
           <div className="ml-auto flex flex-wrap items-center gap-3 text-sm text-muted">
+            {languages.length > 1 ? (
+              <select
+                aria-label="Language"
+                value={language}
+                onChange={(e) => {
+                  setLanguage(e.target.value);
+                  setRepo("");
+                }}
+                className="rounded-md bg-transparent py-0.5 text-sm text-muted hover:text-fg"
+              >
+                <option value="">Language</option>
+                {languages.map((l) => (
+                  <option key={l.key} value={l.key}>{l.label}</option>
+                ))}
+              </select>
+            ) : null}
             <select aria-label="Repository" value={repo} onChange={(e) => setRepo(e.target.value)} className="rounded-md bg-transparent py-0.5 text-sm text-muted hover:text-fg">
               <option value="">Repository</option>
               {repos.map((r) => (
@@ -76,15 +102,15 @@ export function PrList({ list, sample }: { list: TriageList; sample: boolean }) 
           </div>
         </div>
 
-        {view === "eval" && evalSet ? (
+        {view === "eval" && scope.length ? (
           <p className="border-b border-line px-4 py-2.5 text-sm text-muted">
             Real commits that each introduced a bug fixed later, triaged without knowing where the bug was. PR Lens kept
             the bug for review in{" "}
             <span className="font-semibold text-fg">
-              {evalSet.summary.prs - evalSet.summary.missed} of {evalSet.summary.prs}
+              {kept} of {scope.length}
             </span>{" "}
-            while leaving <span className="font-semibold text-fg">{pct(evalSet.summary.read_share)}</span> of lines to read.{" "}
-            <Link href="/evaluation" className="text-accent hover:underline">How this was measured</Link>
+            while leaving <span className="font-semibold text-fg">{pct(readShare)}</span> of lines to read.{" "}
+            <Link href={evalLink} className="text-accent hover:underline">How this was measured</Link>
           </p>
         ) : null}
 
@@ -152,7 +178,7 @@ function Row({ pr }: { pr: PrTriageSummary }) {
           {pr.reviewCount ? <Pill tone="attention">{pr.reviewCount} to review</Pill> : <Pill tone="success">nothing to review</Pill>}
         </div>
         <div className="mt-0.5 text-xs text-muted">
-          <span className="font-mono">{pr.repo}</span> · {prRef(pr)} · {isEval ? "committed" : "opened"} {when(pr.openedAt)}
+          <span className="font-mono">{pr.repo}</span> · {EVAL_LANGUAGES.find((l) => l.key === pr.language)?.label ?? pr.language} · {prRef(pr)} · {isEval ? "committed" : "opened"} {when(pr.openedAt)}
         </div>
       </div>
       <div className="hidden w-40 shrink-0 text-right sm:block">

@@ -171,7 +171,8 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     if (!PR_URL.test(url)) return [];
     const [owner, repo] = url.replace("https://github.com/", "").split("/");
     const state = await adaptiveFor(db, `${owner}/${repo}`);
-    return ["--threshold", state.threshold.toFixed(6)];
+    // no reviews yet: let triage use the calibrated threshold of the PR's own language
+    return state.n ? ["--threshold", state.threshold.toFixed(6)] : [];
   }
 
   return app;

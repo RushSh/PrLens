@@ -14,7 +14,7 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // children before parents
-const TABLES = ["triage_prs", "triage_sets", "jobs"];
+const TABLES = ["triage_feedback", "triage_prs", "triage_sets", "jobs"];
 
 const client = new pg.Client({
   host: process.env.DB_HOST ?? "localhost",

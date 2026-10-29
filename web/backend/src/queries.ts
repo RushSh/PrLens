@@ -1,6 +1,6 @@
 /** Read side: database rows -> API shapes from @prlens/shared. */
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { adaptiveState, type AdaptiveState, type Job, type PrFeedback, type PrTriage, type TriageList, type TriageSetInfo } from "@prlens/shared";
+import { adaptiveState, evalSetName, type AdaptiveState, type Job, type PrFeedback, type PrTriage, type TriageList, type TriageSetInfo } from "@prlens/shared";
 import type { Db } from "./db/client";
 import { jobs, triageFeedback, triagePrs, triageSets } from "./db/schema";
 
@@ -45,6 +45,7 @@ export async function listTriage(db: Db): Promise<TriageList> {
     number: payload.number,
     branch: payload.branch,
     source: payload.source,
+    language: payload.language ?? "python",
   }));
   const rank = (s: string) => (s === "live" ? 0 : 1);
   prs.sort((a, b) => rank(a.source) - rank(b.source) || (a.source === "live" ? b.openedAt.localeCompare(a.openedAt) : 0));
@@ -101,10 +102,24 @@ export async function getJob(db: Db, id: string): Promise<Job | null> {
 
 // ---- feedback and the adaptive threshold
 
-/** Where every scope's threshold starts: the evaluation set's calibrated threshold (0.06 before one exists). */
-export async function startThreshold(db: Db): Promise<number> {
-  const [s] = await db.select({ t: triageSets.threshold }).from(triageSets).where(eq(triageSets.name, "eval"));
-  return s?.t ?? 0.06;
+/** The language of a repository's most recently triaged PR (Python when it has none yet). */
+export async function scopeLanguage(db: Db, scope: string): Promise<string> {
+  const [row] = await db
+    .select({ payload: triagePrs.payload })
+    .from(triagePrs)
+    .where(eq(triagePrs.repo, scope))
+    .orderBy(desc(triagePrs.openedAt))
+    .limit(1);
+  return row?.payload.language ?? "python";
+}
+
+/** Where a scope's threshold starts: its language's calibrated threshold, else Python's (0.06 before any exists). */
+export async function startThreshold(db: Db, language = "python"): Promise<number> {
+  for (const name of [evalSetName(language), "eval"]) {
+    const [s] = await db.select({ t: triageSets.threshold }).from(triageSets).where(eq(triageSets.name, name));
+    if (s) return s.t;
+  }
+  return 0.06;
 }
 
 export async function adaptiveFor(db: Db, scope: string): Promise<AdaptiveState> {
@@ -113,7 +128,7 @@ export async function adaptiveFor(db: Db, scope: string): Promise<AdaptiveState>
     .from(triageFeedback)
     .where(eq(triageFeedback.scope, scope))
     .orderBy(asc(triageFeedback.createdAt), asc(triageFeedback.id));
-  return adaptiveState(scope, await startThreshold(db), rows.map((r) => ({ ...r, at: r.at.toISOString() })));
+  return adaptiveState(scope, await startThreshold(db, await scopeLanguage(db, scope)), rows.map((r) => ({ ...r, at: r.at.toISOString() })));
 }
 
 export async function adaptiveAll(db: Db): Promise<AdaptiveState[]> {

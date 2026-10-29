@@ -3,7 +3,7 @@
  * sample PRs when the backend has none or cannot be reached.
  */
 import { cache } from "react";
-import { triageLoad, type AdaptiveState, type PrTriage, type PrTriageSummary, type TriageList, type TriageSetInfo } from "@prlens/shared";
+import { EVAL_LANGUAGES, triageLoad, type AdaptiveState, type EvalLanguage, type PrTriage, type PrTriageSummary, type TriageList, type TriageSetInfo } from "@prlens/shared";
 import { serverGet } from "./api";
 import { SAMPLE_PRS } from "./triage-sample";
 
@@ -29,6 +29,7 @@ function summarize(pr: PrTriage): PrTriageSummary {
     readLines,
     totalLines,
     caughtByTriage: pr.groundTruth ? pr.groundTruth.caughtByTriage : null,
+    language: pr.language ?? "python",
   };
 }
 
@@ -52,12 +53,18 @@ export const loadTriagePr = cache(async (id: string): Promise<PrTriage | null> =
   }
 });
 
-export const loadEvalSet = cache(async (): Promise<TriageSetInfo | null> => {
+export const loadEvalSet = cache(async (name = "eval"): Promise<TriageSetInfo | null> => {
   try {
-    return await serverGet<TriageSetInfo>("/api/triage/sets/eval");
+    return await serverGet<TriageSetInfo>(`/api/triage/sets/${encodeURIComponent(name)}`);
   } catch {
     return null;
   }
+});
+
+/** Each calibrated language's evaluation set, or null for a language whose set is not published yet. */
+export const loadEvalSets = cache(async (): Promise<Record<EvalLanguage, TriageSetInfo | null>> => {
+  const sets = await Promise.all(EVAL_LANGUAGES.map((l) => loadEvalSet(l.set)));
+  return Object.fromEntries(EVAL_LANGUAGES.map((l, i) => [l.key, sets[i]])) as Record<EvalLanguage, TriageSetInfo | null>;
 });
 
 export const loadAdaptive = cache(async (scope: string): Promise<AdaptiveState | null> => {
