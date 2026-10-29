@@ -76,6 +76,8 @@ def is_test(path: str) -> bool:
     if any(x.endswith((".tests", ".test", ".specs", ".unittests", ".integrationtests")) or x.endswith("tests") for x in parts):
         return True  # C# test projects: Humanizer.Tests/, src/Foo.UnitTests/
     stem = p.stem.lower()
+    if stem in {"test", "tests", "spec", "specs"}:
+        return True  # date-fns style: src/addDays/test.ts
     return (name.startswith("test_") or stem.endswith("_test")
             or re.search(r"\.(test|spec)$", stem) is not None
             or (p.suffix.lower() == ".cs" and (stem.endswith("tests") or stem.endswith("test"))))

@@ -6,12 +6,18 @@ plain git checkouts under data/raw/ or ~/raw2/ (git only, nothing is installed).
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "data" / "bug_fixes.jsonl"
-DEFAULT_RAW = [ROOT / "data" / "raw", Path("~/raw2").expanduser()]
+DEFAULT_RAW = [
+    # extra clone folders first (e.g. PRLENS_RAW_DIRS=~/rawts:~/rawcs, where git is faster than a shared folder)
+    *[Path(p).expanduser() for p in os.getenv("PRLENS_RAW_DIRS", "").split(":") if p],
+    ROOT / "data" / "raw",
+    Path("~/raw2").expanduser(),
+]
 
 
 def git_show(repo: Path, spec: str) -> str | None:

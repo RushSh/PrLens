@@ -13,7 +13,7 @@ def test_language_and_test_detection():
     assert language_of("src/types.d.ts") is None
     assert language_of("src/Foo.cs").name == "csharp"
     for path in ("src/__tests__/a.ts", "test/parse.test.ts", "src/a.spec.tsx", "tests/test_x.py",
-                 "src/Humanizer.Tests/DateHumanizeTests.cs", "Markdig.Tests/TestParser.cs"):
+                 "src/Humanizer.Tests/DateHumanizeTests.cs", "Markdig.Tests/TestParser.cs", "src/addDays/test.ts"):
         assert is_test(path), path
     for path in ("src/parse.ts", "src/Humanizer/DateHumanize.cs", "lib/attest.py"):
         assert not is_test(path), path
@@ -84,3 +84,25 @@ def test_mine_finds_a_typescript_fix_with_a_test(tmp_path):
     rows = mine_repo(str(src), tmp_path / "work", "2000-01-01", 40, "typescript")
     assert len(rows) == 1 and rows[0]["src_files"] == ["src/add.ts"] and rows[0]["test_files"] == ["test/add.test.ts"]
     assert rows[0]["language"] == "typescript"
+
+
+def test_target_framework_reads_conditional_lists(tmp_path, monkeypatch):
+    import prlens.validate as v
+    monkeypatch.setattr(v, "sdk_major", lambda: 10)
+    proj = tmp_path / "T.csproj"
+    proj.write_text('<Project><PropertyGroup>'
+                    '<TargetFrameworks Condition="win">net11.0;net10.0;net48</TargetFrameworks>'
+                    '<TargetFrameworks Condition="!win">net11.0;net10.0;net8.0</TargetFrameworks>'
+                    '</PropertyGroup></Project>')
+    assert v.target_framework(proj, tmp_path) == "net10.0"
+    assert v.lists_unbuildable_tfm(proj, tmp_path)
+
+
+def test_pin_sdk_rewrites_missing_preview(tmp_path, monkeypatch):
+    import json
+    import prlens.validate as v
+    monkeypatch.setattr(v, "sdk_versions", lambda: ["8.0.427", "10.0.403"])
+    (tmp_path / "global.json").write_text(json.dumps({"sdk": {"version": "11.0.100-preview.6"}, "test": {"runner": "Microsoft.Testing.Platform"}}))
+    v.pin_sdk(tmp_path)
+    g = json.loads((tmp_path / "global.json").read_text())
+    assert g["sdk"]["version"] == "10.0.403" and v.uses_mtp(tmp_path)
