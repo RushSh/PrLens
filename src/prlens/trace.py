@@ -127,8 +127,9 @@ def trace(args) -> None:
     deadline = time.time() + args.budget
     todo = [b for b in bugs if b["bug_id"] not in cache]
     for i, b in enumerate(todo):
+        if i:
+            CACHE.write_text(json.dumps(cache))  # every bug: a call cut short still keeps its progress
         if time.time() > deadline:
-            CACHE.write_text(json.dumps(cache))
             print(f"blamed {len(cache)}/{len(bugs)} fixes so far; run again to continue", flush=True)
             return
         repo = find_repo(b["repo"])
