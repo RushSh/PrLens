@@ -1,3 +1,4 @@
+import { reviewQueue } from "@prlens/shared";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -60,7 +61,7 @@ export default async function PrLayout({ children, params }: { children: ReactNo
           </span>
         </div>
       </div>
-      <PrTabs base={`/pr/${key}`} files={files} toReview={pr.toReview.length} />
+      <PrTabs base={`/pr/${key}`} files={files} toReview={reviewQueue(pr.toReview).length} />
       {children}
     </div>
   );

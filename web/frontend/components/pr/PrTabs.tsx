@@ -34,7 +34,7 @@ export function PrTabs({ base, files, toReview }: { base: string; files: number;
       <span className="ml-auto hidden items-center pl-4 text-xs text-muted sm:flex">
         {toReview ? (
           <>
-            <span className="tabular mr-1 font-semibold text-attention">{toReview}</span> regions need a human
+            <span className="tabular mr-1 font-semibold text-attention">{toReview}</span> {toReview === 1 ? "item needs" : "items need"} a human
           </>
         ) : (
           <span className="text-success">nothing needs a human</span>
