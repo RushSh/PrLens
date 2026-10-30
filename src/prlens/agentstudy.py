@@ -41,9 +41,18 @@ Implement this change, as its author described it:
 {message}
 
 Change the library source to make it so, and add or update tests the way this project usually does. Keep the
-change focused; do not refactor unrelated code. When you are done, the repository should build and its existing
-tests should pass.
+change focused; do not refactor unrelated code.
+
+About this environment: the sandbox has no network access, so dependencies may not install and the build or the
+tests may not run here. That is expected. If they cannot run, do not try to work around it: do not edit build or
+tool configuration (global.json, package manifests, lock files, CI files) and do not install anything. Finish the
+change by reading the code carefully instead.
 """
+# Files an agent may touch only to fight the sandbox; dropped from its change before validation (and counted).
+ENV_FILES = re.compile(r"(^|/)(global\.json|nuget\.config|NuGet\.Config|Directory\.Build\.(props|targets)|"
+                       r"package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|"
+                       r"pyproject\.toml|setup\.cfg|setup\.py|requirements[^/]*\.txt|tox\.ini|uv\.lock|"
+                       r"\.github/.*|\.gitignore)$")
 
 
 def git(repo: Path, *args: str) -> str:
@@ -74,6 +83,11 @@ def prepare(args) -> None:
                          f"baseline: {p['repo']} at {parent[:10]}"]):
                 subprocess.run(["git", "-C", str(dest), *cmd], check=True, capture_output=True)
         msg = TAG_RE.sub("", (p.get("message") or p["subject"]).strip())
+        # drop commit trailers and squash-merge separators: they are not part of the task
+        msg = "\n".join(l for l in msg.splitlines()
+                        if not re.match(r"\s*(co-authored-by|signed-off-by|reviewed-by|change-id):", l, re.I)
+                        and not re.fullmatch(r"\s*-{5,}\s*", l)).strip()
+        msg = re.sub(r"\n{3,}", "\n\n", msg)
         prompt = PROMPT.format(repo=p["repo"], language=p["language"], message=msg)
         (dest.parent / "prompt.txt").write_text(prompt)
         fixes = [b["fix_sha"] for b in p["bugs"]]

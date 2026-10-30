@@ -18,7 +18,7 @@ OUT="$ROOT/data/agent_study/results"
 RUN="$HOME/muse_agent_study"
 JOBS="${JOBS:-3}"
 STEPS="${STEPS:-150}"
-LIMIT="${LIMIT:-1500}"   # seconds per task
+LIMIT="${LIMIT:-900}"    # seconds per task
 mkdir -p "$OUT" "$RUN"
 command -v muse >/dev/null || { echo "muse is not on PATH"; exit 1; }
 muse --version > "$OUT/muse_version.txt" 2>&1
