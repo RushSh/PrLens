@@ -4,6 +4,7 @@ Used to score PR regions (prlens score)."""
 from __future__ import annotations
 
 import json
+import sys
 import re
 import time
 from dataclasses import dataclass
@@ -105,6 +106,9 @@ def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
                 backoff = min(60.0, backoff * 2)
                 continue
             if exc.status_code in (400, 422) and kwargs.get("response_format", {}).get("type") == "json_schema":
+                if (s.provider, s.model_id) not in _NO_SCHEMA:
+                    print(f"note: {s.model_id} on {s.provider} rejected strict json_schema output "
+                          f"({exc.status_code}); using JSON mode", file=sys.stderr, flush=True)
                 _NO_SCHEMA.add((s.provider, s.model_id))  # no structured output here: fall back to JSON mode
                 kwargs["response_format"] = {"type": "json_object"}
                 continue
