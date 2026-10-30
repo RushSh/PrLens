@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { sortForReview, triageLoad, type PrTriage, type ReviewItem, type SkippedItem } from "@prlens/shared";
+import { reviewQueue, sameEditIds, triageLoad, type PrTriage, type ReviewItem, type SkippedItem } from "@prlens/shared";
 import { pct } from "@/lib/format";
 import { buildFiles, fileAnchor, itemAnchor, itemLine, segments, skipLabel, type FileView, type ViewHunk } from "@/lib/pr";
 import { BugIcon, CheckIcon, ChevronIcon, FileIcon, SkipIcon } from "../Icons";
@@ -19,7 +19,7 @@ export function FilesChanged({ pr }: { pr: PrTriage }) {
     for (const it of [...pr.toReview, ...pr.skipped]) m.set(it.id, it);
     return m;
   }, [pr]);
-  const queue = useMemo(() => sortForReview(pr.toReview), [pr]);
+  const queue = useMemo(() => reviewQueue(pr.toReview), [pr]);
   const { readLines, totalLines } = triageLoad(pr);
 
   const [viewed, setViewed] = useState<Set<string>>(new Set());
@@ -77,6 +77,7 @@ export function FilesChanged({ pr }: { pr: PrTriage }) {
                           <span className="truncate font-mono text-xs text-fg">
                             {it.file.split("/").pop()}:{itemLine(it) ?? ""}
                           </span>
+                          {it.sameEdit ? <span className="tabular shrink-0 rounded-full bg-line-muted px-1.5 text-xs text-muted" title="The same edit in several places, reviewed as one">×{it.sameEdit.size}</span> : null}
                           {reviewed.has(it.id) ? <CheckIcon size={14} className="ml-auto shrink-0 text-success" /> : null}
                           {bugIds.has(it.id) ? <BugIcon size={14} className="shrink-0 text-danger" /> : null}
                         </span>
@@ -206,7 +207,19 @@ export function FilesChanged({ pr }: { pr: PrTriage }) {
                         expanded={expanded}
                         onExpand={(id) => setExpanded((e) => toggle(e, id))}
                         reviewed={reviewed}
-                        onReviewed={(id) => setReviewed((r) => toggle(r, id))}
+                        onReviewed={(id) =>
+                          setReviewed((r) => {
+                            const it = items.get(id);
+                            const ids = it && it.tier === "review" ? sameEditIds(pr.toReview, it) : [id];
+                            const next = new Set(r);
+                            const on = !r.has(id);
+                            for (const x of ids) {
+                              if (on) next.add(x);
+                              else next.delete(x);
+                            }
+                            return next;
+                          })
+                        }
                         reported={reported}
                         onReport={(id) => setReported((r) => toggle(r, id))}
                       />
@@ -284,6 +297,7 @@ function Hunk({
               <td colSpan={5} className="p-0">
                 <LensComment
                   item={it}
+                  lead={it.sameEdit && it.sameEdit.group !== it.id ? (items.get(it.sameEdit.group) as ReviewItem | undefined) : undefined}
                   anchor={itemAnchor(it.id)}
                   isBug={isBug}
                   reviewed={reviewed.has(it.id)}

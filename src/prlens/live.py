@@ -12,6 +12,7 @@ other languages the promise is not calibrated and the PR says so.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -31,6 +32,7 @@ from .hunks import defs_in, parse_diff, regions, review_rules, skip_category
 from .llm import confirm, plan_line, spec
 from .score import prompt_for, score_region
 
+CACHE_DIR = ROOT / "data" / "triage" / "scores" / "live"
 URL_RE = re.compile(r"^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/pull/(\d+)(?:[/#?].*)?$")
 OUT = ROOT / "data" / "triage_live.json"
 COMBINER = ROOT / "data" / "triage" / "combiner.json"
@@ -105,6 +107,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--threshold", type=float, default=None,
                     help="skip threshold to use (the dashboard passes the repository's adaptive threshold)")
     ap.add_argument("--yes", action="store_true")
+    ap.add_argument("--rescore", action="store_true", help="ask the model again even for regions already scored")
     ap.add_argument("--plan-only", action="store_true")
     args = ap.parse_args(argv)
     m = URL_RE.match(args.url.strip())
@@ -117,20 +120,35 @@ def main(argv: list[str] | None = None) -> None:
     pr = fetch(owner, repo, number)
     todo = to_score(pr)
     skipped = sum(1 for h in pr["hunks"] if h["skip"])
-    avg_in = int(statistics.mean(len(prompt_for(pr, h, g)) for h, g in todo) / 4) if todo else 0
+    # model answers are kept per PR and region text, so re-triaging (new rules, a new threshold) costs nothing
+    cache_path = CACHE_DIR / f"{owner}__{repo}__{number}__{args.model}.jsonl"
+    cache = {}
+    if cache_path.exists() and not args.rescore:
+        cache = {json.loads(l)["key"]: json.loads(l) for l in cache_path.read_text().splitlines() if l.strip()}
+    key = lambda hg: f"{hg[1]['id']}|{hashlib.sha1(prompt_for(pr, *hg).encode()).hexdigest()[:16]}"
+    fresh = [hg for hg in todo if key(hg) not in cache or cache[key(hg)].get("error")]
+    avg_in = int(statistics.mean(len(prompt_for(pr, h, g)) for h, g in fresh) / 4) if fresh else 0
     os.environ.setdefault("PLAN_INPUT_TOKENS", str(avg_in))
-    line, _ = plan_line(s, len(todo), 450)
+    line, _ = plan_line(s, len(fresh), 450)
     langs = sorted({h["file"].rsplit(".", 1)[-1] for h in pr["hunks"] if "." in h["file"]})
     confirm(f"{pr['repo']} #{number}: {pr['subject']}\n"
             f"{len(pr['hunks'])} hunks, {pr['lines']} changed lines; {skipped} hunks skipped without a model; "
-            f"{len(todo)} regions to score with {s.name} ({s.model_id} on {s.provider}).\n{line}\n"
+            f"{len(fresh)} regions to score with {s.name} ({s.model_id} on {s.provider})"
+            f"{f'; {len(todo) - len(fresh)} already scored' if len(fresh) < len(todo) else ''}.\n{line}\n"
             f"File types: {', '.join(langs) or 'none'} (each language is calibrated on its own evaluation set).\n"
             + (f"Skip threshold: bug chance under {args.threshold:.2%} (this repository's adaptive threshold)."
                if args.threshold is not None else "Skip threshold: the evaluation set's."),
-            args.yes, args.plan_only)
+            args.yes or not fresh, args.plan_only)
 
     with ThreadPoolExecutor(args.workers) as ex:
-        results = list(ex.map(lambda hg: score_region(s, pr, *hg), todo))
+        new = dict(zip([key(hg) for hg in fresh], ex.map(lambda hg: score_region(s, pr, *hg), fresh)))
+    if new:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_path, "a") as fh:
+            for k, r in new.items():
+                fh.write(json.dumps({**r, "key": k}) + "\n")
+    cache.update(new)
+    results = [cache[key(hg)] for hg in todo]
     errors = [r for r in results if r["error"]]
     print(f"scored {len(results) - len(errors)}/{len(results)} regions", flush=True)
     if errors and len(errors) == len(results):

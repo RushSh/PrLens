@@ -212,6 +212,32 @@ def defs_in(lines, kind: str, path: str | None = None) -> set[str]:
     return names
 
 
+THROW_RE = {"python": re.compile(r"^\s*raise\b"), "typescript": re.compile(r"\bthrow\b"),
+            "csharp": re.compile(r"\bthrow\b")}
+CATCH_ALL_RE = {
+    "python": re.compile(r"^\s*except\s*(\(?\s*(BaseException|Exception)\s*\)?)?\s*(as\s+\w+\s*)?:"),
+    "csharp": re.compile(r"^\s*(\}\s*)?catch\s*(\(\s*(System\.)?Exception(\s+\w+)?\s*\))?\s*(\{.*)?$"),
+}
+COMMENT_RE = re.compile(r"^\s*(#|//|/\*|\*)")
+
+
+def error_handling_rule(lang, added: list[str], deleted: list[str]) -> tuple[str, str] | None:
+    """A removed `throw`/`raise`, or a new catch-all handler: a failure may now pass silently, which a reviewer should
+    decide on (filtered C# catches, `catch (X) when (...)`, are not catch-alls)."""
+    code = lambda ls: [t for t in ls if not COMMENT_RE.match(t)]
+    added, deleted = code(added), code(deleted)
+    throw = THROW_RE.get(lang.name)
+    if throw and sum(bool(throw.search(t)) for t in deleted) > sum(bool(throw.search(t)) for t in added):
+        word = "raise" if lang.name == "python" else "throw"
+        return ("error_handling", f"Removes a `{word}`: an error may now be swallowed or turned into a default value")
+    catch_all = CATCH_ALL_RE.get(lang.name)
+    if catch_all:
+        new = [t for t in added if catch_all.match(t) and " when " not in t and t.strip() not in {d.strip() for d in deleted}]
+        if new:
+            return ("error_handling", "Adds a catch-all exception handler: failures it catches pass silently")
+    return None
+
+
 def review_rules(h: Hunk, pr_added_defs: set[str] | None = None) -> list[tuple[str, str]]:
     """`pr_added_defs`: public names defined on added lines anywhere in the PR (a def that moved is not removed)."""
     out = []
@@ -234,6 +260,9 @@ def review_rules(h: Hunk, pr_added_defs: set[str] | None = None) -> list[tuple[s
             out.append(("public_api", f"Removes public `{sorted(removed)[0]}`"))
         elif lang.name == "python" and any(l.kind != "ctx" and l.text.startswith("__all__") for l in h.lines):
             out.append(("public_api", "Changes __all__"))
+        eh = error_handling_rule(lang, [l.text for l in h.lines if l.kind == "add"], [l.text for l in h.lines if l.kind == "del"])
+        if eh:
+            out.append(eh)
     return out
 
 

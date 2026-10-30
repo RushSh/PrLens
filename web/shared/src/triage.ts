@@ -20,6 +20,7 @@ export const REVIEW_REASONS = {
   security_sensitive: { label: "Security-sensitive", help: "Touches authentication, permissions, secrets or untrusted input." },
   public_api: { label: "Public API change", help: "Changes a signature, contract or behavior other code depends on." },
   data_migration: { label: "Data migration", help: "Changes stored data or schema; hard to undo." },
+  error_handling: { label: "Error handling", help: "Removes a throw or adds a catch-all handler: a failure may now pass silently." },
   duplicates_existing: { label: "Duplicates existing code", help: "Re-implements something the codebase already has." },
   weak_tests: { label: "Weak tests", help: "Tests would pass even if the change were wrong, or the change has none." },
 } as const;
@@ -85,6 +86,8 @@ export interface ReviewItem extends TriageHunk {
   signals: RiskSignal[];
   /** True when a rule (not the score) put it here, e.g. a sensitive path. */
   forcedByRule: boolean;
+  /** Set when several regions make the same edit: `group` is the id of the one shown in full, `size` how many. */
+  sameEdit?: { group: string; size: number };
 }
 
 export interface SkippedItem extends TriageHunk {
@@ -275,6 +278,7 @@ const reviewItem = z.object({
   reasons: z.array(z.object({ code: z.enum(Object.keys(REVIEW_REASONS) as [ReviewReasonCode, ...ReviewReasonCode[]]), detail: z.string() })),
   signals: z.array(z.object({ name: z.string(), value: z.string(), weight: z.number() })),
   forcedByRule: z.boolean(),
+  sameEdit: z.object({ group: z.string(), size: z.number().int() }).optional(),
 });
 const skippedItem = z.object({
   ...hunk,
@@ -378,4 +382,14 @@ const PRIORITY_ORDER: Record<Priority, number> = { P0: 0, P1: 1, P2: 2 };
 /** Action-required order: priority first, then risk score, highest first. */
 export function sortForReview(items: ReviewItem[]): ReviewItem[] {
   return [...items].sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] || b.riskScore - a.riskScore);
+}
+
+/** The review queue: sorted, with each same-edit group shown once (by the item that names the group). */
+export function reviewQueue(items: ReviewItem[]): ReviewItem[] {
+  return sortForReview(items).filter((i) => !i.sameEdit || i.sameEdit.group === i.id);
+}
+
+/** Ids of every item in an item's same-edit group (just the item when it has none). */
+export function sameEditIds(items: ReviewItem[], item: ReviewItem): string[] {
+  return item.sameEdit ? items.filter((i) => i.sameEdit?.group === item.sameEdit!.group).map((i) => i.id) : [item.id];
 }

@@ -23,7 +23,7 @@ from .fit import cross_fit, held_out, load, pick, skip_outcome, ucb
 from .trace import is_test, logic_density, read_until
 
 OUT = ROOT / "data" / "triage_eval.json"
-RULE_CODES = {"security_sensitive", "public_api", "data_migration"}
+RULE_CODES = {"security_sensitive", "public_api", "data_migration", "error_handling"}
 CONTEXT = 3
 MAX_DIFF = 400
 
@@ -47,9 +47,35 @@ def priority(p: float, rules) -> str:
     codes = {r[0] for r in rules}
     if p >= 0.3 or codes & {"security_sensitive", "data_migration"}:
         return "P0"
-    if p >= 0.12 or "public_api" in codes:
+    if p >= 0.12 or codes & {"public_api", "error_handling"}:
         return "P1"
     return "P2"
+
+
+def edit_shape(item: dict) -> tuple | None:
+    """What a region adds or removes around the code it keeps: wrapping nine different calls in the same try/catch has
+    one shape. None when that is under two lines (a one-line change is its own thing)."""
+    added = [l["text"].strip() for l in item["diff"] if l.get("flagged") and l["kind"] == "add"]
+    deleted = [l["text"].strip() for l in item["diff"] if l.get("flagged") and l["kind"] == "del"]
+    a, d = set(added), set(deleted)
+    shape = (tuple(x for x in added if x not in d), tuple(x for x in deleted if x not in a))
+    return shape if len(shape[0]) + len(shape[1]) >= 2 else None
+
+
+def group_same_edits(items: list[dict]) -> None:
+    """Mark review items that make the same edit as `sameEdit = {group, size}`; the group is named by its riskiest
+    item, which the dashboard shows once ("same edit in 9 places") while the rest fold into one-line notes."""
+    groups: dict[tuple, list[dict]] = {}
+    for it in items:
+        shape = edit_shape(it)
+        if shape:
+            groups.setdefault(shape, []).append(it)
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        lead = max(members, key=lambda m: (m["riskScore"], -members.index(m)))
+        for m in members:
+            m["sameEdit"] = {"group": lead["id"], "size": len(members)}
 
 
 def build(pr, t: float, guarantee: dict) -> dict:
@@ -102,6 +128,7 @@ def build(pr, t: float, guarantee: dict) -> dict:
                 if reason:
                     why += f" Spark Open: {reason}"
                 skipped.append(dict(base, tier="skip", category="low_score", reason=why, riskScore=round(p, 4)))
+    group_same_edits(to_review)
     caught = any(i["id"] in bug_ids for i in to_review)
     msg = (pr.get("message") or pr["subject"]).strip()
     return {

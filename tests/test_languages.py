@@ -106,3 +106,30 @@ def test_pin_sdk_rewrites_missing_preview(tmp_path, monkeypatch):
     v.pin_sdk(tmp_path)
     g = json.loads((tmp_path / "global.json").read_text())
     assert g["sdk"]["version"] == "10.0.403" and v.uses_mtp(tmp_path)
+
+
+def test_error_handling_rule():
+    from prlens.hunks import error_handling_rule
+    from prlens.languages import CSHARP, PYTHON, TYPESCRIPT
+    assert error_handling_rule(CSHARP, ["callingConvention = 0;"], ['throw new NotSupportedException("x");'])
+    assert error_handling_rule(CSHARP, ["catch (Exception ex) when (IsBad(ex))", "{"], []) is None
+    assert error_handling_rule(CSHARP, ["catch (Exception)", "{"], [])
+    assert error_handling_rule(PYTHON, ["except Exception:", "    pass"], [])
+    assert error_handling_rule(PYTHON, ["except ValueError:"], []) is None
+    assert error_handling_rule(PYTHON, ['    raise ValueError("a")'], ['    raise TypeError("a")']) is None
+    assert error_handling_rule(TYPESCRIPT, ["return null"], ['throw new Error("bad")'])
+    assert error_handling_rule(TYPESCRIPT, ["// we no longer throw"], []) is None
+
+
+def test_same_edits_are_grouped():
+    from prlens.export import group_same_edits
+    wrap = lambda call, risk, i: {"id": f"r{i}", "riskScore": risk, "diff": [
+        {"kind": "del", "text": f"return {call};", "flagged": True},
+        {"kind": "add", "text": "try", "flagged": True}, {"kind": "add", "text": "{", "flagged": True},
+        {"kind": "add", "text": f"return {call};", "flagged": True}, {"kind": "add", "text": "}", "flagged": True},
+        {"kind": "add", "text": "catch (Exception ex) when (Bad(ex)) { return false; }", "flagged": True}]}
+    one = {"id": "solo", "riskScore": 0.5, "diff": [{"kind": "add", "text": "x = 1", "flagged": True}]}
+    items = [wrap("a()", 0.04, 1), wrap("b()", 0.09, 2), wrap("c()", 0.05, 3), one]
+    group_same_edits(items)
+    assert [i.get("sameEdit") for i in items[:3]] == [{"group": "r2", "size": 3}] * 3
+    assert "sameEdit" not in one

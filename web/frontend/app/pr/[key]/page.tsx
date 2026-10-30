@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { sortForReview, triageLoad, type PrTriage } from "@prlens/shared";
+import { reviewQueue, triageLoad, type PrTriage } from "@prlens/shared";
 import { CheckIcon, LensIcon, ShieldIcon } from "@/components/Icons";
 import { RevealBox } from "@/components/pr/RevealBox";
 import { Avatar, Pill, PriorityPill, buttonPrimary } from "@/components/ui";
@@ -17,7 +17,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
   const pr = id ? await loadTriagePr(id) : null;
   if (!pr) notFound();
   const { readLines, totalLines } = triageLoad(pr);
-  const queue = sortForReview(pr.toReview);
+  const queue = reviewQueue(pr.toReview);
   const byPriority = (p: string) => queue.filter((i) => i.priority === p).length;
   const skipCounts = new Map<string, number>();
   for (const s of pr.skipped) skipCounts.set(skipLabel(s.category), (skipCounts.get(skipLabel(s.category)) ?? 0) + 1);
@@ -42,7 +42,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
           <p className="text-base">
             {queue.length ? (
               <>
-                <span className="font-semibold">{queue.length} region{queue.length === 1 ? "" : "s"} need a human review</span>
+                <span className="font-semibold">{queue.length} item{queue.length === 1 ? "" : "s"} need a human review</span>
                 {" "}({byPriority("P0")} P0, {byPriority("P1")} P1, {byPriority("P2")} P2).
               </>
             ) : (
@@ -64,6 +64,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
                   <Link href={prHref(pr.id, "files", itemAnchor(it.id))} className="font-mono text-xs text-accent hover:underline">
                     {it.file}:{itemLine(it) ?? ""}
                   </Link>
+                  {it.sameEdit ? <Pill>same edit in {it.sameEdit.size} places</Pill> : null}
                   <span className="min-w-0 flex-1 basis-60 text-sm text-fg">{it.reasons[0]?.detail}</span>
                 </li>
               ))}

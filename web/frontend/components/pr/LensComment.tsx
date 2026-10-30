@@ -3,24 +3,49 @@
 import { useState } from "react";
 import { REVIEW_REASONS, type ReviewItem } from "@prlens/shared";
 import { pct } from "@/lib/format";
+import { itemAnchor, itemLine } from "@/lib/pr";
 import { BugIcon, CheckIcon } from "../Icons";
 import { Avatar, Pill, PriorityPill, button } from "../ui";
 
 /** PR Lens's inline review comment under the lines of one review item, styled like a GitHub review comment. */
 export function LensComment({
   item,
+  lead,
   reviewed,
   onReviewed,
   isBug,
   anchor,
 }: {
   item: ReviewItem;
+  /** Set when this item repeats an edit shown in full elsewhere: it renders as a one-line note pointing there. */
+  lead?: ReviewItem;
   reviewed: boolean;
   onReviewed: () => void;
   isBug: boolean;
   anchor: string;
 }) {
   const [why, setWhy] = useState(false);
+  if (lead && !isBug) {
+    return (
+      <div id={anchor} className="border-y border-line bg-subtle px-3 py-1.5 font-sans md:px-4">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <Avatar name="PR Lens" bot size={16} />
+          <span>
+            Same edit as{" "}
+            <a href={`#${itemAnchor(lead.id)}`} className="font-mono text-accent hover:underline">
+              {lead.file.split("/").pop()}:{itemLine(lead) ?? ""}
+            </a>
+            {lead.sameEdit ? ` (${lead.sameEdit.size} places)` : ""}; reviewed together.
+          </span>
+          {reviewed ? (
+            <span className="inline-flex items-center gap-1 text-success">
+              <CheckIcon size={12} /> reviewed
+            </span>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
   return (
     <div id={anchor} className="border-y border-line bg-subtle px-3 py-3 font-sans md:px-4">
       <div
@@ -35,6 +60,7 @@ export function LensComment({
             bug chance <span className="tabular font-semibold text-fg">{pct(item.riskScore)}</span>
           </span>
           {item.forcedByRule ? <Pill title="A rule put this here, not the risk score">always reviewed</Pill> : null}
+          {item.sameEdit ? <Pill title="The same edit appears in several places; reviewing it here covers them all">same edit in {item.sameEdit.size} places</Pill> : null}
           {isBug ? (
             <Pill tone="danger">
               <BugIcon size={12} /> the real bug was here
