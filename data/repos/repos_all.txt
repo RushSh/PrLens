@@ -12,7 +12,7 @@ https://github.com/tobymao/sqlglot.git | pip install -e . pytest
 https://github.com/networkx/networkx.git | pip install -e . pytest
 https://github.com/Textualize/rich.git | pip install -e . pytest
 https://github.com/pallets/click.git | pip install -e . pytest
-https://github.com/PyCQA/isort.git | pip install -e . pytest hypothesis
+https://github.com/PyCQA/isort.git | pip install -e . pytest hypothesis black colorama
 https://github.com/pygments/pygments.git | pip install -e . pytest
 https://github.com/Python-Markdown/markdown.git | pip install -e . pytest
 https://github.com/lepture/mistune.git | pip install -e . pytest

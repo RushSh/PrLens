@@ -213,9 +213,10 @@ function SetDetail({ set, label }: { set: TriageSetInfo; label: string }) {
         <Box title="What this does and does not show">
           <ul className="list-disc space-y-2 py-3 pl-8 pr-4 text-sm text-fg">
             <li>
-              Bugs are real: each fix comes with tests that fail before it and pass after. The commit that introduced the bug is
-              found by tracing the fixed lines back ({ev.evidence.deleted} from changed lines, {ev.evidence.adjacent} from where
-              the fix added code, which is weaker evidence).
+              Bugs are real: each fix&apos;s tests were run, and they fail before the fix and pass after
+              {label === "Python" ? " (one of 111 Python fixes could not be run in our test environment)" : ""}. The commit
+              that introduced the bug is found by tracing the fixed lines back ({ev.evidence.deleted} from changed lines,{" "}
+              {ev.evidence.adjacent} from where the fix added code, which is weaker evidence).
             </li>
             <li>
               Scores are out of fold: each PR is scored by a combiner fit without its repository. The threshold is chosen on all
@@ -224,6 +225,12 @@ function SetDetail({ set, label }: { set: TriageSetInfo; label: string }) {
             <li>
               PR sizes: median {ev.pr_lines.median} changed lines, 75% under {ev.pr_lines.p75}, largest {ev.pr_lines.max}.
             </li>
+            {ev.auc.combined <= ev.auc.model ? (
+              <li>
+                On these PRs the combiner does not rank better than the model alone (AUC {ev.auc.combined.toFixed(2)} vs{" "}
+                {ev.auc.model.toFixed(2)}). The skip promise still holds: the threshold is calibrated on these PRs either way.
+              </li>
+            ) : null}
             <li>
               The combiner and threshold for {label} are fit on {label} PRs only; no language borrows another&apos;s calibration.
               The promise covers functional bugs in {label}.

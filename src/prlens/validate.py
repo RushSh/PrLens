@@ -57,8 +57,15 @@ def validate_python(c: dict, repo: Path, install_cmd: str | None) -> tuple[bool 
         tests = " ".join(q(t) for t in c["test_files"])
         after = sh(f".venv/bin/python -m pytest -x -q {tests}", wt)
         sh(f"git checkout {c['sha']}^ -- {' '.join(q(s) for s in c['src_files'])}", wt)
+        if after.returncode != 0:
+            return None, f"tests do not pass on the fix itself (pytest exit {after.returncode})"
         before = sh(f".venv/bin/python -m pytest -x -q {tests}", wt)
-        return after.returncode == 0 and before.returncode != 0, f"after={after.returncode} before={before.returncode}"
+        if before.returncode == 1:  # tests ran and failed
+            return True, "fails before, passes after"
+        if before.returncode == 0:
+            return False, "tests pass before the fix too"
+        # exit 2: collection error (an import of something the fix added), 4/5: usage / no tests
+        return False, f"tests do not run before the fix (pytest exit {before.returncode}): an API change, not a bug"
     finally:
         sh(f"git worktree remove --force {wt}", repo)
         shutil.rmtree(tmp, ignore_errors=True)
@@ -388,7 +395,7 @@ def main(argv: list[str] | None = None) -> None:
             elif confirmed is False:
                 rej.write(json.dumps({**c, "why": why}) + "\n")
                 rej.flush()
-            elif lang != "python":  # could not be judged (install, broken tests at the fix): not retried
+            else:  # could not be judged (install, broken tests at the fix): not retried
                 skp.write(json.dumps({**c, "why": why}) + "\n")
                 skp.flush()
     print(f"{ok} confirmed bugs -> {args.out}")
