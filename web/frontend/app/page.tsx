@@ -4,6 +4,6 @@ import { loadTriageList } from "@/lib/triage-source";
 export const dynamic = "force-dynamic";
 
 export default async function PullRequestsPage() {
-  const { list, sample } = await loadTriageList();
-  return <PrList list={list} sample={sample} />;
+  const { list, offline } = await loadTriageList();
+  return <PrList list={list} offline={offline} />;
 }

@@ -9,8 +9,8 @@ import { loadTriageList } from "@/lib/triage-source";
 export const dynamic = "force-dynamic";
 
 export default async function TriagePage() {
-  const { list, sample } = await loadTriageList();
-  const live = sample ? [] : list.prs.filter((p) => p.source === "live");
+  const { list } = await loadTriageList();
+  const live = list.prs.filter((p) => p.source === "live");
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>

@@ -21,6 +21,7 @@ export const REVIEW_REASONS = {
   public_api: { label: "Public API change", help: "Changes a signature, contract or behavior other code depends on." },
   data_migration: { label: "Data migration", help: "Changes stored data or schema; hard to undo." },
   error_handling: { label: "Error handling", help: "Removes a throw or adds a catch-all handler: a failure may now pass silently." },
+  prompt_injection: { label: "Addresses the AI", help: "Contains text aimed at an AI reviewer (asking it to rate, skip or ignore something); always read." },
   duplicates_existing: { label: "Duplicates existing code", help: "Re-implements something the codebase already has." },
   weak_tests: { label: "Weak tests", help: "Tests would pass even if the change were wrong, or the change has none." },
 } as const;

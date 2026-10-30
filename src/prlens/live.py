@@ -170,8 +170,9 @@ def main(argv: list[str] | None = None) -> None:
             r = by_id.get(g["id"], {})
             u = dict(g, file=h["file"], skip=h["skip"], lines=[l for l in h["lines"] if l[2] in g["new_lines"]],
                      risk=r.get("risk"), reason=r.get("reason", ""))
-            # a failed call counts as maximal uncertainty: it goes to review rather than being skipped
-            u["p"] = 1.0 if (not h["skip"] and r.get("risk") is None) else float(predict(comb, np.array([feats(u)]))[0])
+            # one rule with evaluation (fit.scored): a region with no score is always read
+            u["p"] = 1.0 if (not h["skip"] and r.get("risk") is None) else (
+                0.0 if h["skip"] else float(predict(comb, np.array([feats(u)]))[0]))
             pr["units"].append(u)
     ev_path = EVAL if language == "python" else EVAL.with_name(f"triage_eval_{language}.json")
     ev = json.loads(ev_path.read_text()) if calibrated and ev_path.exists() else None

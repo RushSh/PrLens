@@ -49,8 +49,16 @@ def load(model: str, language: str | None = "python"):
     return prs
 
 
+def scored(u) -> bool:
+    """A region the combiner can judge. One with no model score (a failed call) is always read and never fit on,
+    in evaluation and live triage alike."""
+    return not u["skip"] and u["risk"] is not None
+
+
 def feats(u) -> list[float]:
-    r = min(max(u["risk"] if u["risk"] is not None else 0.05, 0.01), 0.99)
+    if u["risk"] is None:
+        raise ValueError(f"region {u.get('id')} has no model score: it is read, not scored by the combiner")
+    r = min(max(u["risk"], 0.01), 0.99)
     return [math.log(r / (1 - r)), math.log1p(logic_density(u)), float(is_test(u)),
             math.log1p(u["added"] + u["removed"]), float(bool(u["rules"]))]
 
@@ -109,7 +117,7 @@ def pick(prs, alpha: float) -> float:
 def cross_fit(prs) -> tuple[list, np.ndarray, np.ndarray]:
     """Give every region an out-of-fold bug probability u["p"] (fit without its repo); returns (units, X, y)."""
     repos = sorted({p["repo"] for p in prs})
-    units = [(p, u) for p in prs for u in p["units"] if not u["skip"]]
+    units = [(p, u) for p in prs for u in p["units"] if scored(u)]
     X = np.array([feats(u) for _, u in units])
     y = np.array([float(u["bug"]) for _, u in units])
     for repo in repos:
@@ -119,6 +127,8 @@ def cross_fit(prs) -> tuple[list, np.ndarray, np.ndarray]:
             u["p"] = float(pv)
     for p in prs:
         for u in p["units"]:
+            if not u["skip"] and u["risk"] is None:
+                u["p"] = 1.0  # unscored: always read
             u.setdefault("p", 0.0)
     return units, X, y
 
@@ -155,7 +165,10 @@ def main(argv: list[str] | None = None) -> None:
     pos = [u["p"] for _, u in units if u["bug"]]
     neg = [u["p"] for _, u in units if not u["bug"]]
     auc = sum((a > b) + 0.5 * (a == b) for a in pos for b in neg) / (len(pos) * len(neg))
-    raw = [u["risk"] or 0 for _, u in units if u["bug"]], [u["risk"] or 0 for _, u in units if not u["bug"]]
+    raw = [u["risk"] for _, u in units if u["bug"]], [u["risk"] for _, u in units if not u["bug"]]
+    unscored = sum(1 for p in prs for u in p["units"] if not u["skip"] and u["risk"] is None)
+    if unscored:
+        print(f"{unscored} regions have no model score: always read, left out of the fit")
     auc_raw = sum((a > b) + 0.5 * (a == b) for a in raw[0] for b in raw[1]) / (len(raw[0]) * len(raw[1]))
     print(f"{len(prs)} PRs, {len(units)} scored regions ({int(y.sum())} with a bug), {len(repos)} repos")
     print(f"region AUC out of fold: combiner {auc:.2f}  vs Spark Open alone {auc_raw:.2f}")

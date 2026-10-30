@@ -10,7 +10,7 @@ import { Counter, Pill, buttonPrimary, input } from "./ui";
 
 type View = "live" | "eval";
 
-export function PrList({ list, sample }: { list: TriageList; sample: boolean }) {
+export function PrList({ list, offline }: { list: TriageList; offline: boolean }) {
   const live = list.prs.filter((p) => p.source !== "eval");
   const evals = list.prs.filter((p) => p.source === "eval");
   const [view, setView] = useState<View>(live.length ? "live" : "eval");
@@ -40,9 +40,10 @@ export function PrList({ list, sample }: { list: TriageList; sample: boolean }) 
 
   return (
     <div className="space-y-4">
-      {sample ? (
+      {offline ? (
         <div className="rounded-md border border-attention/40 bg-attention-subtle px-4 py-2.5 text-sm text-fg">
-          Showing built-in sample PRs: the backend has no triaged PRs yet (or is not running).
+          Can&apos;t reach the PR Lens backend. Start it with <span className="font-mono">npm run dev:backend</span> in{" "}
+          <span className="font-mono">web/</span>.
         </div>
       ) : null}
 

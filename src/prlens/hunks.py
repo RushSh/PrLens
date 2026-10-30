@@ -3,7 +3,7 @@
 - `parse_diff` turns `git diff` output into files and hunks (old/new line numbers kept per line).
 - `skip_category` clears hunks a human never needs to read, by path (lock files, generated code, docs, CI and
   tool config, test data) or by proof (a Python hunk whose syntax tree is unchanged is formatting or comments only;
-  one that only changes docstrings is docs).
+  one that only changes docstrings is scored like any other region, since docstrings can be read at run time).
 - `review_rules` forces hunks into review whatever their score: migrations, security-sensitive code, public API
   signatures.
 """
@@ -185,8 +185,8 @@ def skip_category(h: Hunk, old_src: str | None) -> tuple[str, str] | None:
     result = proof(old_src, h)
     if result == "formatting":
         return "formatting", "Syntax tree unchanged: whitespace, line breaks or comments only"
-    if result == "docs":
-        return "docs", "Only docstrings change; the code is identical"
+    # docstring-only changes are NOT skipped: doctest, parser generators (PLY, docopt) and LLM tool decorators read
+    # docstrings at run time, so they go to the model like any other region
     return None
 
 
@@ -238,6 +238,20 @@ def error_handling_rule(lang, added: list[str], deleted: list[str]) -> tuple[str
     return None
 
 
+# Text addressed to a model, anywhere in added lines (comments and strings included): a PR must not be able to talk
+# its own code out of review.
+INJECTION_RE = re.compile(
+    r"\b(ignore|disregard|forget|override)\b[^\n]{0,40}\b(previous|prior|above|earlier|all|any|your)\b[^\n]{0,25}"
+    r"\b(instructions?|prompts?|rules|guidelines)\b"
+    r"|\b(you are|as) an? (ai|llm|language model|assistant|ai reviewer|code reviewer)\b"
+    r"|\b(ai|llm|model|assistant|copilot|reviewer|bot)\s*[:,]\s*(please\s+)?(rate|score|skip|ignore|approve|mark)\b"
+    r"|\b(rate|score|mark|classify)\b[^\n]{0,30}\b(this|these|it)\b[^\n]{0,30}\b(low[- ]risk|safe|zero risk|risk:? ?0(\.0+)?\b)"
+    r"|\b(skip|do not review|don'?t review|no need to review)\b[^\n]{0,15}\b(this|these)\b[^\n]{0,10}"
+    r"\b(region|file|hunk|change|code|lines?)\b"
+    r"|</?\s*(system|pr_data|instructions?|assistant)\s*>",
+    re.I)
+
+
 def review_rules(h: Hunk, pr_added_defs: set[str] | None = None) -> list[tuple[str, str]]:
     """`pr_added_defs`: public names defined on added lines anywhere in the PR (a def that moved is not removed)."""
     out = []
@@ -245,6 +259,8 @@ def review_rules(h: Hunk, pr_added_defs: set[str] | None = None) -> list[tuple[s
     if "migration" in low or "alembic" in low:
         out.append(("data_migration", "Database migration"))
     changed = [l.text for l in h.lines if l.kind != "ctx"]
+    if any(INJECTION_RE.search(l.text) for l in h.lines if l.kind == "add"):
+        out.append(("prompt_injection", "Contains text addressed to an AI reviewer; always read"))
     if any(SECURITY_RE.search(t) for t in changed):
         out.append(("security_sensitive", "Touches security-sensitive code"))
     lang = language_of(h.file)

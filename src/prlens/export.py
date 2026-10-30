@@ -23,7 +23,7 @@ from .fit import cross_fit, held_out, load, pick, skip_outcome, ucb
 from .trace import is_test, logic_density, read_until
 
 OUT = ROOT / "data" / "triage_eval.json"
-RULE_CODES = {"security_sensitive", "public_api", "data_migration", "error_handling"}
+RULE_CODES = {"security_sensitive", "public_api", "data_migration", "error_handling", "prompt_injection"}
 CONTEXT = 3
 MAX_DIFF = 400
 
@@ -45,7 +45,7 @@ def diff_lines(lines, flag_new=(), flag_old=(), window=True):
 
 def priority(p: float, rules) -> str:
     codes = {r[0] for r in rules}
-    if p >= 0.3 or codes & {"security_sensitive", "data_migration"}:
+    if p >= 0.3 or codes & {"security_sensitive", "data_migration", "prompt_injection"}:
         return "P0"
     if p >= 0.12 or codes & {"public_api", "error_handling"}:
         return "P1"
@@ -103,6 +103,8 @@ def build(pr, t: float, guarantee: dict) -> dict:
             if g["bug"]:
                 bug_ids.append(g["id"])
             reason = (u.get("reason") or "").strip()
+            if u["risk"] is None:
+                reason = "No model score for this region (the call failed), so it is always read."
             if g["rules"] or p >= t:
                 reasons = []
                 if p >= t:
@@ -115,7 +117,8 @@ def build(pr, t: float, guarantee: dict) -> dict:
                 logic = logic_density(u)
                 to_review.append(dict(base, tier="review", riskScore=round(p, 4), priority=priority(p, g["rules"]),
                                       reasons=reasons, forcedByRule=bool(g["rules"]) and p < t, signals=[
-                                          {"name": "Spark Open risk", "value": f"{risk:.0%}", "weight": round(risk, 3)},
+                                          {"name": "Spark Open risk", "value": "no score" if u["risk"] is None else f"{risk:.0%}",
+                                           "weight": round(risk, 3)},
                                           {"name": "Logic operators changed", "value": str(int(logic)),
                                            "weight": round(min(1.0, logic / 12), 3)},
                                           {"name": "File", "value": "test" if is_test(u) else "source",
@@ -164,11 +167,12 @@ def evaluation(prs, t: float, alpha: float) -> dict:
     for name, frac in (("quarter", 1 / 4), ("third", 1 / 3), ("half", 1 / 2)):
         order = lambda p: sorted([u for u in p["units"] if not u["skip"]], key=lambda u: -u["p"])  # noqa: E731
         gate[name] = round(sum(read_until(p["units"], order(p), frac * p["lines"]) for p in prs) / n, 4)
-    pos = [u["p"] for p in prs for u in p["units"] if not u["skip"] and u["bug"]]
-    neg = [u["p"] for p in prs for u in p["units"] if not u["skip"] and not u["bug"]]
+    sc = lambda u: not u["skip"] and u["risk"] is not None  # noqa: E731 (unscored regions are read, not ranked)
+    pos = [u["p"] for p in prs for u in p["units"] if sc(u) and u["bug"]]
+    neg = [u["p"] for p in prs for u in p["units"] if sc(u) and not u["bug"]]
     auc = sum((a > b) + 0.5 * (a == b) for a in pos for b in neg) / max(1, len(pos) * len(neg))
-    rpos = [u["risk"] or 0 for p in prs for u in p["units"] if not u["skip"] and u["bug"]]
-    rneg = [u["risk"] or 0 for p in prs for u in p["units"] if not u["skip"] and not u["bug"]]
+    rpos = [u["risk"] for p in prs for u in p["units"] if sc(u) and u["bug"]]
+    rneg = [u["risk"] for p in prs for u in p["units"] if sc(u) and not u["bug"]]
     auc_model = sum((a > b) + 0.5 * (a == b) for a in rpos for b in rneg) / max(1, len(rpos) * len(rneg))
     sizes = sorted(p["lines"] for p in prs)
     return {

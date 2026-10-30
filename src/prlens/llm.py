@@ -59,8 +59,13 @@ def spec(name: str) -> ModelSpec:
     return reg[name]
 
 
+_NO_SCHEMA: set[tuple[str, str]] = set()
+
+
 def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
-         usage_log: Path | None = Path("logs/usage.jsonl")) -> Reply:
+         usage_log: Path | None = Path("logs/usage.jsonl"), schema: dict | None = None) -> Reply:
+    """`schema`: a JSON schema the reply must follow (strict structured output). A provider that rejects it gets
+    plain JSON mode instead, once per process."""
     from openai import APIStatusError, OpenAI
 
     if not s.api_key:
@@ -71,7 +76,8 @@ def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
     if cap:
         kwargs["max_tokens"] = cap
     if s.provider in ("meta", "baseten"):
-        kwargs["response_format"] = {"type": "json_object"}
+        strict = schema is not None and (s.provider, s.model_id) not in _NO_SCHEMA
+        kwargs["response_format"] = {"type": "json_schema", "json_schema": schema} if strict else {"type": "json_object"}
     effort = effort_for(s)
     if effort:
         kwargs["reasoning_effort"] = effort
@@ -97,6 +103,10 @@ def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
                     pass
                 time.sleep(min(60.0, wait if wait else backoff) + random.uniform(0, 1))
                 backoff = min(60.0, backoff * 2)
+                continue
+            if exc.status_code in (400, 422) and kwargs.get("response_format", {}).get("type") == "json_schema":
+                _NO_SCHEMA.add((s.provider, s.model_id))  # no structured output here: fall back to JSON mode
+                kwargs["response_format"] = {"type": "json_object"}
                 continue
             return Reply("", None, None, None, time.time() - t0, f"{type(exc).__name__}: {exc}")
         except Exception as exc:  # network and the like: report, never crash a batch

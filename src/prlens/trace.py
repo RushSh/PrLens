@@ -24,7 +24,7 @@ from pathlib import Path
 
 
 from .bugdata import DEFAULT_RAW, INDEX, ROOT, find_repo as _find_repo
-from .hunks import Hunk, defs_in, parse_diff, regions, review_rules, skip_category
+from .hunks import Hunk, defs_in, parse_diff, proof, regions, review_rules, skip_category
 from .languages import is_test as is_test_path, language_of, logic_density as lang_logic_density
 
 OUT = ROOT / "data" / "triage" / "prs.jsonl"
@@ -187,6 +187,8 @@ def trace(args) -> None:
                 old_src = git(repo, "show", f"{sha}^:{f.old_path}") if f.old_path else None
                 for i, h in enumerate(f.hunks):
                     skip = skip_category(h, old_src)
+                    # layout- or docstring-only: blame landing here is SZZ noise, whether or not the hunk is skipped
+                    neutral = proof(old_src, h) in ("formatting", "docs")
                     regs = []
                     for j, r in enumerate(regions(h)):
                         regs.append({"id": f"{h.file}#{i}.{j}", "added": r.added, "removed": r.removed,
@@ -203,6 +205,7 @@ def trace(args) -> None:
                         "new_len": h.new_len,
                         "lines": [[l.kind, l.old, l.new, l.text] for l in h.lines],
                         "skip": skip,
+                        "neutral": neutral,
                         "rules": review_rules(h, pr_defs),
                         "regions": regs,
                         "bug": False,
@@ -228,7 +231,7 @@ def trace(args) -> None:
             for h in pr["hunks"]:
                 if h["file"] == r.get("file") and any(
                         l[0] == "add" and l[2] == r["orig_line"] for l in h["lines"]):
-                    if h["skip"] and h["skip"][0] in ("formatting", "docs"):
+                    if h.get("neutral") or (h["skip"] and h["skip"][0] in ("formatting", "docs")):
                         neutral += 1  # the commit only reformatted or re-documented this line: not where the bug came from
                         continue
                     hit.add(h["id"])
