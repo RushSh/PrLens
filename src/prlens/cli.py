@@ -12,6 +12,7 @@
     export      write data/triage_eval.json for the dashboard              (prlens.export)
     triage-pr   triage a live GitHub pull request (paid; asks first)       (prlens.live)
     agent-study the Muse Code agent re-implements evaluation PRs            (prlens.agentstudy)
+    sample      pick new candidates to validate (newest per repo, unjudged)  (prlens.sample)
     models      the configured models and whether each is ready            (prlens.models)
 
 `prlens <step> -h` shows the step's own options.
@@ -35,6 +36,7 @@ STEPS: dict[str, tuple[str, list[str]]] = {
     "triage-pr": ("live", []),
     "models": ("models", []),
     "agent-study": ("agentstudy", []),
+    "sample": ("sample", []),
 }
 
 
