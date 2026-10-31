@@ -411,6 +411,7 @@ def main(argv: list[str] | None = None) -> None:
     tr.add_argument("--workers", type=int, default=4)
     tr.add_argument("--yes", action="store_true")
     tr.add_argument("--plan-only", action="store_true")
+    tr.add_argument("--rebuild", action="store_true", help="rebuild the PRs from the agent diffs (needs the clones)")
     args = ap.parse_args(argv)
     {"prepare": prepare, "validate": validate, "triage": triage}[args.step](args)
 
@@ -418,6 +419,7 @@ def main(argv: list[str] | None = None) -> None:
 # ---------------------------------------------------------------- triage the agent's PRs with PR Lens
 
 LABELS = STUDY / "labels.json"
+PRS_BUILT = STUDY / "prs.jsonl"
 OUT_TRIAGE = ROOT / "data" / "triage_agent.json"
 AGENT = "Muse Code"
 AGENT_MODEL = "muse-spark-1.3-contributor"
@@ -515,7 +517,15 @@ def triage(args) -> None:
     if missing:
         raise SystemExit(f"label these bugs first in {LABELS.relative_to(ROOT)}: {', '.join(missing)}")
     s = spec(args.model)
-    prs = {n: agent_pr(tasks[n], val[n], fix_index) for n in judged}
+    # the PRs are built once where the clones are (some live outside the shared folder) and kept, so scoring can run
+    # on any machine with the repository checked out
+    built = {}
+    if PRS_BUILT.exists():
+        built = {json.loads(l)["task"]: json.loads(l)["pr"] for l in PRS_BUILT.read_text().splitlines() if l.strip()}
+    if args.rebuild or any(n not in built for n in judged):
+        built.update({n: agent_pr(tasks[n], val[n], fix_index) for n in judged if args.rebuild or n not in built})
+        PRS_BUILT.write_text("".join(json.dumps({"task": n, "pr": built[n]}) + "\n" for n in judged))
+    prs = {n: json.loads(json.dumps(built[n])) for n in judged}
     cache_path = CACHE_DIR / f"agent_study__{args.model}.jsonl"
     cache = {}
     if cache_path.exists():
