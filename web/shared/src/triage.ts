@@ -211,6 +211,37 @@ export interface TriageEvaluation {
     shift: DriftReplay;
     random: Record<"fixed" | "adaptive" | "read_fixed" | "read_adaptive", { mean: number; p90: number }>;
   };
+  /** Does the model earn its place? Baselines at the same target, reliability and a repository bootstrap. */
+  ablation?: Ablation;
+}
+
+export interface AblationRow {
+  key: string;
+  label: string;
+  auc: number;
+  threshold: number;
+  missed: number;
+  read_share: number;
+  held_out_missed: number;
+  held_out_read_share: number;
+  /** Bugs kept when reading no more lines than PR Lens does. */
+  kept_at_budget: number;
+}
+
+export interface Ablation {
+  alpha: number;
+  prs: number;
+  budget: number;
+  rows: AblationRow[];
+  reliability: {
+    bins: { mean_score: number; bug_rate: number; regions: number; bugs: number }[];
+    brier: number;
+    brier_base_rate: number;
+    ece: number;
+    regions: number;
+    base_rate: number;
+  };
+  bootstrap: { draws: number; repos: number; observed: number; p50: number; p90: number; p95: number; clopper_pearson_90: number };
 }
 
 /** One replay: per PR after warm-up, the cumulative miss rate of each threshold and the guaranteed ceiling. */
@@ -363,6 +394,43 @@ export const triageFile = z.object({
           date: driftReplay,
           shift: driftReplay,
           random: z.record(z.enum(["fixed", "adaptive", "read_fixed", "read_adaptive"]), z.object({ mean: z.number(), p90: z.number() })),
+        })
+        .optional(),
+      ablation: z
+        .object({
+          alpha: z.number(),
+          prs: z.number(),
+          budget: z.number(),
+          rows: z.array(
+            z.object({
+              key: z.string(),
+              label: z.string(),
+              auc: z.number(),
+              threshold: z.number(),
+              missed: z.number(),
+              read_share: z.number(),
+              held_out_missed: z.number(),
+              held_out_read_share: z.number(),
+              kept_at_budget: z.number(),
+            }),
+          ),
+          reliability: z.object({
+            bins: z.array(z.object({ mean_score: z.number(), bug_rate: z.number(), regions: z.number(), bugs: z.number() })),
+            brier: z.number(),
+            brier_base_rate: z.number(),
+            ece: z.number(),
+            regions: z.number(),
+            base_rate: z.number(),
+          }),
+          bootstrap: z.object({
+            draws: z.number(),
+            repos: z.number(),
+            observed: z.number(),
+            p50: z.number(),
+            p90: z.number(),
+            p95: z.number(),
+            clopper_pearson_90: z.number(),
+          }),
         })
         .optional(),
     })

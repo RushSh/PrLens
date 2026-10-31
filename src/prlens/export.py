@@ -145,6 +145,15 @@ def build(pr, t: float, guarantee: dict) -> dict:
     }
 
 
+def with_ablation(ev: dict, language: str) -> dict:
+    """Attach `prlens ablation --save` results for this language when they exist."""
+    from .ablation import path_for
+    p = path_for(language)
+    if p.exists():
+        ev["ablation"] = json.loads(p.read_text())
+    return ev
+
+
 def evaluation(prs, t: float, alpha: float) -> dict:
     """What the Evaluation tab shows: the reading-vs-missing curve, per-repo results, ranking quality, PR sizes."""
     import numpy as np
@@ -220,7 +229,7 @@ def main(argv: list[str] | None = None) -> None:
         "model": args.model, "threshold": t, "alpha": args.alpha,
         "summary": {"prs": len(prs), "repos": repos, "missed": k, "read_share": r / tot,
                     "held_out_missed": hk, "held_out_read_share": hr / ht},
-        "evaluation": evaluation(prs, t, args.alpha),
+        "evaluation": with_ablation(evaluation(prs, t, args.alpha), args.language),
         "prs": [build(p, t, guarantee) for p in prs],
     }
     target.write_text(json.dumps(out))

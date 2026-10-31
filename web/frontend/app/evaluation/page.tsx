@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EVAL_LANGUAGES, type EvalLanguage, type TriageSetInfo } from "@prlens/shared";
+import { AblationPanel } from "@/components/AblationPanel";
 import { DriftChart } from "@/components/DriftChart";
 import { EvalChart } from "@/components/EvalChart";
 import { Box, Counter, Empty, Pill, Stat } from "@/components/ui";
@@ -155,6 +156,12 @@ function SetDetail({ set, label }: { set: TriageSetInfo; label: string }) {
           </p>
         </div>
       </Box>
+
+      {ev.ablation ? (
+        <Box title="Does the model earn its place?">
+          <AblationPanel ab={ev.ablation} label={label} />
+        </Box>
+      ) : null}
 
       {ev.drift ? (
         <Box title="A promise that survives drift: the adaptive threshold">
