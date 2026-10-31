@@ -266,6 +266,53 @@ def oom(r: subprocess.CompletedProcess, text: str) -> bool:
     return r.returncode in (137, -9) or "exited with code 137" in text
 
 
+def run_fix_tests(lang: str, d: Path, test_files: list[str], row: list[str], stage: str) -> tuple[int, int, int, str]:
+    """(passed, failed, files that did not load or compile, output) for these test files in working copy `d`
+    (TypeScript or C#; the project's dependencies already installed)."""
+    passed = failed = broken = 0
+    out = ""
+    if len(row) > 2 and row[2]:
+        r = sh(f"cd {q(str(d))} && " + row[2].replace("{files}", " ".join(q(t) for t in test_files)), d)
+        return (1, 0, 0, "") if r.returncode == 0 else (0, 1, 0, (r.stdout + r.stderr)[-2000:])
+    if lang == "typescript":
+        for i, t in enumerate(test_files):
+            report = d.parent / f".{d.name}-{stage}-{i}.json"
+            report.unlink(missing_ok=True)
+            r = sh(node_test_cmd(d, t, report), d)
+            p_, f_, b_ = read_report(report)
+            if (p_, f_, b_) == (0, 0, 0) and r.returncode != 0:
+                b_ = 1  # no report at all: the runner could not start this file
+            passed, failed, broken, out = passed + p_, failed + f_, broken + b_, out + (r.stdout + r.stderr)[-1500:]
+            report.unlink(missing_ok=True)
+        return passed, failed, broken, out
+    for cmd in [x for x in (dotnet_test_cmd(d, t) for t in test_files) if x]:
+        r = sh(cmd, d)
+        text = r.stdout + r.stderr
+        if oom(r, text):  # the compiler was killed for memory: one build node uses less
+            r = sh(cmd.replace(" -- ", " -m:1 -- ", 1) if " -- " in cmd else cmd + " -m:1", d)
+            text = r.stdout + r.stderr
+            if oom(r, text):
+                raise RuntimeError("build ran out of memory")
+        out += text[-2000:]
+        m = re.search(r"Failed:\s*(\d+),\s*Passed:\s*(\d+)", text)
+        mtp = re.search(r"total:\s*(\d+)\s+failed:\s*(\d+)\s+succeeded:\s*(\d+)", text)
+        if mtp:  # a test-run summary means everything compiled; failing tests may print anything
+            failed, passed = failed + int(mtp.group(2)), passed + int(mtp.group(3))
+        elif "error CS" in text or "Build FAILED" in text or re.search(r": error (CS|MSB|NETSDK)", text):
+            broken += 1
+        elif m:
+            failed, passed = failed + int(m.group(1)), passed + int(m.group(2))
+        elif r.returncode != 0:
+            broken += 1
+        else:
+            m2 = re.search(r"Passed!\s*-\s*Failed:\s*(\d+),\s*Passed:\s*(\d+)", text)
+            passed += int(m2.group(2)) if m2 else 1
+    return passed, failed, broken, out
+
+
+run_fix_tests.no_project = lambda d, test_files: not any(dotnet_test_cmd(d, t) for t in test_files)
+
+
 def validate_copy(c: dict, wc: WorkingCopy, row: list[str]) -> tuple[bool | None, str]:
     lang = c["language"]
     wc.checkout(c["sha"])
@@ -277,55 +324,11 @@ def validate_copy(c: dict, wc: WorkingCopy, row: list[str]) -> tuple[bool | None
         if r.returncode != 0:
             return None, f"install failed: {(r.stderr or r.stdout)[-300:]}"
         wc.installed_for = lh
-    custom = len(row) > 2 and bool(row[2])
     if lang == "csharp":
         pin_sdk(d)
-    if lang == "csharp" and not custom:
-        cmds = [x for x in (dotnet_test_cmd(d, t) for t in c["test_files"]) if x]
-        if not cmds:
-            return None, "no test project found"
-
-    def run(stage: str) -> tuple[int, int, int, str]:
-        """(passed, failed, files that did not load, output) for all the fix's tests."""
-        passed = failed = broken = 0
-        out = ""
-        if custom:
-            r = sh(f"cd {q(str(d))} && " + row[2].replace("{files}", " ".join(q(t) for t in c["test_files"])), d)
-            return (1, 0, 0, "") if r.returncode == 0 else (0, 1, 0, (r.stdout + r.stderr)[-2000:])
-        if lang == "typescript":
-            for i, t in enumerate(c["test_files"]):
-                report = d.parent / f".{d.name}-{stage}-{i}.json"
-                report.unlink(missing_ok=True)
-                r = sh(node_test_cmd(d, t, report), d)
-                p_, f_, b_ = read_report(report)
-                if (p_, f_, b_) == (0, 0, 0) and r.returncode != 0:
-                    b_ = 1  # no report at all: the runner could not start this file
-                passed, failed, broken, out = passed + p_, failed + f_, broken + b_, out + (r.stdout + r.stderr)[-1500:]
-                report.unlink(missing_ok=True)
-            return passed, failed, broken, out
-        for cmd in cmds:
-            r = sh(cmd, d)
-            text = r.stdout + r.stderr
-            if oom(r, text):  # the compiler was killed for memory: one build node uses less
-                r = sh(cmd.replace(" -- ", " -m:1 -- ", 1) if " -- " in cmd else cmd + " -m:1", d)
-                text = r.stdout + r.stderr
-                if oom(r, text):
-                    raise RuntimeError("build ran out of memory")
-            out += text[-2000:]
-            m = re.search(r"Failed:\s*(\d+),\s*Passed:\s*(\d+)", text)
-            mtp = re.search(r"total:\s*(\d+)\s+failed:\s*(\d+)\s+succeeded:\s*(\d+)", text)
-            if mtp:  # a test-run summary means everything compiled; failing tests may print anything
-                failed, passed = failed + int(mtp.group(2)), passed + int(mtp.group(3))
-            elif "error CS" in text or "Build FAILED" in text or re.search(r": error (CS|MSB|NETSDK)", text):
-                broken += 1
-            elif m:
-                failed, passed = failed + int(m.group(1)), passed + int(m.group(2))
-            elif r.returncode != 0:
-                broken += 1
-            else:
-                m2 = re.search(r"Passed!\s*-\s*Failed:\s*(\d+),\s*Passed:\s*(\d+)", text)
-                passed += int(m2.group(2)) if m2 else 1
-        return passed, failed, broken, out
+    run = lambda stage: run_fix_tests(lang, d, c["test_files"], row, stage)  # noqa: E731
+    if lang == "csharp" and not (len(row) > 2 and row[2]) and run_fix_tests.no_project(d, c["test_files"]):
+        return None, "no test project found"
 
     p_after, f_after, b_after, out_after = run("after")
     if f_after or b_after or not p_after:
