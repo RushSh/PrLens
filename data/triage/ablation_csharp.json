@@ -1,0 +1,151 @@
+{
+ "alpha": 0.2,
+ "prs": 36,
+ "budget": 0.4729031729113716,
+ "rows": [
+  {
+   "key": "random",
+   "label": "Random skipping",
+   "threshold": 0.1399,
+   "missed": 3.0,
+   "read_share": 0.8141,
+   "held_out_missed": 3.15,
+   "held_out_read_share": 0.8388,
+   "auc": 0.5077,
+   "kept_at_budget": 19.1167
+  },
+  {
+   "key": "logic density",
+   "label": "Logic density alone",
+   "threshold": 0.0,
+   "missed": 3,
+   "read_share": 0.6716,
+   "held_out_missed": 2,
+   "held_out_read_share": 0.7232,
+   "auc": 0.6775,
+   "kept_at_budget": 24
+  },
+  {
+   "key": "code features",
+   "label": "Code features, no model",
+   "threshold": 0.0439,
+   "missed": 3,
+   "read_share": 0.4596,
+   "held_out_missed": 4,
+   "held_out_read_share": 0.4895,
+   "auc": 0.6997,
+   "kept_at_budget": 33
+  },
+  {
+   "key": "spark open",
+   "label": "Spark Open alone",
+   "threshold": 0.07,
+   "missed": 3,
+   "read_share": 0.5184,
+   "held_out_missed": 4,
+   "held_out_read_share": 0.5178,
+   "auc": 0.7251,
+   "kept_at_budget": 31
+  },
+  {
+   "key": "combined",
+   "label": "PR Lens combined",
+   "threshold": 0.0326,
+   "missed": 3,
+   "read_share": 0.4729,
+   "held_out_missed": 3,
+   "held_out_read_share": 0.4729,
+   "auc": 0.6903,
+   "kept_at_budget": 33
+  },
+  {
+   "key": "with-must-review",
+   "label": "PR Lens, must-review regions in the fit (comparison)",
+   "threshold": 0.0324,
+   "missed": 3,
+   "read_share": 0.4732,
+   "held_out_missed": 4,
+   "held_out_read_share": 0.473,
+   "auc": 0.6902,
+   "kept_at_budget": 31
+  }
+ ],
+ "reliability": {
+  "bins": [
+   {
+    "mean_score": 0.0016,
+    "bug_rate": 0.0,
+    "regions": 109,
+    "bugs": 0
+   },
+   {
+    "mean_score": 0.003,
+    "bug_rate": 0.0,
+    "regions": 110,
+    "bugs": 0
+   },
+   {
+    "mean_score": 0.0096,
+    "bug_rate": 0.0,
+    "regions": 109,
+    "bugs": 0
+   },
+   {
+    "mean_score": 0.0234,
+    "bug_rate": 0.0455,
+    "regions": 110,
+    "bugs": 5
+   },
+   {
+    "mean_score": 0.0365,
+    "bug_rate": 0.055,
+    "regions": 109,
+    "bugs": 6
+   },
+   {
+    "mean_score": 0.0492,
+    "bug_rate": 0.0545,
+    "regions": 110,
+    "bugs": 6
+   },
+   {
+    "mean_score": 0.0627,
+    "bug_rate": 0.055,
+    "regions": 109,
+    "bugs": 6
+   },
+   {
+    "mean_score": 0.0799,
+    "bug_rate": 0.0364,
+    "regions": 110,
+    "bugs": 4
+   },
+   {
+    "mean_score": 0.1204,
+    "bug_rate": 0.1101,
+    "regions": 109,
+    "bugs": 12
+   },
+   {
+    "mean_score": 0.2268,
+    "bug_rate": 0.0636,
+    "regions": 110,
+    "bugs": 7
+   }
+  ],
+  "brier": 0.04238,
+  "brier_base_rate": 0.04024,
+  "ece": 0.0286,
+  "regions": 1095,
+  "base_rate": 0.042
+ },
+ "bootstrap": {
+  "draws": 2000,
+  "repos": 8,
+  "observed": 0.08333333333333333,
+  "p50": 0.08333333333333333,
+  "p90": 0.12903225806451613,
+  "p95": 0.15625,
+  "clopper_pearson_90": 0.17624644477110799
+ }
+}

@@ -13,6 +13,7 @@
     triage-pr   triage a live GitHub pull request (paid; asks first)       (prlens.live)
     agent-study the Muse Code agent re-implements evaluation PRs            (prlens.agentstudy)
     sample      pick new candidates to validate (newest per repo, unjudged)  (prlens.sample)
+    ablation    does the model earn its place? baselines, reliability, bootstrap (prlens.ablation)
     models      the configured models and whether each is ready            (prlens.models)
 
 `prlens <step> -h` shows the step's own options.
@@ -37,6 +38,7 @@ STEPS: dict[str, tuple[str, list[str]]] = {
     "models": ("models", []),
     "agent-study": ("agentstudy", []),
     "sample": ("sample", []),
+    "ablation": ("ablation", []),
 }
 
 
