@@ -115,7 +115,7 @@ describe("api and pipeline", () => {
     expect(actions.find((a) => a.id === "fit")?.paid).toBe(false);
 
     const post = (body: object) => app.inject({ method: "POST", url: "/api/pipeline/run", headers, payload: body });
-    const params = { url: "https://github.com/mahmoud/boltons/pull/677", model: "spark_open" };
+    const params = { url: "https://github.com/mahmoud/boltons/pull/677", model: "spark_open", explain: true };
     const noToken = await post({ action: "triage-pr", params });
     expect(noToken.statusCode).toBe(400);
     expect(noToken.json().error).toMatch(/plan this step first/);
@@ -123,8 +123,9 @@ describe("api and pipeline", () => {
     expect((await post({ action: "triage-pr", params: { ...params, model: "wonder" }, confirmToken: token })).statusCode).toBe(400);
     expect((await post({ action: "triage-pr", params, confirmToken: token })).statusCode).toBe(201);
     expect(queued[0]!.lane).toBe("models");
-    expect(queued[0]!.args.slice(0, 7)).toEqual(["-m", "prlens", "triage-pr", params.url, "--model", "spark_open", "--yes"]);
-    expect(queued[0]!.args).toHaveLength(7); // no reviews of this repository yet: its language's calibrated threshold
+    // the one-line notes are on by default
+    expect(queued[0]!.args.slice(0, 8)).toEqual(["-m", "prlens", "triage-pr", params.url, "--model", "spark_open", "--explain", "--yes"]);
+    expect(queued[0]!.args).toHaveLength(8); // no reviews of this repository yet: its language's calibrated threshold
     expect(queued[0]!.title).toBe("Triage mahmoud/boltons/pull/677");
 
     const badUrl = { url: "https://github.com/o/r/pull/1; rm -rf /", model: "spark_open" };

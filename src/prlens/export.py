@@ -123,11 +123,11 @@ def build(pr, t: float, guarantee: dict) -> dict:
                                            "weight": round(min(1.0, logic / 12), 3)},
                                           {"name": "File", "value": "test" if is_test(u) else "source",
                                            "weight": 0.1 if is_test(u) else 0.6},
-                                          {"name": "Combined bug chance", "value": f"{p:.1%}",
+                                          {"name": "Combined risk score", "value": f"{p:.1%}",
                                            "weight": round(min(1.0, p / 0.5), 3)},
                                       ]))
             else:
-                why = f"Combined bug chance {p:.1%} is under the skip threshold ({t:.1%})."
+                why = f"Combined risk score {p:.1%} is under the skip threshold ({t:.1%})."
                 if reason:
                     why += f" Spark Open: {reason}"
                 skipped.append(dict(base, tier="skip", category="low_score", reason=why, riskScore=round(p, 4)))

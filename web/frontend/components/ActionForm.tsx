@@ -27,13 +27,16 @@ export function ActionForm({
   models,
   onStarted,
   submitLabel,
+  preset,
 }: {
   action: PipelineAction;
   models: AvailableModel[];
   onStarted: (jobId: string) => void;
   submitLabel?: string;
+  /** Values to start from instead of the defaults (remount with a new key to apply new ones). */
+  preset?: Values;
 }) {
-  const [values, setValues] = useState<Values>(() => initial(action.fields));
+  const [values, setValues] = useState<Values>(() => ({ ...initial(action.fields), ...preset }));
   const [plan, setPlan] = useState<PipelinePlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

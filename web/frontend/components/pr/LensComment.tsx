@@ -57,7 +57,7 @@ export function LensComment({
           <span className="rounded-full border border-line px-1.5 text-xs text-muted">bot</span>
           <PriorityPill priority={item.priority} />
           <span className="text-xs text-muted">
-            bug chance <span className="tabular font-semibold text-fg">{pct(item.riskScore)}</span>
+            risk score <span className="tabular font-semibold text-fg">{pct(item.riskScore)}</span>
           </span>
           {item.forcedByRule ? <Pill title="A rule put this here, not the risk score">always reviewed</Pill> : null}
           {item.sameEdit ? <Pill title="The same edit appears in several places; reviewing it here covers them all">same edit in {item.sameEdit.size} places</Pill> : null}
@@ -68,6 +68,13 @@ export function LensComment({
           ) : null}
         </div>
         <div className="space-y-2 px-3 py-2.5 text-sm text-fg">
+          {item.note ? (
+            <p className="rounded-md border-l-2 border-accent bg-accent-subtle px-2.5 py-1.5">
+              <span className="mr-1.5 font-semibold">Check:</span>
+              {item.note.text}
+              <span className="ml-1.5 whitespace-nowrap text-xs text-muted">· {item.note.model}</span>
+            </p>
+          ) : null}
           {item.reasons.map((r, i) => (
             <p key={i}>
               <span className="mr-1.5 font-semibold" title={REVIEW_REASONS[r.code].help}>

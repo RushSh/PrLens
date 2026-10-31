@@ -85,10 +85,16 @@ const ACTIONS: ActionDef[] = [
     fields: () => [
       { name: "url", label: "Pull request link", type: "text", required: true, help: "https://github.com/owner/repo/pull/123" },
       MODEL_FIELD,
+      {
+        name: "explain",
+        label: "Add a one-line note on each review item (Muse Spark Model API, about 2 cents an item)",
+        type: "checkbox",
+        default: true,
+      },
     ],
     planArgv: (p) => ["triage-pr", String(p.url), "--model", String(p.model), "--plan-only"],
-    argv: (p) => ["triage-pr", String(p.url), "--model", String(p.model), ...yes],
-    schema: obj({ url: z.string().trim().regex(PR_URL, "a GitHub pull request link"), model }),
+    argv: (p) => ["triage-pr", String(p.url), "--model", String(p.model), ...(p.explain ? ["--explain"] : []), ...yes],
+    schema: obj({ url: z.string().trim().regex(PR_URL, "a GitHub pull request link"), model, explain: z.boolean().default(true) }),
   },
   // ------------------------------------------------------------------ evaluation set
   {

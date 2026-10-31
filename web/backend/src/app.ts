@@ -1,5 +1,7 @@
 /** HTTP API (Fastify). Built as a function so tests can run it against a test database. */
 import { execFile } from "node:child_process";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
 import Fastify, { type FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -83,6 +85,24 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     const pr = await getTriagePr(db, id);
     if (!pr) return reply.status(404).send({ error: "PR not found" });
     return { feedback: await getFeedback(db, pr.repo, id), adaptive: await adaptiveFor(db, pr.repo) };
+  });
+  // ---- demo: PRs whose model scores are cached, so triaging them again is instant and costs nothing
+  app.get("/api/triage/cached", async () => {
+    let files: string[] = [];
+    try {
+      files = await readdir(path.join(root, "data", "triage", "scores", "live"));
+    } catch {
+      return [];
+    }
+    const out = [];
+    for (const f of files) {
+      const m = /^(.+?)__(.+?)__(\d+)__(.+)\.jsonl$/.exec(f);
+      if (!m) continue;
+      const [, owner, repo, n, model] = m;
+      const pr = await getTriagePr(db, `github:${owner}/${repo}#${n}`);
+      out.push({ url: `https://github.com/${owner}/${repo}/pull/${n}`, repo: `${owner}/${repo}`, number: Number(n), model, title: pr?.title ?? null });
+    }
+    return out;
   });
   app.post("/api/triage/prs/:id/feedback", async (req, reply) => {
     const { id } = prParam.parse(req.params);

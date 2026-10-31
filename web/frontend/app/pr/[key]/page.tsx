@@ -65,7 +65,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
                     {it.file}:{itemLine(it) ?? ""}
                   </Link>
                   {it.sameEdit ? <Pill>same edit in {it.sameEdit.size} places</Pill> : null}
-                  <span className="min-w-0 flex-1 basis-60 text-sm text-fg">{it.reasons[0]?.detail}</span>
+                  <span className="min-w-0 flex-1 basis-60 text-sm text-fg">{it.note?.text ?? it.reasons[0]?.detail}</span>
                 </li>
               ))}
               {queue.length > 6 ? <li className="px-3 py-2 text-xs text-muted">and {queue.length - 6} more in Files changed</li> : null}

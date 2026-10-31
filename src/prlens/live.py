@@ -143,6 +143,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--yes", action="store_true")
     ap.add_argument("--rescore", action="store_true", help="ask the model again even for regions already scored")
     ap.add_argument("--plan-only", action="store_true")
+    ap.add_argument("--explain", action="store_true",
+                    help="also write a one-line Muse Spark note on each review item (prlens explain; a few cents)")
     args = ap.parse_args(argv)
     m = URL_RE.match(args.url.strip())
     if not m:
@@ -170,7 +172,7 @@ def main(argv: list[str] | None = None) -> None:
             f"{len(fresh)} regions to score with {s.name} ({s.model_id} on {s.provider})"
             f"{f'; {len(todo) - len(fresh)} already scored' if len(fresh) < len(todo) else ''}.\n{line}\n"
             f"File types: {', '.join(langs) or 'none'} (each language is calibrated on its own evaluation set).\n"
-            + (f"Skip threshold: bug chance under {args.threshold:.2%} (this repository's adaptive threshold)."
+            + (f"Skip threshold: risk score under {args.threshold:.2%} (this repository's adaptive threshold)."
                if args.threshold is not None else "Skip threshold: the evaluation set's."),
             args.yes or not fresh, args.plan_only)
 
@@ -220,4 +222,7 @@ def main(argv: list[str] | None = None) -> None:
     mine_read = sum(i["added"] + i["removed"] for i in out["toReview"])
     print(f"saved {out['id']}: {len(out['toReview'])} to review, {len(out['skipped'])} skipped, "
           f"{mine_read} of {pr['lines']} lines to read")
+    if args.explain:
+        from .explain import main as explain
+        explain([str(OUT), "--only", out["id"], "--yes"])
     print(f"PRLENS_PR_ID={out['id']}")

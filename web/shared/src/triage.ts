@@ -89,6 +89,8 @@ export interface ReviewItem extends TriageHunk {
   forcedByRule: boolean;
   /** Set when several regions make the same edit: `group` is the id of the one shown in full, `size` how many. */
   sameEdit?: { group: string; size: number };
+  /** One sentence on what to check here, written by the Muse Spark Model API (`prlens explain`). */
+  note?: { text: string; model: string };
 }
 
 export interface SkippedItem extends TriageHunk {
@@ -150,7 +152,7 @@ export interface PrTriage {
   hunks?: { id: string; file: string; header: string; diff: DiffLine[] }[];
   /** "python" | "typescript" | "csharp": the language whose calibration was used. */
   language?: string;
-  /** The skip threshold this PR was triaged with (bug chance under it is skipped; 0 = nothing skipped on score). */
+  /** The skip threshold this PR was triaged with (a risk score under it is skipped; 0 = nothing skipped on score). */
   skipThreshold?: number;
   /** Link to the PR on GitHub (live PRs). */
   url?: string;
@@ -333,6 +335,7 @@ const reviewItem = z.object({
   signals: z.array(z.object({ name: z.string(), value: z.string(), weight: z.number() })),
   forcedByRule: z.boolean(),
   sameEdit: z.object({ group: z.string(), size: z.number().int() }).optional(),
+  note: z.object({ text: z.string(), model: z.string() }).optional(),
 });
 const skippedItem = z.object({
   ...hunk,

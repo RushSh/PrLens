@@ -81,7 +81,7 @@ export function FilesChanged({ pr }: { pr: PrTriage }) {
                           {reviewed.has(it.id) ? <CheckIcon size={14} className="ml-auto shrink-0 text-success" /> : null}
                           {bugIds.has(it.id) ? <BugIcon size={14} className="shrink-0 text-danger" /> : null}
                         </span>
-                        <span className="mt-0.5 line-clamp-2 text-xs text-muted">{it.reasons[0]?.detail}</span>
+                        <span className="mt-0.5 line-clamp-2 text-xs text-muted">{it.note?.text ?? it.reasons[0]?.detail}</span>
                       </span>
                     </button>
                   </li>
@@ -135,7 +135,7 @@ export function FilesChanged({ pr }: { pr: PrTriage }) {
           ) : null}
         </div>
 
-        <FeedbackPanel prId={pr.id} reported={[...reported]} onClearReported={() => setReported(new Set())} />
+        {pr.source === "agent" ? null : <FeedbackPanel prId={pr.id} reported={[...reported]} onClearReported={() => setReported(new Set())} />}
 
         {reveal && pr.groundTruth ? (
           <div

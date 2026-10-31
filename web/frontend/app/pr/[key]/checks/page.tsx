@@ -31,10 +31,10 @@ export default async function ChecksPage({ params }: { params: Promise<{ key: st
       "Skip threshold used",
       pr.skipThreshold !== undefined
         ? pr.skipThreshold > 0
-          ? `bug chance under ${pct(pr.skipThreshold, 1)}`
+          ? `risk score under ${pct(pr.skipThreshold, 1)}`
           : "none: nothing was skipped on score"
         : evalSet
-          ? `bug chance under ${pct(evalSet.threshold, 1)}, chosen on the evaluation set`
+          ? `risk score under ${pct(evalSet.threshold, 1)}, chosen on the evaluation set`
           : "from the evaluation set",
     ],
     [
