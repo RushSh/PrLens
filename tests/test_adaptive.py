@@ -64,3 +64,27 @@ def test_replay_reports_both_thresholds_on_the_same_stream():
     assert r["adaptive"][-1] <= r["bound"][-1] + 1e-12
     assert r["adaptive"][-1] < r["fixed"][-1]  # under drift the adaptive threshold misses less
     assert FLOOR < 0.01
+
+
+def test_no_bug_surfaced_is_not_an_update():
+    a = Adaptive(0.06)
+    theta = a.theta
+    assert a.update(None) is False
+    assert (a.theta, a.n, a.misses) == (theta, 0, 0)
+
+
+def test_a_bug_in_reviewed_code_loosens_like_a_clean_pr():
+    a = Adaptive(0.06)
+    t0 = a.threshold
+    assert a.update(False) is True
+    assert a.threshold > t0 and a.n == 1 and a.misses == 0
+
+
+def test_each_pr_updates_at_most_once():
+    a = Adaptive(0.06)
+    assert a.update(True, key="o/r#1") is True
+    theta = a.theta
+    assert a.update(True, key="o/r#1") is False
+    assert a.update(False, key="o/r#1") is False
+    assert (a.theta, a.n) == (theta, 1)
+    assert a.update(True, key="o/r#2") is True and a.n == 2

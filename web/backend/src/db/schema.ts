@@ -4,7 +4,7 @@
  * The "schema" test fails if a column here and in the migrated database disagree.
  */
 import { boolean, doublePrecision, integer, jsonb, pgTable, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import type { PrTriage, TriageEvaluation, TriageSetSummary } from "@prlens/shared";
+import type { FeedbackOutcome, PrTriage, TriageEvaluation, TriageSetSummary } from "@prlens/shared";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -62,7 +62,7 @@ export const triageFeedback = pgTable("triage_feedback", {
   id: serial("id").primaryKey(),
   scope: text("scope").notNull(),
   prId: text("pr_id").notNull(),
-  missed: boolean("missed").notNull(),
+  outcome: text("outcome").$type<FeedbackOutcome>().notNull().default("no_bug"),
   itemIds: text("item_ids").array().notNull().default([]),
   note: text("note"),
   createdAt: ts("created_at").notNull().defaultNow(),

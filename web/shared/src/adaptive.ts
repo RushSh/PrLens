@@ -1,8 +1,10 @@
 /**
  * The adaptive skip threshold (same math as src/prlens/adaptive.py; keep the two in step).
  *
- * After each reviewed PR the threshold moves in log-odds space: theta <- theta - eta * (err - alpha), where err = 1
- * if a bug was found in code the PR skipped. At or under `floor` nothing is skipped on score. For every sequence of
+ * After each PR in which a bug surfaced, the threshold moves in log-odds space: theta <- theta - eta * (err - alpha),
+ * where err = 1 if the bug was in code the PR skipped and 0 if it was in code sent to review. Updates are
+ * bug-conditional: a PR where no bug surfaced is recorded but does not move the threshold (it could not have missed),
+ * and each PR counts at most once. At or under `floor` nothing is skipped on score. For every sequence of
  * PRs, drifting or adversarial, the miss rate after n PRs is at most
  *     alpha + (theta_1 - logit(floor) + eta * (1 - alpha)) / (eta * n).
  */
@@ -15,9 +17,16 @@ export interface AdaptiveParams {
   floor: number;
 }
 
+/** What a reviewer reported for one PR. Only the first two move the threshold. */
+export type FeedbackOutcome = "bug_skipped" | "bug_reviewed" | "no_bug";
+export const FEEDBACK_OUTCOMES = ["bug_skipped", "bug_reviewed", "no_bug"] as const;
+
+/** err for the update: 1, 0, or null for no update. */
+export const outcomeErr = (o: FeedbackOutcome): 1 | 0 | null => (o === "bug_skipped" ? 1 : o === "bug_reviewed" ? 0 : null);
+
 export interface AdaptiveFeedback {
   prId: string;
-  missed: boolean;
+  outcome: FeedbackOutcome;
   /** When the outcome was recorded (ISO); outcomes apply in this order. */
   at: string;
 }
@@ -29,11 +38,15 @@ export interface AdaptiveState extends AdaptiveParams {
   threshold0: number;
   /** The threshold the next PR in this scope gets; 0 means nothing is skipped on score. */
   threshold: number;
+  /** PRs where a bug surfaced (the updates). */
   n: number;
   misses: number;
+  /** PRs reported with no bug: recorded, no update. */
+  noBug: number;
   missRate: number | null;
   /** The guaranteed ceiling on missRate after n PRs (1 before any). */
   bound: number;
+  /** The updates, oldest first, with the threshold each PR was triaged at. */
   history: { prId: string; missed: boolean; at: string; threshold: number }[];
 }
 
@@ -63,10 +76,19 @@ export function adaptiveState(
   };
   const history: AdaptiveState["history"] = [];
   let misses = 0;
+  let noBug = 0;
+  const seen = new Set<string>();
   for (const f of [...feedback].sort((a, b) => a.at.localeCompare(b.at))) {
-    history.push({ ...f, threshold: current() });
-    theta -= p.eta * ((f.missed ? 1 : 0) - p.alpha);
-    misses += f.missed ? 1 : 0;
+    const err = outcomeErr(f.outcome);
+    if (err === null) {
+      noBug += 1;
+      continue;
+    }
+    if (seen.has(f.prId)) continue; // at most once per PR (the scope is the repository)
+    seen.add(f.prId);
+    history.push({ prId: f.prId, missed: err === 1, at: f.at, threshold: current() });
+    theta -= p.eta * (err - p.alpha);
+    misses += err;
   }
   const n = history.length;
   return {
@@ -76,13 +98,14 @@ export function adaptiveState(
     threshold: current(),
     n,
     misses,
+    noBug,
     missRate: n ? misses / n : null,
     bound: adaptiveBound(n, threshold0, p),
     history,
   };
 }
 
-/** How many reviewed PRs it takes for the guaranteed ceiling to reach `target` (e.g. 0.3). */
+/** How many PRs with a surfaced bug it takes for the guaranteed ceiling to reach `target` (e.g. 0.3). */
 export function prsForBound(target: number, threshold0: number, p: AdaptiveParams = ADAPTIVE_DEFAULTS): number {
   if (target <= p.alpha) return Infinity;
   const lo = logit(p.floor);
@@ -95,5 +118,5 @@ export function guaranteeText(s: Pick<AdaptiveState, "n" | "bound" | "threshold0
   const pctOf = (x: number) => `${Math.round(x * 100)}%`;
   if (s.n > 0 && s.bound <= 0.5) return `long-run miss rate guaranteed ≤ ${pctOf(s.bound)}, falling toward ${pctOf(s.alpha)}`;
   const n30 = prsForBound(0.3, s.threshold0, s);
-  return `the guarantee tightens as reviews come in: miss rate ≤ 30% once ${n30} PRs are reviewed, approaching ${pctOf(s.alpha)}`;
+  return `the guarantee tightens as bugs are reported: miss rate ≤ 30% once ${n30} PRs with a bug are reported, approaching ${pctOf(s.alpha)}`;
 }

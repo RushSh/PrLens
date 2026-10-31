@@ -1,5 +1,6 @@
 /** Request and response shapes of the backend HTTP API (besides triage.ts), shared with the frontend. */
 import { z } from "zod";
+import { FEEDBACK_OUTCOMES, type FeedbackOutcome } from "./adaptive";
 
 /** A model the pipeline can use, with whether it is set up right now (from `prlens models --json`). */
 export interface AvailableModel {
@@ -79,9 +80,9 @@ export interface PipelinePlan {
 export const CLIENT_HEADER = "X-PRLens-Client";
 
 export const feedbackRequest = z.object({
-  /** true: a bug was found in code this PR skipped; false: review finished and nothing was missed. */
-  missed: z.boolean(),
-  /** The skipped items where the bug was. */
+  /** Where a bug surfaced: in skipped code, in reviewed code, or none (recorded, does not move the threshold). */
+  outcome: z.enum(FEEDBACK_OUTCOMES),
+  /** The skipped items where the bug was (bug_skipped only). */
   itemIds: z.array(z.string().max(300)).max(50).default([]),
   note: z.string().max(500).optional(),
 });
@@ -91,7 +92,7 @@ export type FeedbackRequest = z.infer<typeof feedbackRequest>;
 export interface PrFeedback {
   prId: string;
   scope: string;
-  missed: boolean;
+  outcome: FeedbackOutcome;
   itemIds: string[];
   note: string | null;
   at: string;

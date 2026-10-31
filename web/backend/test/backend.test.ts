@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { adaptiveBound, adaptiveState, logit, type AdaptiveState, type PrTriage, type TriageList } from "@prlens/shared";
+import { adaptiveBound, adaptiveState, logit, type AdaptiveFeedback, type AdaptiveState, type PrFeedback, type PrTriage, type TriageList } from "@prlens/shared";
 import { buildApp } from "../src/app";
 import { tables } from "../src/db/schema";
 import { importTriage } from "../src/import/triage";
@@ -150,7 +150,7 @@ describe("api and pipeline", () => {
 describe("adaptive threshold", () => {
   it("matches the Python implementation step for step", () => {
     const seq = [true, false, false, true, false, false, false];
-    const s = adaptiveState("o/r", 0.06, seq.map((missed, i) => ({ prId: `p${i}`, missed, at: `2026-10-28T00:00:0${i}Z` })));
+    const s = adaptiveState("o/r", 0.06, seq.map((missed, i) => ({ prId: `p${i}`, outcome: missed ? ("bug_skipped" as const) : ("bug_reviewed" as const), at: `2026-10-28T00:00:0${i}Z` })));
     expect(s.threshold).toBeCloseTo(0.04515123590044897, 12); // prlens.adaptive.Adaptive, same sequence
     expect(adaptiveBound(200, 0.06)).toBeCloseTo(0.22941769511682544, 12);
     expect(adaptiveBound(60, 0.06)).toBeCloseTo(0.29805898372275147, 12);
@@ -158,10 +158,10 @@ describe("adaptive threshold", () => {
   });
 
   it("keeps its guarantee against an adversary that makes every skipping PR a miss", () => {
-    const fb: { prId: string; missed: boolean; at: string }[] = [];
+    const fb: AdaptiveFeedback[] = [];
     let state: AdaptiveState = adaptiveState("o/r", 0.3, fb);
     for (let i = 0; i < 1500; i++) {
-      fb.push({ prId: `p${i}`, missed: state.threshold > 0, at: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString() });
+      fb.push({ prId: `p${i}`, outcome: state.threshold > 0 ? "bug_skipped" : "bug_reviewed", at: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString() });
       if (i % 50 === 49) {
         state = adaptiveState("o/r", 0.3, fb);
         expect(state.missRate!).toBeLessThanOrEqual(state.bound + 1e-12);
@@ -200,7 +200,7 @@ describe("adaptive threshold", () => {
     live.generated_at = "2032-01-01T00:00:00+00:00";
     delete live.evaluation;
     const base = { ...live.prs[0]!, source: "live" as const, groundTruth: undefined, repo: "acme/api" };
-    live.prs = [1, 2].map((n) => ({ ...base, id: `github:acme/api#${n}`, number: n }));
+    live.prs = [1, 2, 3].map((n) => ({ ...base, id: `github:acme/api#${n}`, number: n }));
     await importTriage(t.db, live);
     const app = buildApp({ db: t.db });
     const post = (n: number, body: object) =>
@@ -209,21 +209,57 @@ describe("adaptive threshold", () => {
     const before = (await app.inject({ method: "GET", url: "/api/adaptive?scope=acme/api" })).json() as AdaptiveState;
     expect(before.n).toBe(0);
     const skippedId = base.skipped[0]!.id;
-    const missed = (await post(1, { missed: true, itemIds: [skippedId] })).json() as { adaptive: AdaptiveState };
+    // a bug in skipped code tightens
+    const missed = (await post(1, { outcome: "bug_skipped", itemIds: [skippedId] })).json() as { adaptive: AdaptiveState };
     expect(missed.adaptive.n).toBe(1);
     expect(missed.adaptive.threshold).toBeLessThan(before.threshold);
-    const clean = (await post(2, { missed: false })).json() as { adaptive: AdaptiveState };
-    expect(clean.adaptive.threshold).toBeGreaterThan(missed.adaptive.threshold);
-    // changing an outcome keeps its place in the order
-    const changed = (await post(1, { missed: false })).json() as { adaptive: AdaptiveState };
+    // no bug surfaced: recorded, no update
+    const none = (await post(3, { outcome: "no_bug" })).json() as { feedback: PrFeedback; adaptive: AdaptiveState };
+    expect(none.feedback.outcome).toBe("no_bug");
+    expect(none.adaptive.n).toBe(1);
+    expect(none.adaptive.noBug).toBe(1);
+    expect(none.adaptive.threshold).toBe(missed.adaptive.threshold);
+    // a bug in reviewed code loosens
+    const caught = (await post(2, { outcome: "bug_reviewed" })).json() as { adaptive: AdaptiveState };
+    expect(caught.adaptive.threshold).toBeGreaterThan(missed.adaptive.threshold);
+    // reporting the same PR again changes its outcome in place: still one update per PR, same place in the order
+    const changed = (await post(1, { outcome: "bug_reviewed" })).json() as { adaptive: AdaptiveState };
+    expect(changed.adaptive.n).toBe(2);
     expect(changed.adaptive.history.map((h) => h.prId)).toEqual(["github:acme/api#1", "github:acme/api#2"]);
     expect(changed.adaptive.misses).toBe(0);
 
-    expect((await post(2, { missed: true, itemIds: ["not-a-skipped-item"] })).statusCode).toBe(400);
-    expect((await post(2, { missed: false, itemIds: [skippedId] })).statusCode).toBe(400);
+    expect((await post(2, { outcome: "bug_skipped", itemIds: ["not-a-skipped-item"] })).statusCode).toBe(400);
+    expect((await post(2, { outcome: "bug_reviewed", itemIds: [skippedId] })).statusCode).toBe(400);
+    expect((await post(2, { missed: true })).statusCode).toBe(400);
     const all = (await app.inject({ method: "GET", url: "/api/adaptive" })).json() as AdaptiveState[];
     expect(all.map((a) => a.scope)).toContain("acme/api");
     await app.close();
+  });
+});
+
+describe("bug-conditional updates", () => {
+  const at = (i: number) => `2032-01-0${i}T00:00:00Z`;
+  it("a PR with no bug does not move the threshold", () => {
+    const s = adaptiveState("o/r", 0.06, [{ prId: "1", outcome: "no_bug", at: at(1) }]);
+    expect(s.threshold).toBeCloseTo(0.06, 12);
+    expect([s.n, s.noBug, s.history.length]).toEqual([0, 1, 0]);
+  });
+  it("a bug in skipped code tightens and a bug in reviewed code loosens", () => {
+    const tight = adaptiveState("o/r", 0.06, [{ prId: "1", outcome: "bug_skipped", at: at(1) }]);
+    const loose = adaptiveState("o/r", 0.06, [{ prId: "1", outcome: "bug_reviewed", at: at(1) }]);
+    expect(tight.threshold).toBeLessThan(0.06);
+    expect(loose.threshold).toBeGreaterThan(0.06);
+    expect([tight.misses, loose.misses]).toEqual([1, 0]);
+  });
+  it("each PR updates at most once", () => {
+    const once = adaptiveState("o/r", 0.06, [{ prId: "1", outcome: "bug_skipped", at: at(1) }]);
+    const twice = adaptiveState("o/r", 0.06, [
+      { prId: "1", outcome: "bug_skipped", at: at(1) },
+      { prId: "1", outcome: "bug_skipped", at: at(2) },
+      { prId: "1", outcome: "bug_reviewed", at: at(3) },
+    ]);
+    expect(twice.threshold).toBe(once.threshold);
+    expect(twice.n).toBe(1);
   });
 });
 

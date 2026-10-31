@@ -75,7 +75,8 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     return (await getTriageSet(db, name)) ?? reply.status(404).send({ error: "set not found" });
   });
 
-  // ---- feedback: did a bug turn up in skipped code? Each repository's skip threshold adapts to it.
+  // ---- feedback: where did a bug surface (skipped code, reviewed code, none)? Each repository's skip threshold adapts
+  // to the PRs where one did.
   const prParam = z.object({ id: z.string().min(1).max(300) });
   app.get("/api/triage/prs/:id/feedback", async (req, reply) => {
     const { id } = prParam.parse(req.params);
@@ -91,7 +92,7 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     const skipped = new Set(pr.skipped.map((s) => s.id));
     const unknown = body.itemIds.filter((i) => !skipped.has(i));
     if (unknown.length) throw new UserError(`not skipped in this PR: ${unknown.join(", ")}`);
-    if (!body.missed && body.itemIds.length) throw new UserError("a clean review cannot point at skipped items");
+    if (body.outcome !== "bug_skipped" && body.itemIds.length) throw new UserError("only a bug in skipped code points at skipped items");
     await recordFeedback(db, pr.repo, id, body);
     return { feedback: await getFeedback(db, pr.repo, id), adaptive: await adaptiveFor(db, pr.repo) };
   });

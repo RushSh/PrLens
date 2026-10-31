@@ -41,7 +41,7 @@ export default async function ChecksPage({ params }: { params: Promise<{ key: st
       `Adaptive threshold for ${pr.repo}`,
       adaptive
         ? adaptive.n
-          ? `${adaptive.threshold ? pct(adaptive.threshold, 1) : "off"} now (started at ${pct(adaptive.threshold0, 1)}); ${adaptive.n} reviewed PR${adaptive.n === 1 ? "" : "s"}, ${adaptive.misses} with a miss; ${guaranteeText(adaptive)}`
+          ? `${adaptive.threshold ? pct(adaptive.threshold, 1) : "off"} now (started at ${pct(adaptive.threshold0, 1)}); ${adaptive.n} PR${adaptive.n === 1 ? "" : "s"} with a bug, ${adaptive.misses} in skipped code; ${guaranteeText(adaptive)}`
           : `${pct(adaptive.threshold, 1)}; moves after each review you finish in Files changed; ${guaranteeText(adaptive)}`
         : "not available",
     ],

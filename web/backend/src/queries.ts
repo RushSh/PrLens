@@ -1,6 +1,6 @@
 /** Read side: database rows -> API shapes from @prlens/shared. */
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { adaptiveState, evalSetName, type AdaptiveState, type Job, type PrFeedback, type PrTriage, type TriageList, type TriageSetInfo } from "@prlens/shared";
+import { adaptiveState, evalSetName, type AdaptiveState, type FeedbackOutcome, type Job, type PrFeedback, type PrTriage, type TriageList, type TriageSetInfo } from "@prlens/shared";
 import type { Db } from "./db/client";
 import { jobs, triageFeedback, triagePrs, triageSets } from "./db/schema";
 
@@ -124,7 +124,7 @@ export async function startThreshold(db: Db, language = "python"): Promise<numbe
 
 export async function adaptiveFor(db: Db, scope: string): Promise<AdaptiveState> {
   const rows = await db
-    .select({ prId: triageFeedback.prId, missed: triageFeedback.missed, at: triageFeedback.createdAt })
+    .select({ prId: triageFeedback.prId, outcome: triageFeedback.outcome, at: triageFeedback.createdAt })
     .from(triageFeedback)
     .where(eq(triageFeedback.scope, scope))
     .orderBy(asc(triageFeedback.createdAt), asc(triageFeedback.id));
@@ -136,19 +136,20 @@ export async function adaptiveAll(db: Db): Promise<AdaptiveState[]> {
   return Promise.all(scopes.map((s) => adaptiveFor(db, s.scope)));
 }
 
-/** Record (or change) a PR's outcome. Changing it keeps its place in the order, so history is not rewritten. */
+/** Record (or change) a PR's outcome: one row per repository + PR, so each PR updates the threshold at most once.
+ * Changing it keeps its place in the order. */
 export async function recordFeedback(
   db: Db,
   scope: string,
   prId: string,
-  f: { missed: boolean; itemIds: string[]; note?: string },
+  f: { outcome: FeedbackOutcome; itemIds: string[]; note?: string },
 ): Promise<void> {
   await db
     .insert(triageFeedback)
-    .values({ scope, prId, missed: f.missed, itemIds: f.itemIds, note: f.note ?? null })
+    .values({ scope, prId, outcome: f.outcome, itemIds: f.itemIds, note: f.note ?? null })
     .onConflictDoUpdate({
       target: [triageFeedback.scope, triageFeedback.prId],
-      set: { missed: f.missed, itemIds: f.itemIds, note: f.note ?? null, updatedAt: sql`now()` },
+      set: { outcome: f.outcome, itemIds: f.itemIds, note: f.note ?? null, updatedAt: sql`now()` },
     });
 }
 
@@ -157,5 +158,5 @@ export async function getFeedback(db: Db, scope: string, prId: string): Promise<
     .select()
     .from(triageFeedback)
     .where(and(eq(triageFeedback.scope, scope), eq(triageFeedback.prId, prId)));
-  return r ? { prId: r.prId, scope: r.scope, missed: r.missed, itemIds: r.itemIds, note: r.note, at: r.createdAt.toISOString() } : null;
+  return r ? { prId: r.prId, scope: r.scope, outcome: r.outcome, itemIds: r.itemIds, note: r.note, at: r.createdAt.toISOString() } : null;
 }

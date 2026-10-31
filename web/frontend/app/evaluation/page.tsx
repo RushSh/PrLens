@@ -173,13 +173,14 @@ function SetDetail({ set, label }: { set: TriageSetInfo; label: string }) {
                 skips {pct(ev.drift.date.fixed[ev.drift.date.fixed.length - 1] ?? 0)} of bugs, against a promised {pct(ev.alpha)}.
               </p>
               <p>
-                PR Lens moves each repository&apos;s threshold after every reviewed PR (adaptive conformal inference, Gibbs &amp;
-                Candès 2021): a bug found in skipped code tightens it, a clean review loosens it a little.
+                PR Lens moves each repository&apos;s threshold after every PR in which a bug surfaces (adaptive conformal inference,
+                Gibbs &amp; Candès 2021): a bug in skipped code tightens it, a bug in reviewed code loosens it a little, and a PR
+                with no bug leaves it where it is. Each PR counts once.
               </p>
               <div className="rounded-md border border-line bg-subtle p-3 font-mono text-xs leading-6">
                 θ<sub>t+1</sub> = θ<sub>t</sub> − η (err<sub>t</sub> − α)
                 <br />
-                miss rate after n PRs ≤ α + (θ<sub>1</sub> − logit(floor) + η(1−α)) / (η n)
+                share of n surfaced bugs in skipped code ≤ α + (θ<sub>1</sub> − logit(floor) + η(1−α)) / (η n)
               </div>
               <p className="text-muted">
                 The ceiling holds for every sequence of PRs, drifting or adversarial, with no assumption that the future looks

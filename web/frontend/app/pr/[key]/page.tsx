@@ -113,7 +113,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
           <Side title="Skip threshold">
             <p className="text-muted">
               <span className="font-semibold text-fg">{adaptive.threshold ? pct(adaptive.threshold, 1) : "off"}</span> for {pr.repo}
-              {adaptive.n ? `, after ${adaptive.n} reviewed PR${adaptive.n === 1 ? "" : "s"}` : "; adapts as reviews are finished"}
+              {adaptive.n ? `, after ${adaptive.n} PR${adaptive.n === 1 ? "" : "s"} with a bug` : "; adapts as bugs are reported"}
             </p>
           </Side>
         ) : null}

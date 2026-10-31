@@ -12,7 +12,7 @@ export function AblationPanel({ ab, label }: { ab: Ablation; label: string }) {
   const spark = rows.find((r) => r.key === "spark open");
   const saved = lens && code ? code.held_out_read_share - lens.held_out_read_share : null;
   return (
-    <div className="space-y-5 p-4">
+    <div className="space-y-5 p-4" data-ablation="">
       <p className="max-w-3xl text-sm text-fg">
         Every ranking below is held to the same target (at most {pct(ab.alpha)} of bugs skipped, 90% bound), out of fold and
         with the threshold chosen without each repository. The question is how much each one lets a reviewer skip.
@@ -97,7 +97,7 @@ function CalibrationChart({ rel }: { rel: Ablation["reliability"] }) {
   const ticks = [0, 0.1, 0.2, 0.3, 0.4, 0.5].filter((t) => t <= top);
   const path = rel.bins.map((b, i) => `${i ? "L" : "M"}${x(b.mean_score).toFixed(1)},${y(b.bug_rate).toFixed(1)}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full max-w-xl" role="img" aria-label="Risk score against observed bug rate">
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full max-w-lg" role="img" aria-label="Risk score against observed bug rate">
       {ticks.map((t) => (
         <g key={t}>
           <line x1={x(0)} x2={x(top)} y1={y(t)} y2={y(t)} stroke="var(--gh-line-muted)" />
@@ -106,7 +106,13 @@ function CalibrationChart({ rel }: { rel: Ablation["reliability"] }) {
         </g>
       ))}
       <line x1={x(0)} y1={y(0)} x2={x(top)} y2={y(top)} stroke="var(--gh-muted)" strokeDasharray="4 4" />
-      <text x={x(top * 0.62)} y={y(top * 0.7)} fontSize="11" fill="var(--gh-muted)">perfectly calibrated</text>
+      <g fontSize="11" fill="var(--gh-muted)">
+        <line x1={L + 10} x2={L + 34} y1={T + 12} y2={T + 12} stroke="var(--gh-muted)" strokeDasharray="4 4" />
+        <text x={L + 40} y={T + 16}>perfectly calibrated</text>
+        <line x1={L + 10} x2={L + 34} y1={T + 30} y2={T + 30} stroke="var(--gh-accent)" strokeWidth="2" />
+        <circle cx={L + 22} cy={T + 30} r={3.5} fill="var(--gh-accent)" />
+        <text x={L + 40} y={T + 34}>PR Lens risk score (dot size: bugs in the group)</text>
+      </g>
       <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle" fontSize="12" fill="var(--gh-muted)">average risk score in the group</text>
       <text x={13} y={(T + H - B) / 2} textAnchor="middle" fontSize="12" fill="var(--gh-muted)" transform={`rotate(-90 13 ${(T + H - B) / 2})`}>
         share with a bug

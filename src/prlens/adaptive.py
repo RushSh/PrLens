@@ -6,7 +6,9 @@ Conformal Inference Under Distribution Shift", NeurIPS 2021, applied to the thre
 
     theta_{t+1} = theta_t - eta * (err_t - alpha)        threshold_t = sigmoid(theta_t)
 
-where err_t = 1 if a bug was later found in code that PR t skipped, else 0. A miss tightens the threshold by
+where err_t = 1 if a bug was later found in code that PR t skipped, and 0 if the bug was in code it sent to review.
+Updates are bug-conditional: a PR in which no bug surfaced is not an update (it could not have missed), and each
+repository + PR updates at most once. So alpha bounds the share of bugs that land in skipped code. A miss tightens the threshold by
 eta*(1-alpha); a clean PR loosens it by eta*alpha. When the threshold is at or under FLOOR, nothing is skipped on
 score, so that PR cannot miss.
 
@@ -64,6 +66,7 @@ class Adaptive:
     theta: float = field(init=False)
     n: int = 0
     misses: int = 0
+    seen: set = field(default_factory=set)
 
     def __post_init__(self) -> None:
         self.theta = logit(self.threshold0)
@@ -73,10 +76,23 @@ class Adaptive:
         t = sigmoid(self.theta)
         return 0.0 if t <= self.floor else t  # at the floor nothing is skipped on score
 
-    def update(self, missed: bool) -> None:
+    def update(self, missed: bool | None, key: str | None = None) -> bool:
+        """Apply one PR's outcome; returns whether the threshold moved.
+
+        Bug-conditional: `missed` is True when a bug surfaced in code the PR skipped, False when a bug surfaced in
+        code it sent to review, and None when no bug surfaced (no update: a PR with no bug says nothing about the
+        miss rate, and counting it as clean would loosen the threshold on PRs that could not have missed).
+        At most once per `key` (repository + PR): a second report for the same PR is ignored."""
+        if missed is None:
+            return False
+        if key is not None:
+            if key in self.seen:
+                return False
+            self.seen.add(key)
         self.theta -= self.eta * (float(missed) - self.alpha)
         self.n += 1
         self.misses += int(missed)
+        return True
 
     def bound(self) -> float:
         return bound(self.n, logit(self.threshold0), self.alpha, self.eta, self.floor)
@@ -105,7 +121,7 @@ def replay(stream: list[dict], alpha: float = ALPHA, eta: float = ETA, warm: int
         m_f, r_f, tot = _outcome(pr, t0)
         thresholds.append(ad.threshold)
         m_a, r_a, _ = _outcome(pr, ad.threshold)
-        ad.update(m_a)
+        ad.update(m_a, key=pr.get("pr_id"))
         fixed_err.append(m_f)
         ad_err.append(m_a)
         read["fixed"] += r_f

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { guaranteeText, type AdaptiveState, type PrFeedback } from "@prlens/shared";
+import { guaranteeText, type AdaptiveState, type FeedbackOutcome, type PrFeedback } from "@prlens/shared";
 import { clientFetch } from "@/lib/api";
 import { pct } from "@/lib/format";
 import { CheckIcon, ShieldIcon } from "../Icons";
@@ -13,8 +13,8 @@ interface Reply {
 }
 
 /**
- * The end of a review: did a bug turn up in code PR Lens skipped? The answer moves this repository's adaptive skip
- * threshold, which is what keeps the skip promise honest on this team's own code.
+ * The end of a review: where did a bug surface? In skipped code the repository's adaptive skip threshold tightens; in
+ * reviewed code it loosens; with no bug nothing moves (a PR with no bug could not have missed one). Each PR counts once.
  */
 export function FeedbackPanel({
   prId,
@@ -43,12 +43,12 @@ export function FeedbackPanel({
   const a = state.adaptive;
   const recorded = state.feedback && !editing;
 
-  async function send(missed: boolean) {
+  async function send(outcome: FeedbackOutcome) {
     setBusy(true);
     setError(null);
     try {
       setBefore(a.threshold);
-      const r = await clientFetch<Reply>(url, { method: "POST", body: { missed, itemIds: missed ? reported : [] } });
+      const r = await clientFetch<Reply>(url, { method: "POST", body: { outcome, itemIds: outcome === "bug_skipped" ? reported : [] } });
       setState(r);
       setEditing(false);
       onClearReported();
@@ -67,29 +67,32 @@ export function FeedbackPanel({
           {recorded ? (
             <>
               <p className="font-semibold text-fg">
-                {state.feedback!.missed ? (
+                {state.feedback!.outcome === "bug_skipped" ? (
                   <span className="text-danger">Recorded: a bug was found in skipped code.</span>
-                ) : (
+                ) : state.feedback!.outcome === "bug_reviewed" ? (
                   <span className="text-success">
                     <CheckIcon size={14} className="mr-1 inline" />
-                    Recorded: nothing was missed in skipped code.
+                    Recorded: the bug was in code PR Lens sent to review.
                   </span>
+                ) : (
+                  <span className="text-fg">Recorded: no bug found. This PR does not move the threshold.</span>
                 )}
               </p>
               <p className="text-muted">
                 {a.scope}&apos;s skip threshold is now <span className="font-semibold text-fg">{a.threshold ? pct(a.threshold, 1) : "off (nothing skipped on score)"}</span>
-                {before !== null && before !== a.threshold ? <> (was {before ? pct(before, 1) : "off"})</> : null} after {a.n} reviewed PR{a.n === 1 ? "" : "s"},{" "}
-                {a.misses} with a miss; {guaranteeText(a)}.
+                {before !== null && before !== a.threshold ? <> (was {before ? pct(before, 1) : "off"})</> : null} after {a.n} PR{a.n === 1 ? "" : "s"} with a bug,{" "}
+                {a.misses} of them in skipped code; {guaranteeText(a)}.
               </p>
             </>
           ) : (
             <>
-              <p className="font-semibold text-fg">When you finish: did a bug turn up in code PR Lens skipped?</p>
+              <p className="font-semibold text-fg">When you finish: did a bug surface, and where?</p>
               <p className="text-muted">
                 {reported.length
                   ? `${reported.length} skipped region${reported.length === 1 ? "" : "s"} marked as holding a bug.`
                   : "Mark a skipped region with “Bug here” if you found one."}{" "}
-                Your answer moves {a.scope}&apos;s skip threshold (now {a.threshold ? pct(a.threshold, 1) : "off"}, after {a.n} reviewed PRs).
+                A bug in skipped code tightens {a.scope}&apos;s skip threshold, one in reviewed code loosens it, and no bug leaves it
+                where it is (now {a.threshold ? pct(a.threshold, 1) : "off"}, after {a.n} PR{a.n === 1 ? "" : "s"} with a bug).
               </p>
             </>
           )}
@@ -102,11 +105,15 @@ export function FeedbackPanel({
             </button>
           ) : (
             <>
-              <button type="button" className={`${button} text-danger`} disabled={busy || !reported.length} onClick={() => send(true)}>
-                Report missed bug
+              <button type="button" className={`${button} text-danger`} disabled={busy || !reported.length} onClick={() => send("bug_skipped")}
+                title={reported.length ? undefined : "Mark the skipped region with “Bug here” first"}>
+                Bug in skipped code
               </button>
-              <button type="button" className={buttonPrimary} disabled={busy || reported.length > 0} onClick={() => send(false)}>
-                Finish: nothing missed
+              <button type="button" className={button} disabled={busy || reported.length > 0} onClick={() => send("bug_reviewed")}>
+                Bug in reviewed code
+              </button>
+              <button type="button" className={buttonPrimary} disabled={busy || reported.length > 0} onClick={() => send("no_bug")}>
+                No bug found
               </button>
             </>
           )}
