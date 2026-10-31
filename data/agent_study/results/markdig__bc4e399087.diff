@@ -1,0 +1,68 @@
+diff --git a/src/Markdig.Tests/MiscTests.cs b/src/Markdig.Tests/MiscTests.cs
+index 3fa4d50..3184624 100644
+--- a/src/Markdig.Tests/MiscTests.cs
++++ b/src/Markdig.Tests/MiscTests.cs
+@@ -502,4 +502,48 @@ public void TestIssue845ListItemBlankLine()
+ </ul>
+ <p>foo</p>");
+     }
++
++    [Test]
++    public void TestIssue887BlockquoteOrderedList()
++    {
++        // https://github.com/lunet-io/markdig/issues/887
++        TestParser.TestSpec("> 1. foo\n> 2. bar", @"
++<blockquote>
++<ol>
++<li>foo</li>
++<li>bar</li>
++</ol>
++</blockquote>");
++        TestParser.TestSpec("> foo\n> 1. bar", @"
++<blockquote>
++<p>foo</p>
++<ol>
++<li>bar</li>
++</ol>
++</blockquote>");
++        TestParser.TestSpec("> foo\n> 2. bar", @"
++<blockquote>
++<p>foo
++2. bar</p>
++</blockquote>");
++        TestParser.TestSpec("> foo\n>\n> 2. bar", @"
++<blockquote>
++<p>foo</p>
++<ol start=""2"">
++<li>bar</li>
++</ol>
++</blockquote>");
++        TestParser.TestSpec("> foo\n> 1.", @"
++<blockquote>
++<p>foo
++1.</p>
++</blockquote>");
++        TestParser.TestSpec("> foo\n>\n> 1.", @"
++<blockquote>
++<p>foo</p>
++<ol>
++<li></li>
++</ol>
++</blockquote>");
++    }
+ }
+diff --git a/src/Markdig/Parsers/ListBlockParser.cs b/src/Markdig/Parsers/ListBlockParser.cs
+index 23a5b05..3b3a125 100644
+--- a/src/Markdig/Parsers/ListBlockParser.cs
++++ b/src/Markdig/Parsers/ListBlockParser.cs
+@@ -275,8 +275,8 @@ private BlockState TryParseListItem(BlockProcessor state, Block? block)
+         block ??= state.LastBlock;
+         if (block is not null && block.IsParagraphBlock)
+         {
+-            if (state.IsBlankLine ||
+-                state.IsOpen(block) && listInfo.BulletType == '1' && listInfo.OrderedStart is not "1")
++            if (state.IsOpen(block) && (state.IsBlankLine ||
++                listInfo.BulletType == '1' && listInfo.OrderedStart is not "1"))
+             {
+                 state.GoToColumn(initColumn);
+                 state.TriviaStart = savedTriviaStart; // restore changed TriviaStart state

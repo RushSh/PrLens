@@ -1,0 +1,169 @@
+diff --git a/src/Markdig.Tests/Specs/EmojiSpecs.md b/src/Markdig.Tests/Specs/EmojiSpecs.md
+index ad4b4df..feb330d 100644
+--- a/src/Markdig.Tests/Specs/EmojiSpecs.md
++++ b/src/Markdig.Tests/Specs/EmojiSpecs.md
+@@ -11,3 +11,23 @@ This is a test with a :) and a :angry: smiley
+ .
+ <p>This is a test with a 😃 and a 😠 smiley</p>
+ ````````````````````````````````
++
++Emoji must be surrounded by whitespace (start/end of line counts as whitespace):
++
++```````````````````````````````` example
++:smile:
++.
++<p>😄</p>
++````````````````````````````````
++
++```````````````````````````````` example
++This is a test with a:) and a :smile:test and http://example.com
++.
++<p>This is a test with a:) and a :smile:test and http://example.com</p>
++````````````````````````````````
++
++```````````````````````````````` example
++:-* :-| X-)
++.
++<p>😗 😐 😆</p>
++````````````````````````````````
+diff --git a/src/Markdig.Tests/Specs/Specs.cs b/src/Markdig.Tests/Specs/Specs.cs
+index 0972187..d1d067e 100644
+--- a/src/Markdig.Tests/Specs/Specs.cs
++++ b/src/Markdig.Tests/Specs/Specs.cs
+@@ -17978,6 +17978,64 @@ namespace Markdig.Tests
+             Console.WriteLine("Example {0}" + Environment.NewLine + "Section: {0}" + Environment.NewLine, 1, "Extensions Emoji");
+ 			TestParser.TestSpec("This is a test with a :) and a :angry: smiley", "<p>This is a test with a 😃 and a 😠 smiley</p>", "emojis");
+         }
++    }
++        // Emoji must be surrounded by whitespace (start/end of line counts as whitespace):
++    [TestFixture]
++    public partial class TestExtensionsEmoji
++    {
++        [Test]
++        public void Example002()
++        {
++            // Example 2
++            // Section: Extensions Emoji
++            //
++            // The following CommonMark:
++            //     :smile:
++            //
++            // Should be rendered as:
++            //     <p>😄</p>
++
++            Console.WriteLine("Example {0}" + Environment.NewLine + "Section: {0}" + Environment.NewLine, 2, "Extensions Emoji");
++			TestParser.TestSpec(":smile:", "<p>😄</p>", "emojis");
++        }
++    }
++    [TestFixture]
++    public partial class TestExtensionsEmoji
++    {
++        [Test]
++        public void Example003()
++        {
++            // Example 3
++            // Section: Extensions Emoji
++            //
++            // The following CommonMark:
++            //     This is a test with a:) and a :smile:test and http://example.com
++            //
++            // Should be rendered as:
++            //     <p>This is a test with a:) and a :smile:test and http://example.com</p>
++
++            Console.WriteLine("Example {0}" + Environment.NewLine + "Section: {0}" + Environment.NewLine, 3, "Extensions Emoji");
++			TestParser.TestSpec("This is a test with a:) and a :smile:test and http://example.com", "<p>This is a test with a:) and a :smile:test and http://example.com</p>", "emojis");
++        }
++    }
++    [TestFixture]
++    public partial class TestExtensionsEmoji
++    {
++        [Test]
++        public void Example004()
++        {
++            // Example 4
++            // Section: Extensions Emoji
++            //
++            // The following CommonMark:
++            //     :-* :-| X-)
++            //
++            // Should be rendered as:
++            //     <p>😗 😐 😆</p>
++
++            Console.WriteLine("Example {0}" + Environment.NewLine + "Section: {0}" + Environment.NewLine, 4, "Extensions Emoji");
++			TestParser.TestSpec(":-* :-| X-)", "<p>😗 😐 😆</p>", "emojis");
++        }
+     }
+         // # Extensions
+         //
+diff --git a/src/Markdig/Extensions/Emoji/EmojiParser.cs b/src/Markdig/Extensions/Emoji/EmojiParser.cs
+index c52974a..487c599 100644
+--- a/src/Markdig/Extensions/Emoji/EmojiParser.cs
++++ b/src/Markdig/Extensions/Emoji/EmojiParser.cs
+@@ -66,6 +66,13 @@ namespace Markdig.Extensions.Emoji
+ 
+         public override bool Match(InlineProcessor processor, ref StringSlice slice)
+         {
++            // An emoji/smiley must be preceded by a whitespace
++            var pc = slice.PeekCharExtra(-1);
++            if (!pc.IsWhiteSpaceOrZero())
++            {
++                return false;
++            }
++
+             string match;
+             var startPosition = slice.Start;
+             if (!textMatchHelper.TryMatch(slice.Text, slice.Start, slice.Length, out match))
+@@ -73,6 +80,13 @@ namespace Markdig.Extensions.Emoji
+                 return false;
+             }
+ 
++            // An emoji/smiley must be followed by a whitespace
++            var nc = slice.PeekCharExtra(match.Length);
++            if (!nc.IsWhiteSpaceOrZero())
++            {
++                return false;
++            }
++
+             string emoji;
+             if (!SmileyToEmoji.TryGetValue(match, out emoji))
+             {
+@@ -1018,11 +1032,11 @@ namespace Markdig.Extensions.Emoji
+                 {":,D", ":joy:"},
+                 {":,-D", ":joy:"},
+                 {":*", ":kissing:"},
+-                {":-* ", ":kissing:"},
++                {":-*", ":kissing:"},
+                 {"x-)", ":laughing:"},
+-                {"X-) ", ":laughing:"},
++                {"X-)", ":laughing:"},
+                 {":|", ":neutral_face:"},
+-                {":-| ", ":neutral_face:"},
++                {":-|", ":neutral_face:"},
+                 {":o", ":open_mouth:"},
+                 {":-o", ":open_mouth:"},
+                 {":O", ":open_mouth:"},
+diff --git a/src/Markdig/Helpers/TextMatcher.cs b/src/Markdig/Helpers/TextMatcher.cs
+index b66cb98..09a9dfe 100644
+--- a/src/Markdig/Helpers/TextMatcher.cs
++++ b/src/Markdig/Helpers/TextMatcher.cs
+@@ -53,18 +53,17 @@ namespace Markdig.Helpers
+                 CharNode nextNode;
+                 if (!node.TryGetValue(c, out nextNode))
+                 {
+-                    return false;
++                    break;
+                 }
+                 node = nextNode;
+                 if (node.Content != null)
+                 {
+                     match = node.Content;
+-                    return true;
+                 }
+                 offset++;
+                 length--;
+             }
+-            return false;
++            return match != null;
+         }
+ 
+         private void BuildMap(CharNode node, int index, List<string> list)

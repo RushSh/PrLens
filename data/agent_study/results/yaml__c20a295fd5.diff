@@ -1,0 +1,209 @@
+diff --git a/src/compose/compose-collection.ts b/src/compose/compose-collection.ts
+index cb6606b..e7e44a2 100644
+--- a/src/compose/compose-collection.ts
++++ b/src/compose/compose-collection.ts
+@@ -72,11 +72,19 @@ export function composeCollection(
+     }
+   }
+ 
+-  const res = tag.resolve(
+-    coll,
+-    msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg),
+-    ctx.options
+-  )
++  let res: unknown
++  try {
++    res = tag.resolve(
++      coll,
++      msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg),
++      ctx.options
++    )
++  } catch (error) {
++    const msg = error instanceof Error ? error.message : String(error)
++    onError(tagToken, 'TAG_RESOLVE_FAILED', msg)
++    coll.tag = tagName
++    return coll
++  }
+   const node = isNode(res)
+     ? (res as ParsedNode)
+     : (new Scalar(res) as Scalar.Parsed)
+diff --git a/src/compose/compose-node.ts b/src/compose/compose-node.ts
+index 9566d35..2f92fae 100644
+--- a/src/compose/compose-node.ts
++++ b/src/compose/compose-node.ts
+@@ -35,6 +35,14 @@ export function composeNode(
+ ) {
+   const { spaceBefore, comment, anchor, tag } = props
+   let node: ParsedNode
++  if (!token || typeof (token as Token).type !== 'string') {
++    const offset =
++      token && typeof (token as Token).offset === 'number'
++        ? (token as Token).offset
++        : -1
++    onError(offset, 'UNEXPECTED_TOKEN', 'Unexpected token during composition')
++    return composeEmptyNode(ctx, offset, undefined, null, props, onError)
++  }
+   switch (token.type) {
+     case 'alias':
+       node = composeAlias(ctx, token, onError)
+@@ -58,9 +66,20 @@ export function composeNode(
+       node = composeCollection(CN, ctx, token, tag, onError)
+       if (anchor) node.anchor = anchor.source.substring(1)
+       break
+-    default:
+-      console.log(token)
+-      throw new Error(`Unsupporten token type: ${(token as any).type}`)
++    default: {
++      let message: string
++      if (token.type === 'error') {
++        message = token.source
++          ? `${token.message}: ${JSON.stringify(token.source)}`
++          : token.message
++      } else {
++        message = `Unsupported token type: ${token.type}`
++      }
++      onError(token, 'UNEXPECTED_TOKEN', message)
++      const tokenOffset =
++        typeof token.offset === 'number' ? token.offset : -1
++      return composeEmptyNode(ctx, tokenOffset, undefined, null, props, onError)
++    }
+   }
+   if (anchor && node.anchor === '')
+     onError(anchor, 'BAD_ALIAS', 'Anchor cannot be an empty string')
+diff --git a/src/compose/resolve-block-scalar.ts b/src/compose/resolve-block-scalar.ts
+index 29a3ea5..c35e558 100644
+--- a/src/compose/resolve-block-scalar.ts
++++ b/src/compose/resolve-block-scalar.ts
+@@ -1,6 +1,6 @@
+ import { Range } from '../nodes/Node.js'
+ import { Scalar } from '../nodes/Scalar.js'
+-import type { BlockScalar } from '../parse/cst.js'
++import type { BlockScalar, Token } from '../parse/cst.js'
+ import type { ComposeErrorHandler } from './composer.js'
+ 
+ export function resolveBlockScalar(
+@@ -133,11 +133,11 @@ function parseBlockScalarHeader(
+   onError: ComposeErrorHandler
+ ) {
+   /* istanbul ignore if should not happen */
+-  if (props[0].type !== 'block-scalar-header') {
+-    onError(props[0], 'IMPOSSIBLE', 'Block scalar header not found')
++  if (props[0]?.type !== 'block-scalar-header') {
++    onError(props[0] ?? offset, 'IMPOSSIBLE', 'Block scalar header not found')
+     return null
+   }
+-  const { source } = props[0]
++  const { source } = props[0] as { source: string } & Token
+   const mode = source[0] as '>' | '|'
+   let indent = 0
+   let chomp: '' | '-' | '+' = ''
+diff --git a/src/compose/resolve-flow-scalar.ts b/src/compose/resolve-flow-scalar.ts
+index ca800b4..2031b3f 100644
+--- a/src/compose/resolve-flow-scalar.ts
++++ b/src/compose/resolve-flow-scalar.ts
+@@ -240,5 +240,12 @@ function parseCharCode(
+     onError(offset - 2, 'BAD_DQ_ESCAPE', `Invalid escape sequence ${raw}`)
+     return raw
+   }
+-  return String.fromCodePoint(code)
++  try {
++    return String.fromCodePoint(code)
++  } catch (error) {
++    const raw = source.substr(offset - 2, length + 2)
++    const msg = error instanceof Error ? error.message : String(error)
++    onError(offset - 2, 'BAD_DQ_ESCAPE', `Invalid escape sequence ${raw} (${msg})`)
++    return raw
++  }
+ }
+diff --git a/src/compose/util-flow-indent-check.ts b/src/compose/util-flow-indent-check.ts
+index eb55719..9375bd3 100644
+--- a/src/compose/util-flow-indent-check.ts
++++ b/src/compose/util-flow-indent-check.ts
+@@ -10,6 +10,7 @@ export function flowIndentCheck(
+   if (fc?.type === 'flow-collection') {
+     const end = fc.end[0]
+     if (
++      end &&
+       end.indent === indent &&
+       (end.source === ']' || end.source === '}') &&
+       containsNewline(fc)
+diff --git a/src/doc/directives.ts b/src/doc/directives.ts
+index 1884506..180342d 100644
+--- a/src/doc/directives.ts
++++ b/src/doc/directives.ts
+@@ -146,7 +146,15 @@ export class Directives {
+     const [, handle, suffix] = source.match(/^(.*!)([^!]*)$/) as string[]
+     if (!suffix) onError(`The ${source} tag has no suffix`)
+     const prefix = this.tags[handle]
+-    if (prefix) return prefix + decodeURIComponent(suffix)
++    if (prefix) {
++      try {
++        return prefix + decodeURIComponent(suffix)
++      } catch (error) {
++        const msg = error instanceof Error ? error.message : String(error)
++        onError(`Tag suffix is invalid: ${suffix} (${msg})`)
++        return null
++      }
++    }
+     if (handle === '!') return source // local tag
+ 
+     onError(`Could not resolve tag: ${source}`)
+diff --git a/tests/doc/errors.js b/tests/doc/errors.js
+index 702bc87..f624c44 100644
+--- a/tests/doc/errors.js
++++ b/tests/doc/errors.js
+@@ -377,3 +377,54 @@ describe('Invalid plain first characters', () => {
+       expect(doc.errors).toMatchObject([{ code: 'BAD_SCALAR_START' }])
+     })
+ })
++
++describe('do not throw during composition (eemeli/yaml#367)', () => {
++  test('error token as document value', () => {
++    const composer = new YAML.Composer()
++    const docToken = {
++      type: 'document',
++      offset: 0,
++      start: [],
++      value: {
++        type: 'error',
++        offset: 0,
++        source: 'foo',
++        message: 'Not a YAML token'
++      }
++    }
++    let docs
++    expect(() => {
++      docs = Array.from(composer.compose([docToken]))
++    }).not.toThrow()
++    expect(docs).toHaveLength(1)
++    expect(docs[0].errors).not.toHaveLength(0)
++  })
++
++  test('invalid unicode escape', () => {
++    let doc
++    expect(() => {
++      doc = YAML.parseDocument('"\\U00110000"', { prettyErrors: false })
++    }).not.toThrow()
++    expect(doc.errors).toMatchObject([{ code: 'BAD_DQ_ESCAPE' }])
++  })
++
++  test('throwing collection tag', () => {
++    const customTags = [
++      {
++        tag: '!throw',
++        collection: 'map',
++        resolve() {
++          throw new Error('fail')
++        }
++      }
++    ]
++    let doc
++    expect(() => {
++      doc = YAML.parseDocument('!throw { a: b }', {
++        customTags,
++        prettyErrors: false
++      })
++    }).not.toThrow()
++    expect(doc.errors).toMatchObject([{ code: 'TAG_RESOLVE_FAILED' }])
++  })
++})

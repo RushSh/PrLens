@@ -1,0 +1,375 @@
+diff --git a/networkx/__pycache__/__init__.cpython-314.pyc b/networkx/__pycache__/__init__.cpython-314.pyc
+new file mode 100644
+index 0000000..e62c7d7
+Binary files /dev/null and b/networkx/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/networkx/__pycache__/convert.cpython-314.pyc b/networkx/__pycache__/convert.cpython-314.pyc
+new file mode 100644
+index 0000000..45cd0b4
+Binary files /dev/null and b/networkx/__pycache__/convert.cpython-314.pyc differ
+diff --git a/networkx/__pycache__/exception.cpython-314.pyc b/networkx/__pycache__/exception.cpython-314.pyc
+new file mode 100644
+index 0000000..c70177d
+Binary files /dev/null and b/networkx/__pycache__/exception.cpython-314.pyc differ
+diff --git a/networkx/__pycache__/relabel.cpython-314.pyc b/networkx/__pycache__/relabel.cpython-314.pyc
+new file mode 100644
+index 0000000..658d757
+Binary files /dev/null and b/networkx/__pycache__/relabel.cpython-314.pyc differ
+diff --git a/networkx/__pycache__/release.cpython-314.pyc b/networkx/__pycache__/release.cpython-314.pyc
+new file mode 100644
+index 0000000..4418aeb
+Binary files /dev/null and b/networkx/__pycache__/release.cpython-314.pyc differ
+diff --git a/networkx/algorithms/__pycache__/__init__.cpython-314.pyc b/networkx/algorithms/__pycache__/__init__.cpython-314.pyc
+new file mode 100644
+index 0000000..b79e5cf
+Binary files /dev/null and b/networkx/algorithms/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/networkx/algorithms/__pycache__/block.cpython-314.pyc b/networkx/algorithms/__pycache__/block.cpython-314.pyc
+new file mode 100644
+index 0000000..4cc75f7
+Binary files /dev/null and b/networkx/algorithms/__pycache__/block.cpython-314.pyc differ
+diff --git a/networkx/algorithms/__pycache__/boundary.cpython-314.pyc b/networkx/algorithms/__pycache__/boundary.cpython-314.pyc
+new file mode 100644
+index 0000000..65c751c
+Binary files /dev/null and b/networkx/algorithms/__pycache__/boundary.cpython-314.pyc differ
+diff --git a/networkx/algorithms/__pycache__/clique.cpython-314.pyc b/networkx/algorithms/__pycache__/clique.cpython-314.pyc
+new file mode 100644
+index 0000000..1b437c4
+Binary files /dev/null and b/networkx/algorithms/__pycache__/clique.cpython-314.pyc differ
+diff --git a/networkx/algorithms/__pycache__/cluster.cpython-314.pyc b/networkx/algorithms/__pycache__/cluster.cpython-314.pyc
+new file mode 100644
+index 0000000..c03a27c
+Binary files /dev/null and b/networkx/algorithms/__pycache__/cluster.cpython-314.pyc differ
+diff --git a/networkx/algorithms/__pycache__/core.cpython-314.pyc b/networkx/algorithms/__pycache__/core.cpython-314.pyc
+new file mode 100644
+index 0000000..f7c9073
+Binary files /dev/null and b/networkx/algorithms/__pycache__/core.cpython-314.pyc differ
+diff --git a/networkx/algorithms/__pycache__/cycles.cpython-314.pyc b/networkx/algorithms/__pycache__/cycles.cpython-314.pyc
+new file mode 100644
+index 0000000..20acb84
+Binary files /dev/null and b/networkx/algorithms/__pycache__/cycles.cpython-314.pyc differ
+diff --git a/networkx/algorithms/__pycache__/dag.cpython-314.pyc b/networkx/algorithms/__pycache__/dag.cpython-314.pyc
+new file mode 100644
+index 0000000..a34fad0
+Binary files /dev/null and b/networkx/algorithms/__pycache__/dag.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/__init__.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/__init__.cpython-314.pyc
+new file mode 100644
+index 0000000..b26c851
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/betweenness.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/betweenness.cpython-314.pyc
+new file mode 100644
+index 0000000..5ddf4a2
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/betweenness.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/betweenness_subset.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/betweenness_subset.cpython-314.pyc
+new file mode 100644
+index 0000000..5dc8401
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/betweenness_subset.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/closeness.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/closeness.cpython-314.pyc
+new file mode 100644
+index 0000000..a900fb8
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/closeness.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/current_flow_betweenness.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/current_flow_betweenness.cpython-314.pyc
+new file mode 100644
+index 0000000..2a6bdec
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/current_flow_betweenness.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/current_flow_betweenness_subset.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/current_flow_betweenness_subset.cpython-314.pyc
+new file mode 100644
+index 0000000..bebf8a1
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/current_flow_betweenness_subset.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/current_flow_closeness.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/current_flow_closeness.cpython-314.pyc
+new file mode 100644
+index 0000000..a8f1dd3
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/current_flow_closeness.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/degree_alg.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/degree_alg.cpython-314.pyc
+new file mode 100644
+index 0000000..fc2ec85
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/degree_alg.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/eigenvector.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/eigenvector.cpython-314.pyc
+new file mode 100644
+index 0000000..bdc86ed
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/eigenvector.cpython-314.pyc differ
+diff --git a/networkx/algorithms/centrality/__pycache__/load.cpython-314.pyc b/networkx/algorithms/centrality/__pycache__/load.cpython-314.pyc
+new file mode 100644
+index 0000000..3e82c60
+Binary files /dev/null and b/networkx/algorithms/centrality/__pycache__/load.cpython-314.pyc differ
+diff --git a/networkx/algorithms/components/__pycache__/__init__.cpython-314.pyc b/networkx/algorithms/components/__pycache__/__init__.cpython-314.pyc
+new file mode 100644
+index 0000000..81bb17e
+Binary files /dev/null and b/networkx/algorithms/components/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/networkx/algorithms/components/__pycache__/attracting.cpython-314.pyc b/networkx/algorithms/components/__pycache__/attracting.cpython-314.pyc
+new file mode 100644
+index 0000000..62743af
+Binary files /dev/null and b/networkx/algorithms/components/__pycache__/attracting.cpython-314.pyc differ
+diff --git a/networkx/algorithms/components/__pycache__/connected.cpython-314.pyc b/networkx/algorithms/components/__pycache__/connected.cpython-314.pyc
+new file mode 100644
+index 0000000..5316a1f
+Binary files /dev/null and b/networkx/algorithms/components/__pycache__/connected.cpython-314.pyc differ
+diff --git a/networkx/algorithms/components/__pycache__/strongly_connected.cpython-314.pyc b/networkx/algorithms/components/__pycache__/strongly_connected.cpython-314.pyc
+new file mode 100644
+index 0000000..7f8cf5a
+Binary files /dev/null and b/networkx/algorithms/components/__pycache__/strongly_connected.cpython-314.pyc differ
+diff --git a/networkx/algorithms/components/__pycache__/weakly_connected.cpython-314.pyc b/networkx/algorithms/components/__pycache__/weakly_connected.cpython-314.pyc
+new file mode 100644
+index 0000000..3dadef6
+Binary files /dev/null and b/networkx/algorithms/components/__pycache__/weakly_connected.cpython-314.pyc differ
+diff --git a/networkx/classes/__pycache__/__init__.cpython-314.pyc b/networkx/classes/__pycache__/__init__.cpython-314.pyc
+new file mode 100644
+index 0000000..db6380c
+Binary files /dev/null and b/networkx/classes/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/networkx/classes/__pycache__/digraph.cpython-314.pyc b/networkx/classes/__pycache__/digraph.cpython-314.pyc
+new file mode 100644
+index 0000000..8cee5b4
+Binary files /dev/null and b/networkx/classes/__pycache__/digraph.cpython-314.pyc differ
+diff --git a/networkx/classes/__pycache__/function.cpython-314.pyc b/networkx/classes/__pycache__/function.cpython-314.pyc
+new file mode 100644
+index 0000000..c302ad4
+Binary files /dev/null and b/networkx/classes/__pycache__/function.cpython-314.pyc differ
+diff --git a/networkx/classes/__pycache__/graph.cpython-314.pyc b/networkx/classes/__pycache__/graph.cpython-314.pyc
+new file mode 100644
+index 0000000..8bcb9b4
+Binary files /dev/null and b/networkx/classes/__pycache__/graph.cpython-314.pyc differ
+diff --git a/networkx/classes/__pycache__/multidigraph.cpython-314.pyc b/networkx/classes/__pycache__/multidigraph.cpython-314.pyc
+new file mode 100644
+index 0000000..2a3f346
+Binary files /dev/null and b/networkx/classes/__pycache__/multidigraph.cpython-314.pyc differ
+diff --git a/networkx/classes/__pycache__/multigraph.cpython-314.pyc b/networkx/classes/__pycache__/multigraph.cpython-314.pyc
+new file mode 100644
+index 0000000..c0b8202
+Binary files /dev/null and b/networkx/classes/__pycache__/multigraph.cpython-314.pyc differ
+diff --git a/networkx/external/__pycache__/__init__.cpython-314.pyc b/networkx/external/__pycache__/__init__.cpython-314.pyc
+new file mode 100644
+index 0000000..819c37f
+Binary files /dev/null and b/networkx/external/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/networkx/external/__pycache__/decorator.cpython-314.pyc b/networkx/external/__pycache__/decorator.cpython-314.pyc
+new file mode 100644
+index 0000000..f9c660d
+Binary files /dev/null and b/networkx/external/__pycache__/decorator.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/__init__.cpython-314.pyc b/networkx/generators/__pycache__/__init__.cpython-314.pyc
+new file mode 100644
+index 0000000..a4a5839
+Binary files /dev/null and b/networkx/generators/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/atlas.cpython-314.pyc b/networkx/generators/__pycache__/atlas.cpython-314.pyc
+new file mode 100644
+index 0000000..0cb8838
+Binary files /dev/null and b/networkx/generators/__pycache__/atlas.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/bipartite.cpython-314.pyc b/networkx/generators/__pycache__/bipartite.cpython-314.pyc
+new file mode 100644
+index 0000000..9f49e06
+Binary files /dev/null and b/networkx/generators/__pycache__/bipartite.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/classic.cpython-314.pyc b/networkx/generators/__pycache__/classic.cpython-314.pyc
+new file mode 100644
+index 0000000..22dbb68
+Binary files /dev/null and b/networkx/generators/__pycache__/classic.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/degree_seq.cpython-314.pyc b/networkx/generators/__pycache__/degree_seq.cpython-314.pyc
+new file mode 100644
+index 0000000..171be42
+Binary files /dev/null and b/networkx/generators/__pycache__/degree_seq.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/directed.cpython-314.pyc b/networkx/generators/__pycache__/directed.cpython-314.pyc
+new file mode 100644
+index 0000000..ce9f12c
+Binary files /dev/null and b/networkx/generators/__pycache__/directed.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/ego.cpython-314.pyc b/networkx/generators/__pycache__/ego.cpython-314.pyc
+new file mode 100644
+index 0000000..1054c59
+Binary files /dev/null and b/networkx/generators/__pycache__/ego.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/geometric.cpython-314.pyc b/networkx/generators/__pycache__/geometric.cpython-314.pyc
+new file mode 100644
+index 0000000..53f0970
+Binary files /dev/null and b/networkx/generators/__pycache__/geometric.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/hybrid.cpython-314.pyc b/networkx/generators/__pycache__/hybrid.cpython-314.pyc
+new file mode 100644
+index 0000000..bd34470
+Binary files /dev/null and b/networkx/generators/__pycache__/hybrid.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/intersection.cpython-314.pyc b/networkx/generators/__pycache__/intersection.cpython-314.pyc
+new file mode 100644
+index 0000000..56ae7b4
+Binary files /dev/null and b/networkx/generators/__pycache__/intersection.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/line.cpython-314.pyc b/networkx/generators/__pycache__/line.cpython-314.pyc
+new file mode 100644
+index 0000000..dea96d2
+Binary files /dev/null and b/networkx/generators/__pycache__/line.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/random_graphs.cpython-314.pyc b/networkx/generators/__pycache__/random_graphs.cpython-314.pyc
+new file mode 100644
+index 0000000..82b3679
+Binary files /dev/null and b/networkx/generators/__pycache__/random_graphs.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/small.cpython-314.pyc b/networkx/generators/__pycache__/small.cpython-314.pyc
+new file mode 100644
+index 0000000..0554ea0
+Binary files /dev/null and b/networkx/generators/__pycache__/small.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/social.cpython-314.pyc b/networkx/generators/__pycache__/social.cpython-314.pyc
+new file mode 100644
+index 0000000..f997607
+Binary files /dev/null and b/networkx/generators/__pycache__/social.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/stochastic.cpython-314.pyc b/networkx/generators/__pycache__/stochastic.cpython-314.pyc
+new file mode 100644
+index 0000000..5603526
+Binary files /dev/null and b/networkx/generators/__pycache__/stochastic.cpython-314.pyc differ
+diff --git a/networkx/generators/__pycache__/threshold.cpython-314.pyc b/networkx/generators/__pycache__/threshold.cpython-314.pyc
+new file mode 100644
+index 0000000..f4dfd29
+Binary files /dev/null and b/networkx/generators/__pycache__/threshold.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/__init__.cpython-314.pyc b/networkx/readwrite/__pycache__/__init__.cpython-314.pyc
+new file mode 100644
+index 0000000..fdb846c
+Binary files /dev/null and b/networkx/readwrite/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/adjlist.cpython-314.pyc b/networkx/readwrite/__pycache__/adjlist.cpython-314.pyc
+new file mode 100644
+index 0000000..4d5193f
+Binary files /dev/null and b/networkx/readwrite/__pycache__/adjlist.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/edgelist.cpython-314.pyc b/networkx/readwrite/__pycache__/edgelist.cpython-314.pyc
+new file mode 100644
+index 0000000..541ab2e
+Binary files /dev/null and b/networkx/readwrite/__pycache__/edgelist.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/gexf.cpython-314.pyc b/networkx/readwrite/__pycache__/gexf.cpython-314.pyc
+new file mode 100644
+index 0000000..44229b4
+Binary files /dev/null and b/networkx/readwrite/__pycache__/gexf.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/gml.cpython-314.pyc b/networkx/readwrite/__pycache__/gml.cpython-314.pyc
+new file mode 100644
+index 0000000..175cb08
+Binary files /dev/null and b/networkx/readwrite/__pycache__/gml.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/gpickle.cpython-314.pyc b/networkx/readwrite/__pycache__/gpickle.cpython-314.pyc
+new file mode 100644
+index 0000000..8fd8c6f
+Binary files /dev/null and b/networkx/readwrite/__pycache__/gpickle.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/graphml.cpython-314.pyc b/networkx/readwrite/__pycache__/graphml.cpython-314.pyc
+new file mode 100644
+index 0000000..29d23e0
+Binary files /dev/null and b/networkx/readwrite/__pycache__/graphml.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/leda.cpython-314.pyc b/networkx/readwrite/__pycache__/leda.cpython-314.pyc
+new file mode 100644
+index 0000000..e1c8680
+Binary files /dev/null and b/networkx/readwrite/__pycache__/leda.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/multiline_adjlist.cpython-314.pyc b/networkx/readwrite/__pycache__/multiline_adjlist.cpython-314.pyc
+new file mode 100644
+index 0000000..2580837
+Binary files /dev/null and b/networkx/readwrite/__pycache__/multiline_adjlist.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/nx_shp.cpython-314.pyc b/networkx/readwrite/__pycache__/nx_shp.cpython-314.pyc
+new file mode 100644
+index 0000000..9ae3bf1
+Binary files /dev/null and b/networkx/readwrite/__pycache__/nx_shp.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/nx_yaml.cpython-314.pyc b/networkx/readwrite/__pycache__/nx_yaml.cpython-314.pyc
+new file mode 100644
+index 0000000..c06f8bf
+Binary files /dev/null and b/networkx/readwrite/__pycache__/nx_yaml.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/pajek.cpython-314.pyc b/networkx/readwrite/__pycache__/pajek.cpython-314.pyc
+new file mode 100644
+index 0000000..f6c80e4
+Binary files /dev/null and b/networkx/readwrite/__pycache__/pajek.cpython-314.pyc differ
+diff --git a/networkx/readwrite/__pycache__/sparsegraph6.cpython-314.pyc b/networkx/readwrite/__pycache__/sparsegraph6.cpython-314.pyc
+new file mode 100644
+index 0000000..099dd4f
+Binary files /dev/null and b/networkx/readwrite/__pycache__/sparsegraph6.cpython-314.pyc differ
+diff --git a/networkx/readwrite/pajek.py b/networkx/readwrite/pajek.py
+index 20f5488..b9971d6 100644
+--- a/networkx/readwrite/pajek.py
++++ b/networkx/readwrite/pajek.py
+@@ -38,10 +38,12 @@ def generate_pajek(G):
+     See http://vlado.fmf.uni-lj.si/pub/networks/pajek/doc/draweps.htm
+     for format information.
+     """
+-    if G.name=='': 
++    if G.name=='':
+         name='NetworkX'
+     else:
+         name=G.name
++    if is_string_like(name) and ' ' in name:
++        name='"%s"'%name
+     yield '*network %s'%name
+ 
+     # write nodes with attributes
+@@ -56,12 +58,18 @@ def generate_pajek(G):
+         id=int(na.get('id',nodenumber[n]))
+         nodenumber[n]=id
+         shape=na.get('shape','ellipse')
++        if is_string_like(n) and ' ' in n:
++            n='"%s"'%n
++        if is_string_like(shape) and ' ' in shape:
++            shape='"%s"'%shape
+         s=' '.join(map(make_str,(id,n,x,y,shape)))
+         for k,v in na.items():
+             if is_string_like(v):
+                 # add quotes to any values with a blank space
+-                if " " in v: 
++                if " " in v:
+                     v="\"%s\""%v
++            if is_string_like(k) and ' ' in k:
++                k="\"%s\""%k
+             s+=' %s %s'%(k,v)
+         yield s
+ 
+@@ -73,12 +81,16 @@ def generate_pajek(G):
+     for u,v,edgedata in G.edges(data=True):
+         d=edgedata.copy()
+         value=d.pop('weight',1.0) # use 1 as default edge value
++        if is_string_like(value) and ' ' in value:
++            value='"%s"'%value
+         s=' '.join(map(make_str,(nodenumber[u],nodenumber[v],value)))
+         for k,v in d.items():
+             if is_string_like(v):
+                 # add quotes to any values with a blank space
+-                if " " in v: 
++                if " " in v:
+                     v="\"%s\""%v
++            if is_string_like(k) and ' ' in k:
++                k="\"%s\""%k
+             s+=' %s %s'%(k,v)
+         yield s
+         
+@@ -168,7 +180,7 @@ def parse_pajek(lines):
+         except: #EOF
+             break
+         if l.lower().startswith("*network"):
+-            label,name=l.split()
++            label,name=shlex.split(str(l))
+             G.name=name
+         if l.lower().startswith("*vertices"):
+             nodelabels={}
+diff --git a/networkx/readwrite/tests/test_pajek.py b/networkx/readwrite/tests/test_pajek.py
+index fd3cd67..68ee5e7 100644
+--- a/networkx/readwrite/tests/test_pajek.py
++++ b/networkx/readwrite/tests/test_pajek.py
+@@ -5,6 +5,7 @@ Pajek tests
+ 
+ from nose.tools import assert_equal
+ from networkx import *
++import networkx as nx
+ import os,tempfile
+ from io import open
+ 
+@@ -49,3 +50,25 @@ class TestPajek(object):
+         assert_equal(self.G.graph,Gin.graph)
+         for n in G.node:
+             assert_equal(G.node[n],Gin.node[n])
++
++    def test_write_pajek_with_spaces(self):
++        G=Graph()
++        G.name='test with spaces'
++        G.add_node('node with space')
++        G.add_node('another node')
++        G.add_edge('node with space','another node')
++        G.node['node with space']['attr']='value with space'
++        G['node with space']['another node']['label']='edge with space'
++        lines=list(generate_pajek(G))
++        text='\n'.join(lines)
++        assert '"test with spaces"' in text
++        assert '"node with space"' in text
++        assert '"another node"' in text
++        assert '"value with space"' in text
++        assert '"edge with space"' in text
++        H=parse_pajek(text)
++        assert_equal(sorted(H.nodes()),sorted(G.nodes()))
++        assert_equal(H.name,G.name)
++        assert_equal(H.node['node with space'].get('attr'),'value with space')
++        for u,v,d in H.edges(data=True):
++            assert_equal(d.get('label'),'edge with space')
+diff --git a/networkx/utils/__pycache__/__init__.cpython-314.pyc b/networkx/utils/__pycache__/__init__.cpython-314.pyc
+new file mode 100644
+index 0000000..61ca074
+Binary files /dev/null and b/networkx/utils/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/networkx/utils/__pycache__/decorators.cpython-314.pyc b/networkx/utils/__pycache__/decorators.cpython-314.pyc
+new file mode 100644
+index 0000000..2706836
+Binary files /dev/null and b/networkx/utils/__pycache__/decorators.cpython-314.pyc differ
+diff --git a/networkx/utils/__pycache__/utilities.cpython-314.pyc b/networkx/utils/__pycache__/utilities.cpython-314.pyc
+new file mode 100644
+index 0000000..2ff73a0
+Binary files /dev/null and b/networkx/utils/__pycache__/utilities.cpython-314.pyc differ

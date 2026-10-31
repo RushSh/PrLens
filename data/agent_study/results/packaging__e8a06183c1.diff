@@ -1,0 +1,45 @@
+diff --git a/packaging/markers.py b/packaging/markers.py
+index 03d8cde..5e3e745 100644
+--- a/packaging/markers.py
++++ b/packaging/markers.py
+@@ -170,7 +170,14 @@ def _format_marker(
+         else:
+             return "(" + " ".join(inner) + ")"
+     elif isinstance(marker, tuple):
+-        return " ".join([m.serialize() for m in marker])
++        lhs, op, rhs = marker
++        if isinstance(lhs, Variable) and lhs.value == "extra":
++            normalized_extra = canonicalize_name(rhs.value)
++            rhs = Value(normalized_extra)
++        elif isinstance(rhs, Variable) and rhs.value == "extra":
++            normalized_extra = canonicalize_name(lhs.value)
++            lhs = Value(normalized_extra)
++        return " ".join([lhs.serialize(), op.serialize(), rhs.serialize()])
+     else:
+         return marker
+ 
+diff --git a/tests/test_markers.py b/tests/test_markers.py
+index b1ccf63..2f7c6d8 100644
+--- a/tests/test_markers.py
++++ b/tests/test_markers.py
+@@ -205,6 +205,20 @@ class TestMarker:
+                 'python_version == "2.7" and (sys_platform == "win32" or '
+                 'sys_platform == "linux")',
+             ),
++            # Test extra normalization
++            ("extra == 'security'", 'extra == "security"'),
++            ("extra == 'SECURITY'", 'extra == "security"'),
++            ("extra == 'pep-685-norm'", 'extra == "pep-685-norm"'),
++            ("extra == 'PEP_685...norm'", 'extra == "pep-685-norm"'),
++            ("'SECURITY' == extra", '"security" == extra'),
++            (
++                "extra == 'pep-685-norm' and python_version == '3.6'",
++                'extra == "pep-685-norm" and python_version == "3.6"',
++            ),
++            (
++                "extra == 'PEP_685...norm' and python_version == '3.6'",
++                'extra == "pep-685-norm" and python_version == "3.6"',
++            ),
+         ],
+     )
+     def test_str_repr_eq_hash(self, marker_string, expected):

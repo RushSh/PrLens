@@ -1,0 +1,40 @@
+diff --git a/src/Spectre.Console/Prompts/MultiSelectionPrompt.cs b/src/Spectre.Console/Prompts/MultiSelectionPrompt.cs
+index 20dbc71..8c8626b 100644
+--- a/src/Spectre.Console/Prompts/MultiSelectionPrompt.cs
++++ b/src/Spectre.Console/Prompts/MultiSelectionPrompt.cs
+@@ -160,7 +160,7 @@ public sealed class MultiSelectionPrompt<T> : IPrompt<List<T>>, IListPromptStrat
+             return ListPromptInputResult.Submit;
+         }
+ 
+-        if (key.Key == ConsoleKey.Spacebar)
++        if (key.Key == ConsoleKey.Spacebar || key.Key == ConsoleKey.Packet)
+         {
+             var current = state.Items[state.Index];
+             var select = !current.IsSelected;
+diff --git a/test/Spectre.Console.Tests/Unit/Prompts/MultiSelectionPromptTests.cs b/test/Spectre.Console.Tests/Unit/Prompts/MultiSelectionPromptTests.cs
+index 70a27ba..bc6acfe 100644
+--- a/test/Spectre.Console.Tests/Unit/Prompts/MultiSelectionPromptTests.cs
++++ b/test/Spectre.Console.Tests/Unit/Prompts/MultiSelectionPromptTests.cs
+@@ -146,4 +146,22 @@ public sealed class MultiSelectionPromptTests
+         // Then
+         action.ShouldThrow<ArgumentOutOfRangeException>();
+     }
++
++    [Fact]
++    public void Should_Select_Item_When_Pressing_Packet_Key()
++    {
++        // Given
++        var console = new TestConsole();
++        console.Profile.Capabilities.Interactive = true;
++        console.Input.PushKey(new ConsoleKeyInfo(' ', ConsoleKey.Packet, false, false, false));
++        console.Input.PushKey(ConsoleKey.Enter);
++
++        // When
++        var result = console.Prompt(
++            new MultiSelectionPrompt<string>()
++                .AddChoices("Apple", "Orange", "Banana"));
++
++        // Then
++        result.ShouldBe(new[] { "Apple" });
++    }
+ }

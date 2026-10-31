@@ -1,0 +1,6 @@
+muse: workspace root: /Users/rushabhshah/muse_agent_study/es-toolkit__97e4eee74a/repo/. (explicit)
+muse: warning: rules file at /Users/rushabhshah/muse_agent_study/es-toolkit__97e4eee74a/repo/AGENTS.md exists, but the workspace is untrusted, so it is skipped for this session; restart with --trust-workspace to load project rules
+muse: Skills: 27 loaded · 1 warning
+muse:   .claude: project-skills-untrusted: project skills skipped because workspace is untrusted
+muse:   Run `muse skills list --source all` for full diagnostics.
+muse: Agent delegation: auto unavailable: workspace is untrusted.

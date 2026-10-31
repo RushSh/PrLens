@@ -1,0 +1,2 @@
+muse: workspace root: /Users/rushabhshah/muse_agent_study/immer__8848a5b169/repo/. (explicit)
+muse: Agent delegation: auto unavailable: workspace is untrusted.

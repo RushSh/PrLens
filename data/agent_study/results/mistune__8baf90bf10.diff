@@ -1,0 +1,86 @@
+diff --git a/src/mistune/__init__.py b/src/mistune/__init__.py
+index 60ab0f3..13d5746 100644
+--- a/src/mistune/__init__.py
++++ b/src/mistune/__init__.py
+@@ -63,7 +63,7 @@ def create_markdown(
+ html: Markdown = create_markdown(escape=False, plugins=["strikethrough", "footnotes", "table"])
+ 
+ 
+-__cached_parsers: Dict[Tuple[bool, Optional[RendererRef], Optional[Iterable[Any]]], Markdown] = {}
++__cached_parsers: Dict[Tuple[bool, Optional[str], Optional[Tuple[Any, ...]]], Markdown] = {}
+ 
+ 
+ def markdown(
+@@ -75,11 +75,34 @@ def markdown(
+     if renderer == "ast":
+         # explicit and more similar to 2.x's API
+         renderer = None
+-    key = (escape, renderer, plugins)
++    # Custom renderer instances are caller-owned mutable objects; using them
++    # as cache keys would share one instance across cache entries and let
++    # later calls (or caller mutations) change earlier entries. Bypass the
++    # cache so each call gets a parser honoring the current arguments.
++    if renderer is not None and not isinstance(renderer, str):
++        md = create_markdown(escape=escape, renderer=renderer, plugins=plugins)
++        return md(text)
++
++    # Normalize the plugins iterable into an immutable tuple so the cache
++    # key is hashable and later caller mutations cannot affect it.
++    plugins_key: Optional[Tuple[Any, ...]] = None
++    if plugins is not None:
++        try:
++            plugins_key = tuple(plugins)
++        except TypeError:
++            md = create_markdown(escape=escape, renderer=renderer, plugins=plugins)
++            return md(text)
++        try:
++            hash(plugins_key)
++        except TypeError:
++            md = create_markdown(escape=escape, renderer=renderer, plugins=plugins_key)
++            return md(text)
++
++    key = (escape, renderer, plugins_key)
+     if key in __cached_parsers:
+         return __cached_parsers[key](text)
+ 
+-    md = create_markdown(escape=escape, renderer=renderer, plugins=plugins)
++    md = create_markdown(escape=escape, renderer=renderer, plugins=plugins_key)
+     # improve the speed for markdown parser creation
+     __cached_parsers[key] = md
+     return md(text)
+diff --git a/tests/test_misc.py b/tests/test_misc.py
+index 918d579..3cb3303 100644
+--- a/tests/test_misc.py
++++ b/tests/test_misc.py
+@@ -242,6 +242,31 @@ class TestMiscCases(TestCase):
+         result = mistune.markdown("**b**")
+         self.assertEqual(result, expected)
+ 
++    def test_markdown_func_with_list_plugins(self):
++        text = "| a |\n| --- |\n| b |\n"
++        result = mistune.markdown(text, plugins=["table"])
++        self.assertIn("<table>", result)
++        # list and tuple forms share the same normalized cache entry
++        self.assertEqual(result, mistune.markdown(text, plugins=("table",)))
++
++    def test_markdown_func_isolates_plugins_arg(self):
++        text = "| a |\n| --- |\n| b |\n"
++        plugins = ["table"]
++        first = mistune.markdown(text, plugins=plugins)
++        plugins.append("footnotes")
++        second = mistune.markdown(text, plugins=["table"])
++        self.assertEqual(first, second)
++        # other plugin sets are unaffected by the cached entry
++        self.assertNotIn("<table>", mistune.markdown(text))
++
++    def test_markdown_func_isolates_custom_renderer(self):
++        renderer = mistune.HTMLRenderer()
++        first = mistune.markdown("<b>x</b>", escape=True, renderer=renderer)
++        mistune.markdown("<b>x</b>", escape=False, renderer=renderer)
++        second = mistune.markdown("<b>x</b>", escape=True, renderer=renderer)
++        self.assertEqual(first, second)
++        self.assertIn("&lt;b&gt;", first)
++
+     def test_ast_output(self):
+         md = mistune.create_markdown(escape=False, renderer=None)
+         text = '# h1\n\nfoo **bar**\n\n`&<>"`'

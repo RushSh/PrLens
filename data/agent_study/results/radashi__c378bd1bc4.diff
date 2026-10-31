@@ -1,0 +1,29 @@
+diff --git a/src/string.ts b/src/string.ts
+index 7421f20..96d0268 100644
+--- a/src/string.ts
++++ b/src/string.ts
+@@ -41,7 +41,7 @@ export const snake = (str: string): string => {
+   const parts =
+     str
+       ?.replace(/([A-Z])+/g, capitalize)
+-      .split(/(?=[A-Z])|[\.\-\s_]/)
++      .split(/(?=[A-Z])|[\.\-\s_]|(?<=[a-zA-Z])(?=[0-9])|(?<=[0-9])(?=[a-zA-Z])/)
+       .map(x => x.toLowerCase()) ?? []
+   if (parts.length === 0) return ''
+   if (parts.length === 1) return parts[0]
+diff --git a/src/tests/string.test.ts b/src/tests/string.test.ts
+index 9a41469..55f9cba 100644
+--- a/src/tests/string.test.ts
++++ b/src/tests/string.test.ts
+@@ -45,6 +45,11 @@ describe('string module', () => {
+       const result = _.snake('hello')
+       assert.equal(result, 'hello')
+     })
++    test('splits number from letters', () => {
++      assert.equal(_.snake('test123'), 'test_123')
++      assert.equal(_.snake('123test'), '123_test')
++      assert.equal(_.snake('test123test'), 'test_123_test')
++    })
+     test('returns empty string for empty input', () => {
+       const result = _.snake(null as any)
+       assert.equal(result, '')

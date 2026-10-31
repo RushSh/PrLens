@@ -1,0 +1,78 @@
+diff --git a/src/Spectre.Console/Widgets/Prompt/TextPrompt.cs b/src/Spectre.Console/Widgets/Prompt/TextPrompt.cs
+index b570781..f85c166 100644
+--- a/src/Spectre.Console/Widgets/Prompt/TextPrompt.cs
++++ b/src/Spectre.Console/Widgets/Prompt/TextPrompt.cs
+@@ -196,10 +196,13 @@ namespace Spectre.Console
+             }
+ 
+             var markup = builder.ToString().Trim();
+-            if (!markup.EndsWith("?", StringComparison.OrdinalIgnoreCase) &&
+-                !markup.EndsWith(":", StringComparison.OrdinalIgnoreCase))
++            if (Choices.Count > 0 || DefaultValue != null)
+             {
+-                markup += ":";
++                if (!markup.EndsWith("?", StringComparison.OrdinalIgnoreCase) &&
++                    !markup.EndsWith(":", StringComparison.OrdinalIgnoreCase))
++                {
++                    markup += ":";
++                }
+             }
+ 
+             console.Markup(markup + " ");
+diff --git a/test/Spectre.Console.Tests/Unit/TextPromptTests.cs b/test/Spectre.Console.Tests/Unit/TextPromptTests.cs
+index 1f28fad..f6955d1 100644
+--- a/test/Spectre.Console.Tests/Unit/TextPromptTests.cs
++++ b/test/Spectre.Console.Tests/Unit/TextPromptTests.cs
+@@ -218,5 +218,52 @@ namespace Spectre.Console.Tests.Unit
+             // Then
+             return Verifier.Verify(console.Output);
+         }
++
++        [Fact]
++        public void Should_Not_Append_Suffix_If_No_Choices_Or_Default_Value_Is_Specified()
++        {
++            // Given
++            var console = new TestConsole();
++            console.Input.PushTextWithEnter("John");
++
++            // When
++            console.Prompt(new TextPrompt<string>("What's your name"));
++
++            // Then
++            console.Output.NormalizeLineEndings().ShouldBe("What's your name John\n");
++        }
++
++        [Fact]
++        public void Should_Append_Suffix_If_Choices_Are_Specified()
++        {
++            // Given
++            var console = new TestConsole();
++            console.Input.PushTextWithEnter("Banana");
++
++            // When
++            console.Prompt(
++                new TextPrompt<string>("Favorite fruit")
++                    .AddChoice("Banana")
++                    .AddChoice("Orange"));
++
++            // Then
++            console.Output.NormalizeLineEndings().ShouldBe("Favorite fruit [Banana/Orange]: Banana\n");
++        }
++
++        [Fact]
++        public void Should_Append_Suffix_If_Default_Value_Is_Specified()
++        {
++            // Given
++            var console = new TestConsole();
++            console.Input.PushKey(ConsoleKey.Enter);
++
++            // When
++            console.Prompt(
++                new TextPrompt<string>("Favorite fruit")
++                    .DefaultValue("Banana"));
++
++            // Then
++            console.Output.NormalizeLineEndings().ShouldBe("Favorite fruit (Banana): Banana\n");
++        }
+     }
+ }

@@ -1,0 +1,42 @@
+diff --git a/boltons/strutils.py b/boltons/strutils.py
+index 50b6f34..4c6dcc2 100644
+--- a/boltons/strutils.py
++++ b/boltons/strutils.py
+@@ -196,6 +196,8 @@ def singularize(word):
+         singular = word[:-1]  # or just return word?
+     elif word.endswith('ies') and word[-4:-3] not in 'aeiou':
+         singular = word[:-3] + 'y'
++    elif word.endswith(('ses', 'xes', 'zes', 'ches', 'shes')):
++        singular = word[:-2]
+     else:
+         singular = word[:-1]
+     return _match_case(orig_word, singular)
+diff --git a/tests/test_strutils.py b/tests/test_strutils.py
+index 4dab6d0..91ca419 100644
+--- a/tests/test_strutils.py
++++ b/tests/test_strutils.py
+@@ -47,6 +47,24 @@ def test_format_int_list():
+     assert strutils.format_int_list([5, 6, 7, 8], delim_space=True) == '5-8'
+ 
+ 
++def test_singularize():
++    # plurals in -es lose the -es
++    assert strutils.singularize('classes') == 'class'
++    assert strutils.singularize('buses') == 'bus'
++    assert strutils.singularize('wishes') == 'wish'
++    assert strutils.singularize('churches') == 'church'
++    assert strutils.singularize('boxes') == 'box'
++    # ordinary -s plurals still lose just the -s
++    assert strutils.singularize('chances') == 'chance'
++    assert strutils.singularize('friends') == 'friend'
++    # case is preserved
++    assert strutils.singularize('Classes') == 'Class'
++    assert strutils.singularize('WISHES') == 'WISH'
++    # round-trips with pluralize
++    assert strutils.singularize(strutils.pluralize('class')) == 'class'
++    assert strutils.singularize(strutils.pluralize('wish')) == 'wish'
++
++
+ class TestMultiReplace(TestCase):
+ 
+     def test_simple_substitutions(self):

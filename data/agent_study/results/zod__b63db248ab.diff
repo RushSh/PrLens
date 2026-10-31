@@ -1,0 +1,71 @@
+diff --git a/packages/zod/src/v4/classic/tests/cyclic-data.test.ts b/packages/zod/src/v4/classic/tests/cyclic-data.test.ts
+index c27b191..2af371d 100644
+--- a/packages/zod/src/v4/classic/tests/cyclic-data.test.ts
++++ b/packages/zod/src/v4/classic/tests/cyclic-data.test.ts
+@@ -617,3 +617,23 @@ test("resolves a recursive reference once, however it is written", () => {
+   expect(getterCalls).toBe(1);
+   expect(lazyCalls).toBe(1);
+ });
++
++test("reports a shared invalid node once per path", () => {
++  const Node: any = z.object({
++    name: z.string(),
++    get child() {
++      return Node.optional();
++    },
++  });
++  const Parent = z.object({ left: Node, right: Node });
++
++  const shared = { name: 123 };
++  for (const jitless of [false, true]) {
++    const result = Parent.safeParse({ left: shared, right: shared }, { jitless });
++    expect(result.success, `jitless: ${jitless}`).toBe(false);
++    expect(result.error!.issues.map((iss) => iss.path), `jitless: ${jitless}`).toEqual([
++      ["left", "name"],
++      ["right", "name"],
++    ]);
++  }
++});
+diff --git a/packages/zod/src/v4/core/memoizer.ts b/packages/zod/src/v4/core/memoizer.ts
+index 8110322..f883327 100644
+--- a/packages/zod/src/v4/core/memoizer.ts
++++ b/packages/zod/src/v4/core/memoizer.ts
+@@ -27,6 +27,15 @@ type WithState = { [STATE]?: State };
+ 
+ const NO_ISSUES: errors.$ZodRawIssue[] = [];
+ 
++/** Copies cached issues so the cache keeps its own. Every receiver prefixes a path onto the issues it gets in place, so handing out the cached objects would let one visitor rewrite another's path. */
++function copyIssues(issues: errors.$ZodRawIssue[]): errors.$ZodRawIssue[] {
++  return issues.map((iss) => {
++    const copy = { ...iss } as errors.$ZodRawIssue;
++    if (iss.path) (copy as any).path = [...iss.path];
++    return copy;
++  });
++}
++
+ interface Memoizer extends $ZodMemoizer {
+   recursive: boolean | undefined;
+   /** Set immediately before delegating to core and cleared immediately after, so
+@@ -156,7 +165,7 @@ export function attachMemoizer(inst: $ZodType): void {
+       if (hit) {
+         payload.value = hit.value;
+         if (hit.issues) {
+-          payload.issues.push(...hit.issues);
++          if (hit.issues.length) payload.issues.push(...copyIssues(hit.issues));
+         } else {
+           // Still being parsed: its own checks cover it, so skip them here.
+           payload.memo = true;
+@@ -176,11 +185,11 @@ export function attachMemoizer(inst: $ZodType): void {
+       // Both paths written out so the sync one allocates no closure. It runs once per node, and capturing here cost more than everything else combined.
+       if (result instanceof Promise) {
+         return result.then((r) => {
+-          if (entry) entry.issues = r.issues.length ? r.issues.slice() : NO_ISSUES;
++          if (entry) entry.issues = r.issues.length ? copyIssues(r.issues) : NO_ISSUES;
+           return r;
+         });
+       }
+-      if (entry) entry.issues = result.issues.length ? result.issues.slice() : NO_ISSUES;
++      if (entry) entry.issues = result.issues.length ? copyIssues(result.issues) : NO_ISSUES;
+       return result;
+     };
+ 

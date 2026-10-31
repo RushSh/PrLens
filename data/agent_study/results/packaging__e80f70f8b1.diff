@@ -1,0 +1,40 @@
+diff --git a/src/packaging/direct_url.py b/src/packaging/direct_url.py
+index 1cdf4bc..b4ed128 100644
+--- a/src/packaging/direct_url.py
++++ b/src/packaging/direct_url.py
+@@ -289,7 +289,9 @@ class DirectUrl:
+             raise DirectUrlValidationError(
+                 "Exactly one of vcs_info, archive_info, dir_info must be present"
+             )
+-        if direct_url.dir_info is not None and not direct_url.url.startswith("file://"):
++        if direct_url.dir_info is not None and (
++            urllib.parse.urlsplit(direct_url.url).scheme.lower() != "file"
++        ):
+             raise DirectUrlValidationError(
+                 "URL scheme must be file:// when dir_info is present",
+                 context="url",
+diff --git a/tests/test_direct_url.py b/tests/test_direct_url.py
+index 4fc561b..b7b5b24 100644
+--- a/tests/test_direct_url.py
++++ b/tests/test_direct_url.py
+@@ -200,10 +200,18 @@ def test_one_info_field(direct_url_dict: dict[str, object]) -> None:
+         DirectUrl.from_dict(direct_url_dict)
+ 
+ 
+-def test_dir_info_url_scheme_file() -> None:
++@pytest.mark.parametrize(
++    "url",
++    [
++        "file:///home/myproject",
++        "FILE:///home/myproject",
++        "FiLe:///home/myproject",
++    ],
++)
++def test_dir_info_url_scheme_file(url: str) -> None:
+     DirectUrl.from_dict(
+         {
+-            "url": "file:///home/myproject",
++            "url": url,
+             "dir_info": {},
+         }
+     )
