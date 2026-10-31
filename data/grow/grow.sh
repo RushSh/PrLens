@@ -17,7 +17,7 @@ PY="${PY:-python}"
 case "$lang" in
   python)     repos=data/repos/python_v2.txt;     copies=data/work/validate_mac ;;
   typescript) repos=data/repos/typescript_v2.txt; copies=data/work/validate_mac ;;
-  csharp)     repos=data/repos/csharp_v2.txt;     copies=data/work/validate
+  csharp)     repos=data/repos/csharp_v2.txt;     copies=data/work/validate_mac
               export NUGET_PACKAGES="${NUGET_PACKAGES:-$PWD/data/work/caches/nuget}" ;;
   *) echo "language must be python, typescript or csharp"; exit 1 ;;
 esac
