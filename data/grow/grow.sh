@@ -27,7 +27,8 @@ out=data/bugs_${lang}_v2.jsonl
 
 if [ ! -s "$cand" ]; then
   echo "== mining $lang repositories (fixes since 2025-06-01)"
-  "$PY" -m prlens mine --repos "$repos" --language "$lang" --since 2025-06-01 --out "$cand" --workdir data/raw || exit 1
+  "$PY" -m prlens mine --repos "$repos" --language "$lang" --since 2025-06-01 --out "$cand.part" --workdir data/raw || exit 1
+  mv "$cand.part" "$cand"   # only a finished mine counts as done
 fi
 if [ ! -s "$sample" ]; then
   "$PY" -m prlens sample --candidates "$cand" --per-repo "$PER_REPO" --out "$sample" || exit 1
