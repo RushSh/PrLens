@@ -78,8 +78,8 @@ LOCKFILES = ("pnpm-lock.yaml", "yarn.lock", "package-lock.json", "bun.lock", "bu
 
 class WorkingCopy:
     def __init__(self, repo: Path, root: Path):
-        self.repo = repo
-        self.dir = root / repo.name
+        self.repo = Path(repo).resolve()
+        self.dir = Path(root).resolve() / repo.name  # absolute: git runs from inside the clone
         self.installed_for: str | None = None
         if not (self.dir / ".git").exists():
             self.dir.parent.mkdir(parents=True, exist_ok=True)
