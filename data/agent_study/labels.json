@@ -1,0 +1,16 @@
+{
+  "_about": "Bug regions in Muse Code's PRs, labelled by hand from the failing fix test and the human fix (same rule as SZZ on the evaluation set: the region the fix had to change). Each label is a file and a line in the agent's new file; the region holding that line is the bug region.",
+  "boltons@89bb0a8b96": [{"file": "boltons/strutils.py", "line": 199, "why": "the new elif chain in singularize still strips the trailing s of words ending in 'ss'; the fix adds the missing branch here"}],
+  "sqlglot@47e255dda3": [{"file": "sqlglot/generators/snowflake.py", "line": 1185, "why": "COUNT(*) FILTER special case checks exp.Star only, missing table.* stars; the fix rewrites this check"}],
+  "packaging@e80f70f8b1": [{"file": "src/packaging/direct_url.py", "line": 292, "why": "dir_info check accepts file: URLs with a relative path; the fix splits this check and adds the absolute-path test"}],
+  "isort@8b450398ef": [{"file": "isort/api.py", "line": 189, "why": "swapping in a StringIO for a non-seekable stream; the fix replaces this with an explicit ValueError"}],
+  "more-itertools@eb24d3927a": [{"file": "more_itertools/recipes.py", "line": 834, "why": "islice(iterable, start, stop) rejects the negative stop the fast path accepts; the fix guards this slow path"}],
+  "packaging@ee13ba2c1c": [{"file": "src/packaging/version.py", "line": 383, "why": "the fast path iterates the version before checking it is a string, so non-strings raise TypeError, not InvalidVersion"}],
+  "more-itertools@a50ab3eebb": [{"file": "more_itertools/more.py", "line": 2646, "why": "peek appends to the cache, which drops the item when maxlen is 0; the fix puts the item back here"}],
+  "es-toolkit@97e4eee74a": [{"file": "src/compat/array/findLastIndex.ts", "line": 64, "why": "only NaN is coerced; fractional and string fromIndex are not converted to an integer like lodash"}],
+  "valibot@a0aa98555c": [{"file": "library/src/regex.ts", "line": 35, "why": "the domain regex the fix rewrites (case handling); the fix also adds the missing to-json-schema case, which is outside this PR"}],
+  "immer@8848a5b169": [
+    {"file": "src/plugins/mapset.ts", "line": 116, "why": "Map draft forEach reads latest() without preparing the copy, so iteration breaks under mutation."},
+    {"file": "src/plugins/mapset.ts", "line": 141, "why": "The same for keys()."}
+  ]
+}

@@ -20,7 +20,7 @@ function toSet(s: typeof triageSets.$inferSelect): TriageSetInfo {
   };
 }
 
-/** Every imported set, and every PR in them: live PRs first (newest first), then the evaluation set by repo. */
+/** Every imported set, and every PR in them: live PRs first (newest first), then agent-study PRs, then the evaluation set by repo. */
 export async function listTriage(db: Db): Promise<TriageList> {
   const sets = await db.select().from(triageSets).orderBy(asc(triageSets.name));
   const rows = await db
@@ -47,7 +47,7 @@ export async function listTriage(db: Db): Promise<TriageList> {
     source: payload.source,
     language: payload.language ?? "python",
   }));
-  const rank = (s: string) => (s === "live" ? 0 : 1);
+  const rank = (s: string) => (s === "live" ? 0 : s === "agent" ? 1 : 2);
   prs.sort((a, b) => rank(a.source) - rank(b.source) || (a.source === "live" ? b.openedAt.localeCompare(a.openedAt) : 0));
   return { sets: sets.map(toSet), prs };
 }

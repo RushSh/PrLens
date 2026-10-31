@@ -5,13 +5,14 @@ import { useMemo, useState, type ReactNode } from "react";
 import { EVAL_LANGUAGES, type PrTriageSummary, type TriageList } from "@prlens/shared";
 import { pct, when } from "@/lib/format";
 import { prHref, prRef } from "@/lib/pr";
-import { CheckIcon, CommitIcon, LensIcon, PullIcon, XIcon } from "./Icons";
+import { AgentIcon, CheckIcon, CommitIcon, LensIcon, PullIcon, XIcon } from "./Icons";
 import { Counter, Pill, buttonPrimary, input } from "./ui";
 
-type View = "live" | "eval";
+type View = "live" | "agent" | "eval";
 
 export function PrList({ list, offline }: { list: TriageList; offline: boolean }) {
-  const live = list.prs.filter((p) => p.source !== "eval");
+  const live = list.prs.filter((p) => p.source === "live" || p.source === "sample");
+  const agents = list.prs.filter((p) => p.source === "agent");
   const evals = list.prs.filter((p) => p.source === "eval");
   const [view, setView] = useState<View>(live.length ? "live" : "eval");
   const [q, setQ] = useState("");
@@ -19,7 +20,7 @@ export function PrList({ list, offline }: { list: TriageList; offline: boolean }
   const [language, setLanguage] = useState("");
   const [outcome, setOutcome] = useState<"" | "caught" | "missed">("");
 
-  const rows = view === "live" ? live : evals;
+  const rows = view === "live" ? live : view === "agent" ? agents : evals;
   const languages = EVAL_LANGUAGES.filter((l) => rows.some((p) => p.language === l.key));
   const repos = useMemo(
     () => [...new Set(rows.filter((p) => !language || p.language === language).map((p) => p.repo))].sort(),
@@ -33,7 +34,7 @@ export function PrList({ list, offline }: { list: TriageList; offline: boolean }
       (!outcome || (outcome === "caught" ? p.caughtByTriage === true : p.caughtByTriage === false)),
   );
   // the evaluation summary follows the language and repository filters (not the outcome filter it would trivially match)
-  const scope = evals.filter((p) => (!language || p.language === language) && (!repo || p.repo === repo));
+  const scope = (view === "agent" ? agents : evals).filter((p) => (!language || p.language === language) && (!repo || p.repo === repo));
   const kept = scope.filter((p) => p.caughtByTriage).length;
   const readShare = scope.reduce((a, p) => a + p.readLines, 0) / Math.max(1, scope.reduce((a, p) => a + p.totalLines, 0));
   const evalLink = `/evaluation${language ? `?lang=${language}` : ""}`;
@@ -67,6 +68,11 @@ export function PrList({ list, offline }: { list: TriageList; offline: boolean }
           <TabButton active={view === "live"} onClick={() => setView("live")} icon={<PullIcon />}>
             Triaged <Counter>{live.length}</Counter>
           </TabButton>
+          {agents.length ? (
+            <TabButton active={view === "agent"} onClick={() => setView("agent")} icon={<AgentIcon />}>
+              Muse Code PRs <Counter>{agents.length}</Counter>
+            </TabButton>
+          ) : null}
           <TabButton active={view === "eval"} onClick={() => setView("eval")} icon={<CommitIcon />}>
             Evaluation set <Counter>{evals.length}</Counter>
           </TabButton>
@@ -93,7 +99,7 @@ export function PrList({ list, offline }: { list: TriageList; offline: boolean }
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
-            {view === "eval" ? (
+            {view !== "live" ? (
               <select aria-label="Outcome" value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)} className="rounded-md bg-transparent py-0.5 text-sm text-muted hover:text-fg">
                 <option value="">Outcome</option>
                 <option value="caught">Bug kept for review</option>
@@ -112,6 +118,18 @@ export function PrList({ list, offline }: { list: TriageList; offline: boolean }
             </span>{" "}
             while leaving <span className="font-semibold text-fg">{pct(readShare)}</span> of lines to read.{" "}
             <Link href={evalLink} className="text-accent hover:underline">How this was measured</Link>
+          </p>
+        ) : null}
+
+        {view === "agent" ? (
+          <p className="border-b border-line px-4 py-2.5 text-sm text-muted">
+            The Muse Code agent re-implemented evaluation commits from their messages; the later fix&apos;s tests then
+            showed whether its change held a bug. PR Lens kept the bug for review in{" "}
+            <span className="font-semibold text-fg">
+              {scope.filter((p) => p.caughtByTriage).length} of {scope.filter((p) => p.caughtByTriage !== null).length}
+            </span>{" "}
+            agent PRs with one, leaving <span className="font-semibold text-fg">{pct(readShare)}</span> of lines to read.{" "}
+            <Link href="/agent-study" className="text-accent hover:underline">The study and its funnel</Link>
           </p>
         ) : null}
 
@@ -159,9 +177,10 @@ function TabButton({ active, onClick, icon, children }: { active: boolean; onCli
 function Row({ pr }: { pr: PrTriageSummary }) {
   const share = pr.totalLines ? pr.readLines / pr.totalLines : 0;
   const isEval = pr.source === "eval";
+  const isAgent = pr.source === "agent";
   return (
     <li className="flex gap-3 border-b border-line-muted px-4 py-2.5 last:border-b-0 hover:bg-subtle">
-      <span className={`mt-0.5 ${isEval ? "text-done" : "text-success"}`}>{isEval ? <CommitIcon /> : <PullIcon />}</span>
+      <span className={`mt-0.5 ${isEval ? "text-done" : "text-success"}`}>{isEval ? <CommitIcon /> : isAgent ? <AgentIcon /> : <PullIcon />}</span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Link href={prHref(pr.id)} className="font-semibold text-fg hover:text-accent">
@@ -179,7 +198,7 @@ function Row({ pr }: { pr: PrTriageSummary }) {
           {pr.reviewCount ? <Pill tone="attention">{pr.reviewCount} to review</Pill> : <Pill tone="success">nothing to review</Pill>}
         </div>
         <div className="mt-0.5 text-xs text-muted">
-          <span className="font-mono">{pr.repo}</span> · {EVAL_LANGUAGES.find((l) => l.key === pr.language)?.label ?? pr.language} · {prRef(pr)} · {isEval ? "committed" : "opened"} {when(pr.openedAt)}
+          <span className="font-mono">{pr.repo}</span> · {EVAL_LANGUAGES.find((l) => l.key === pr.language)?.label ?? pr.language} · {isAgent ? <>written by Muse Code · task from {when(pr.openedAt)}</> : <>{prRef(pr)} · {isEval ? "committed" : "opened"} {when(pr.openedAt)}</>}
         </div>
       </div>
       <div className="hidden w-40 shrink-0 text-right sm:block">

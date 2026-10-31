@@ -2,7 +2,7 @@ import { reviewQueue } from "@prlens/shared";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { CommitIcon, PullIcon } from "@/components/Icons";
+import { AgentIcon, CommitIcon, PullIcon } from "@/components/Icons";
 import { PrTabs } from "@/components/pr/PrTabs";
 import { when } from "@/lib/format";
 import { buildFiles, prIdFromKey } from "@/lib/pr";
@@ -34,8 +34,8 @@ export default async function PrLayout({ children, params }: { children: ReactNo
           <span
             className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium text-white ${isEval ? "bg-done" : "bg-success-emph"}`}
           >
-            {isEval ? <CommitIcon /> : <PullIcon />}
-            {isEval ? "Known bug" : pr.source === "sample" ? "Sample" : "Triaged"}
+            {isEval ? <CommitIcon /> : pr.source === "agent" ? <AgentIcon /> : <PullIcon />}
+            {isEval ? "Known bug" : pr.source === "agent" ? "Agent study" : pr.source === "sample" ? "Sample" : "Triaged"}
           </span>
           <span>
             <span className="font-semibold text-fg">{pr.author.name}</span>

@@ -58,24 +58,16 @@ def gh(url: str, accept: str = "application/vnd.github+json") -> str:
         raise SystemExit(f"GitHub returned {e.code} for {url}{hint}") from e
 
 
-def fetch(owner: str, repo: str, number: int) -> dict:
-    """The PR in the shape trace.py writes (hunks with regions), ready to score."""
-    api = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}"
-    meta = json.loads(gh(api))
-    diff = gh(api, accept="application/vnd.github.v3.diff")
+def hunks_from_diff(diff: str, old_source) -> list[dict]:
+    """A unified diff in the shape trace.py writes (hunks with regions, skips and rules), ready to score.
+    `old_source(path)` returns the file before the change, or None (then the formatting proof is skipped)."""
     files = [f for f in parse_diff(diff) if not f.binary]
     if len(files) > MAX_FILES:
         raise SystemExit(f"this PR changes {len(files)} files; live triage handles up to {MAX_FILES}")
-    base = meta["base"]["sha"]
     pr_defs = defs_in([l for f in files for h in f.hunks for l in h.lines], "add")
     hunks = []
     for f in files:
-        old_src = None
-        if f.old_path and language_of(f.old_path) is not None:
-            try:
-                old_src = gh(f"https://raw.githubusercontent.com/{owner}/{repo}/{base}/{f.old_path}", accept="*/*")
-            except SystemExit:
-                old_src = None  # without the old file the formatting proof is skipped; the hunk is scored instead
+        old_src = old_source(f.old_path) if f.old_path and language_of(f.old_path) is not None else None
         for i, h in enumerate(f.hunks):
             regs = [{"id": f"{h.file}#{i}.{j}", "added": r.added, "removed": r.removed,
                      "new_lines": sorted(r.new_lines()), "old_lines": sorted(l.old for l in r.lines if l.kind == "del"),
@@ -85,6 +77,23 @@ def fetch(owner: str, repo: str, number: int) -> dict:
                           "lines": [[l.kind, l.old, l.new, l.text] for l in h.lines],
                           "skip": skip_category(h, old_src), "rules": review_rules(h, pr_defs),
                           "regions": regs, "bug": False, "bug_ids": []})
+    return hunks
+
+
+def fetch(owner: str, repo: str, number: int) -> dict:
+    """The PR in the shape trace.py writes (hunks with regions), ready to score."""
+    api = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}"
+    meta = json.loads(gh(api))
+    diff = gh(api, accept="application/vnd.github.v3.diff")
+    base = meta["base"]["sha"]
+
+    def old_source(path: str) -> str | None:
+        try:
+            return gh(f"https://raw.githubusercontent.com/{owner}/{repo}/{base}/{path}", accept="*/*")
+        except SystemExit:
+            return None  # without the old file the formatting proof is skipped; the hunk is scored instead
+
+    hunks = hunks_from_diff(diff, old_source)
     user = meta.get("user") or {}
     return {
         "pr_id": pr_id(owner, repo, number), "repo": f"{owner}/{repo}", "sha": meta["head"]["sha"],
@@ -97,6 +106,31 @@ def fetch(owner: str, repo: str, number: int) -> dict:
 
 def to_score(pr: dict) -> list[tuple[dict, dict]]:
     return [(h, g) for h in pr["hunks"] if not h["skip"] for g in h["regions"]]
+
+
+def combine(pr: dict, by_id: dict) -> tuple[str, dict, bool]:
+    """Give each region its combined risk u["p"] from the model results `by_id` (region id -> score row), using the
+    combiner of the PR's main language (by changed lines; Python's when that language has none).
+    Returns (language, combiner, calibrated)."""
+    weight: dict[str, int] = {}
+    for h in pr["hunks"]:
+        lg = language_of(h["file"])
+        if lg and not h["skip"]:
+            weight[lg.name] = weight.get(lg.name, 0) + h["added"] + h["removed"]
+    language = max(weight, key=weight.get) if weight else "python"
+    calibrated = combiner_path(language).exists()
+    comb = json.loads((combiner_path(language) if calibrated else COMBINER).read_text())
+    pr["units"] = []
+    for h in pr["hunks"]:
+        for g in h["regions"]:
+            r = by_id.get(g["id"], {})
+            u = dict(g, file=h["file"], skip=h["skip"], lines=[l for l in h["lines"] if l[2] in g["new_lines"]],
+                     risk=r.get("risk"), reason=r.get("reason", ""))
+            # one rule with evaluation (fit.scored): a region with no score is always read
+            u["p"] = 1.0 if (not h["skip"] and r.get("risk") is None) else (
+                0.0 if h["skip"] else float(predict(comb, np.array([feats(u, comb.get("spec", "with-must-review"))]))[0]))
+            pr["units"].append(u)
+    return language, comb, calibrated
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -154,26 +188,8 @@ def main(argv: list[str] | None = None) -> None:
     if errors and len(errors) == len(results):
         raise SystemExit(f"every call failed, e.g. {errors[0]['error'][:300]}")
 
-    # the PR's main language (by changed lines) picks the calibration; Python's is the fallback
-    weight: dict[str, int] = {}
-    for h in pr["hunks"]:
-        lg = language_of(h["file"])
-        if lg and not h["skip"]:
-            weight[lg.name] = weight.get(lg.name, 0) + h["added"] + h["removed"]
-    language = max(weight, key=weight.get) if weight else "python"
-    calibrated = combiner_path(language).exists()
-    comb = json.loads((combiner_path(language) if calibrated else COMBINER).read_text())
     by_id = {g["id"]: r for (h, g), r in zip(todo, results)}
-    pr["units"] = []
-    for h in pr["hunks"]:
-        for g in h["regions"]:
-            r = by_id.get(g["id"], {})
-            u = dict(g, file=h["file"], skip=h["skip"], lines=[l for l in h["lines"] if l[2] in g["new_lines"]],
-                     risk=r.get("risk"), reason=r.get("reason", ""))
-            # one rule with evaluation (fit.scored): a region with no score is always read
-            u["p"] = 1.0 if (not h["skip"] and r.get("risk") is None) else (
-                0.0 if h["skip"] else float(predict(comb, np.array([feats(u, comb.get("spec", "with-must-review"))]))[0]))
-            pr["units"].append(u)
+    language, comb, calibrated = combine(pr, by_id)
     ev_path = EVAL if language == "python" else EVAL.with_name(f"triage_eval_{language}.json")
     ev = json.loads(ev_path.read_text()) if calibrated and ev_path.exists() else None
     note = (f"{language} evaluation set ({ev['summary']['prs']} PRs; held out by repo, {ev['summary']['held_out_missed']} "

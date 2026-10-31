@@ -90,3 +90,9 @@ export const SkipIcon = (p: P) => (
     <path d="M3 4.5 7.5 8 3 11.5zM8.5 4.5 13 8l-4.5 3.5z" />
   </Svg>
 );
+export const AgentIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="5" width="11" height="8" rx="2" />
+    <path d="M8 5V2.5M6 9h.01M10 9h.01M1 9v1.5M15 9v1.5" />
+  </Svg>
+);

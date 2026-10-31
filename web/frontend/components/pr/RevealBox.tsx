@@ -18,7 +18,11 @@ export function RevealBox({ pr }: { pr: PrTriage }) {
         <BugIcon size={22} />
       </span>
       <div className="flex-1 rounded-md border border-done/40 px-4 py-3">
-        <p className="font-semibold text-fg">This commit introduced a real bug that was fixed later</p>
+        <p className="font-semibold text-fg">
+          {pr.source === "agent"
+            ? "Muse Code's change fails a test from the later fix: it holds a real bug"
+            : "This commit introduced a real bug that was fixed later"}
+        </p>
         {shown ? (
           <div className="mt-1 space-y-1 text-sm">
             <p className={gt.caughtByTriage ? "text-success" : "text-danger"}>
@@ -26,9 +30,13 @@ export function RevealBox({ pr }: { pr: PrTriage }) {
             </p>
             {gt.fixes.map((f) => (
               <p key={f.sha} className="text-muted">
-                Fixed in <span className="font-mono">{f.sha}</span>: {f.subject}{" "}
+                {pr.source === "agent" ? "The human fix" : "Fixed in"} <span className="font-mono">{f.sha}</span>: {f.subject}{" "}
                 <span className="text-xs">
-                  ({f.evidence === "deleted" ? "traced from the lines the fix changed" : "traced from where the fix added code; weaker evidence"})
+                  ({f.evidence === "deleted"
+                    ? "traced from the lines the fix changed"
+                    : f.evidence === "labelled"
+                      ? "bug region labelled by hand from the failing test"
+                      : "traced from where the fix added code; weaker evidence"})
                 </span>
               </p>
             ))}

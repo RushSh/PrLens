@@ -123,7 +123,7 @@ export interface TriageGroundTruth {
   /** True when a bug item is in the review list. */
   caughtByTriage: boolean;
   /** The later commits that fixed it; evidence "deleted" = traced from changed lines, "adjacent" = from an insertion point. */
-  fixes: { sha: string; subject: string; evidence: "deleted" | "adjacent" }[];
+  fixes: { sha: string; subject: string; evidence: "deleted" | "adjacent" | "labelled" }[];
 }
 
 export interface PrTriage {
@@ -142,8 +142,9 @@ export interface PrTriage {
   toReview: ReviewItem[];
   skipped: SkippedItem[];
   guarantee: SkipGuarantee | null;
-  /** "sample": built-in demo data; "eval": real commit with a known bug; "live": a PR triaged on request. */
-  source: "sample" | "eval" | "live";
+  /** "sample": built-in demo data; "eval": real commit with a known bug; "live": a PR triaged on request;
+   * "agent": a PR the Muse Code agent wrote in the agent study (with a hand-labelled bug when a fix test failed). */
+  source: "sample" | "eval" | "live" | "agent";
   groundTruth?: TriageGroundTruth;
   /** Each scored hunk's full diff, so files can be shown whole; items point into them (id prefix, flagged lines). */
   hunks?: { id: string; file: string; header: string; diff: DiffLine[] }[];
@@ -267,6 +268,27 @@ export interface TriageSetSummary {
   read_share: number;
   held_out_missed: number;
   held_out_read_share: number;
+  /** The agent-study set only. */
+  agentStudy?: AgentStudy;
+}
+
+/** The Muse Code agent study: which tasks could be judged, which held a bug, and whether PR Lens kept it. */
+export interface AgentStudy {
+  agent: string;
+  model: string;
+  funnel: { stage: string; prs: number }[];
+  tasks: {
+    task: string;
+    prId: string;
+    verdict: "bug" | "no_bug";
+    bugKind: "omission" | "new-code bug" | null;
+    /** Whether the labelled bug region was in the review list (null: no bug). */
+    caught: boolean | null;
+    lines: number;
+    read: number;
+    why: string[];
+  }[];
+  notJudgeable: { task: string; language: string; why: string }[];
 }
 
 /** About one imported triage set. */
@@ -332,7 +354,7 @@ export const prTriageSchema: z.ZodType<PrTriage> = z.object({
   toReview: z.array(reviewItem),
   skipped: z.array(skippedItem),
   guarantee: z.object({ missBound: z.number(), confidence: z.number(), calibratedOn: z.string() }).nullable(),
-  source: z.enum(["sample", "eval", "live"]),
+  source: z.enum(["sample", "eval", "live", "agent"]),
   hunks: z.array(z.object({ id: z.string(), file: z.string(), header: z.string(), diff: z.array(diffLine) })).optional(),
   skipThreshold: z.number().optional(),
   language: z.string().optional(),
@@ -342,7 +364,7 @@ export const prTriageSchema: z.ZodType<PrTriage> = z.object({
     .object({
       bugItemIds: z.array(z.string()),
       caughtByTriage: z.boolean(),
-      fixes: z.array(z.object({ sha: z.string(), subject: z.string(), evidence: z.enum(["deleted", "adjacent"]) })),
+      fixes: z.array(z.object({ sha: z.string(), subject: z.string(), evidence: z.enum(["deleted", "adjacent", "labelled"]) })),
     })
     .optional(),
 });
@@ -377,6 +399,26 @@ export const triageFile = z.object({
     read_share: z.number(),
     held_out_missed: z.number(),
     held_out_read_share: z.number(),
+    agentStudy: z
+      .object({
+        agent: z.string(),
+        model: z.string(),
+        funnel: z.array(z.object({ stage: z.string(), prs: z.number() })),
+        tasks: z.array(
+          z.object({
+            task: z.string(),
+            prId: z.string(),
+            verdict: z.enum(["bug", "no_bug"]),
+            bugKind: z.enum(["omission", "new-code bug"]).nullable(),
+            caught: z.boolean().nullable(),
+            lines: z.number(),
+            read: z.number(),
+            why: z.array(z.string()),
+          }),
+        ),
+        notJudgeable: z.array(z.object({ task: z.string(), language: z.string(), why: z.string() })),
+      })
+      .optional(),
   }),
   evaluation: z
     .object({

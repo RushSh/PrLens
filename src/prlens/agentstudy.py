@@ -1,6 +1,8 @@
 """The agent study: can PR Lens triage agent-written PRs? The Muse Code agent re-implements evaluation PRs.
 
     prlens agent-study prepare     # clean snapshots + prompts for the chosen tasks (no model calls)
+    prlens agent-study validate    # run the fix's tests on the original PR, the agent's change and the parent
+    prlens agent-study triage --plan-only   # then --yes: score the judged agent PRs with Spark Open
 
 For each chosen evaluation PR (a commit that introduced a test-confirmed bug), the agent gets a snapshot of the
 repository at that commit's PARENT, with fresh git history, so neither the commit nor its later fix can be seen,
@@ -404,5 +406,185 @@ def main(argv: list[str] | None = None) -> None:
     v = sub.add_parser("validate", help="run each fix's tests on the original PR (control) and on the agent's change")
     v.add_argument("--only", nargs="*", help="task ids (e.g. zod@b63db248ab)")
     v.add_argument("--redo", action="store_true")
+    tr = sub.add_parser("triage", help="score the judged agent PRs with PR Lens and save data/triage_agent.json")
+    tr.add_argument("--model", default="spark_open")
+    tr.add_argument("--workers", type=int, default=4)
+    tr.add_argument("--yes", action="store_true")
+    tr.add_argument("--plan-only", action="store_true")
     args = ap.parse_args(argv)
-    {"prepare": prepare, "validate": validate}[args.step](args)
+    {"prepare": prepare, "validate": validate, "triage": triage}[args.step](args)
+
+
+# ---------------------------------------------------------------- triage the agent's PRs with PR Lens
+
+LABELS = STUDY / "labels.json"
+OUT_TRIAGE = ROOT / "data" / "triage_agent.json"
+AGENT = "Muse Code"
+AGENT_MODEL = "muse-spark-1.3-contributor"
+
+
+def agent_pr(t: dict, val: dict, fix_index: dict) -> dict:
+    """The agent's change as a PR in the shape live triage scores (environment edits and build output dropped)."""
+    from .live import hunks_from_diff
+    name = t["task"].replace("@", "__")
+    kept = [b for p, b in split_diff((STUDY / "results" / f"{name}.diff").read_text())
+            if not ARTEFACT.search(p) and not ENV_FILES.search(p)]
+    clone = find_repo(t["repo"]) or ROOT / "data" / "work" / "validate" / t["repo"]
+
+    def old_source(path: str) -> str | None:
+        r = subprocess.run(["git", "-C", str(clone), "show", f"{t['parent']}:{path}"], capture_output=True, text=True)
+        return r.stdout if r.returncode == 0 else None
+
+    hunks = hunks_from_diff("".join(kept), old_source)
+    msg = git(clone, "log", "-1", "--format=%B", t["pr_sha"]).strip()
+    msg = TAG_RE.sub("", msg)
+    url = fix_index[t["fixes"][0]]["repo_url"].removesuffix(".git")
+    full = "/".join(url.rstrip("/").split("/")[-2:])
+    date = git(clone, "log", "-1", "--format=%cI", t["pr_sha"]).strip()
+    return {"pr_id": f"agent:{full}@{t['pr_sha'][:10]}", "repo": full, "sha": t["pr_sha"], "subject": msg.split("\n")[0],
+            "message": msg, "author": AGENT, "date": date, "language": t["language"], "bugs": [], "hunks": hunks,
+            "lines": sum(h["added"] + h["removed"] for h in hunks)}
+
+
+def label(pr: dict, labels: list[dict]) -> list[str]:
+    """Mark the region holding each labelled line as the bug; returns the region ids (a hunk id if it was skipped)."""
+    ids = []
+    for lb in labels:
+        hit = None
+        for h in pr["hunks"]:
+            if h["file"] != lb["file"]:
+                continue
+            for g in h["regions"]:
+                if lb["line"] in g["new_lines"]:
+                    hit = (h, g)
+            if hit is None and h["new_start"] <= lb["line"] < h["new_start"] + max(1, h["new_len"]):
+                # a context line: the nearest region of that hunk
+                g = min(h["regions"], key=lambda g: min((abs(n - lb["line"]) for n in g["new_lines"]), default=10**9))
+                hit = (h, g)
+        if hit is None:
+            raise SystemExit(f"{pr['pr_id']}: no region of {lb['file']} holds line {lb['line']}")
+        h, g = hit
+        g["bug"] = True
+        h["bug"] = True
+        ids.append(h["id"] if h["skip"] else g["id"])
+    return ids
+
+
+def not_judgeable_why(v: dict | None) -> str:
+    """Why a task left the study, in a few words."""
+    if not v:
+        return "not validated (no result)"
+    c, a = v["control"], v["agent"]
+    if c["not_loading"] or a["not_loading"]:
+        tail = v.get("agent_output_tail", "")
+        if "install failed" in tail or "Poetry" in tail or "Build failures" in tail:
+            return "the project at that commit no longer installs"
+        if "npm/_logs" in tail:
+            return "its dependencies no longer install"
+        if "0 matches" in tail:
+            return "the fix's test files do not exist at that commit's layout"
+        if "TargetFramework=net" in tail:
+            return "the C# test project does not build at that commit"
+        return "the fix's tests do not load (API mismatch)"
+    if c["failed"] == 0:
+        return "the original PR passes the fix's tests here, so they cannot judge the change"
+    return v["verdict"].replace("_", " ")
+
+
+def triage(args) -> None:
+    """Score each judged agent PR with Spark Open, apply the language's combiner and threshold, and save the set
+    (data/triage_agent.json) with the hand-labelled bug regions as ground truth and the study's funnel."""
+    import hashlib
+    import os
+    import statistics
+    from concurrent.futures import ThreadPoolExecutor
+    from datetime import datetime, timezone
+
+    from .export import build
+    from .fit import combiner_path
+    from .live import CACHE_DIR, combine, to_score
+    from .llm import confirm, plan_line, spec
+    from .score import prompt_for, score_region
+
+    tasks = {json.loads(l)["task"]: json.loads(l) for l in open(STUDY / "tasks.jsonl")}
+    val = {json.loads(l)["task"]: json.loads(l) for l in VALIDATION.read_text().splitlines() if l.strip()}
+    labels = json.loads(LABELS.read_text())
+    fix_index = {json.loads(l)["sha"]: json.loads(l) for l in open(ROOT / "data" / "bug_fixes.jsonl")}
+    judged = [n for n in TASKS if val.get(n, {}).get("verdict") in ("bug", "no_bug")]
+    missing = [n for n in judged if val[n]["verdict"] == "bug" and n not in labels]
+    if missing:
+        raise SystemExit(f"label these bugs first in {LABELS.relative_to(ROOT)}: {', '.join(missing)}")
+    s = spec(args.model)
+    prs = {n: agent_pr(tasks[n], val[n], fix_index) for n in judged}
+    cache_path = CACHE_DIR / f"agent_study__{args.model}.jsonl"
+    cache = {}
+    if cache_path.exists():
+        cache = {json.loads(l)["key"]: json.loads(l) for l in cache_path.read_text().splitlines() if l.strip()}
+    key = lambda pr, hg: f"{pr['pr_id']}|{hg[1]['id']}|{hashlib.sha1(prompt_for(pr, *hg).encode()).hexdigest()[:16]}"  # noqa: E731
+    jobs = [(pr, hg) for pr in prs.values() for hg in to_score(pr)]
+    fresh = [(pr, hg) for pr, hg in jobs if key(pr, hg) not in cache or cache[key(pr, hg)].get("error")]
+    avg_in = int(statistics.mean(len(prompt_for(pr, *hg)) for pr, hg in fresh) / 4) if fresh else 0
+    os.environ.setdefault("PLAN_INPUT_TOKENS", str(avg_in))
+    line, _ = plan_line(s, len(fresh), 450)
+    confirm(f"{len(prs)} Muse Code PRs ({sum(v['verdict'] == 'bug' for v in val.values())} with a confirmed bug), "
+            f"{len(jobs)} regions, {len(fresh)} to score with {s.name} ({s.model_id} on {s.provider}).\n{line}",
+            args.yes or not fresh, args.plan_only)
+    with ThreadPoolExecutor(args.workers) as ex:
+        new = dict(zip([key(pr, hg) for pr, hg in fresh], ex.map(lambda j: score_region(s, j[0], *j[1]), fresh)))
+    if new:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_path, "a") as fh:
+            for k, r in new.items():
+                fh.write(json.dumps({**r, "key": k}) + "\n")
+    cache.update(new)
+
+    out, rows = [], []
+    for n, pr in prs.items():
+        bug_ids = label(pr, labels.get(n, [])) if val[n]["verdict"] == "bug" else []
+        by_id = {hg[1]["id"]: cache.get(key(pr, hg), {}) for hg in to_score(pr)}
+        language, comb, calibrated = combine(pr, by_id)
+        guarantee = {"missBound": comb.get("alpha", 0.2), "confidence": 0.9,
+                     "calibratedOn": f"the {language} evaluation set (human-written PRs); not calibrated on agent PRs"}
+        o = build(pr, comb["threshold"], guarantee)
+        o["groundTruth"]["bugItemIds"] = bug_ids
+        o["groundTruth"]["caughtByTriage"] = any(i["id"] in bug_ids for i in o["toReview"])
+        o["groundTruth"]["fixes"] = [{"sha": f[:10], "subject": fix_index[f].get("subject", "") if f in fix_index else "",
+                                      "evidence": "labelled"} for f in tasks[n]["fixes"]]
+        if not bug_ids:
+            o.pop("groundTruth")  # the fix's tests pass on this change: no known bug to reveal
+        o.update(source="agent", language=language, branch=f"muse/{tasks[n]['repo']}-{pr['sha'][:7]}",
+                 author={"name": AGENT, "kind": "ai_agent", "agent": f"{AGENT} ({AGENT_MODEL})"},
+                 panel=[s.name, "combiner", "rules"], taskSummary=pr["message"][:1500])
+        out.append(o)
+        read = sum(i["added"] + i["removed"] for i in o["toReview"])
+        rows.append({"task": n, "prId": o["id"], "verdict": val[n]["verdict"], "bugKind": val[n].get("bug_kind"),
+                     "caught": o["groundTruth"]["caughtByTriage"] if bug_ids else None, "lines": pr["lines"],
+                     "read": read, "why": [lb["why"] for lb in labels.get(n, [])]})
+        print(f"{n:28s} {val[n]['verdict']:7s} read {read:4d}/{pr['lines']:<4d} "
+              + ("" if not bug_ids else ("bug KEPT for review" if o["groundTruth"]["caughtByTriage"] else "bug SKIPPED")))
+
+    attempted = len(TASKS)
+    patched = sum(1 for n in TASKS if (STUDY / "results" / f"{n.replace('@', '__')}.diff").exists()
+                  and (STUDY / "results" / f"{n.replace('@', '__')}.diff").read_text().strip())
+    bugs = [r for r in rows if r["verdict"] == "bug"]
+    funnel = [
+        {"stage": "Tasks given to Muse Code", "prs": attempted},
+        {"stage": "Muse Code produced a change", "prs": patched},
+        {"stage": "Fix tests load and the original PR fails them (judgeable)", "prs": len(rows)},
+        {"stage": "A fix test fails on Muse Code's change: bug confirmed", "prs": len(bugs)},
+        {"stage": "Bug kept in PR Lens's review list", "prs": sum(1 for r in bugs if r["caught"])},
+    ]
+    read = sum(r["read"] for r in rows)
+    total = sum(r["lines"] for r in rows)
+    OUT_TRIAGE.write_text(json.dumps({
+        "kind": "triage", "name": "agent", "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "model": args.model, "threshold": json.loads(combiner_path("python").read_text())["threshold"], "alpha": 0.2,
+        "summary": {"prs": len(rows), "repos": len({o["repo"] for o in out}), "missed": len(bugs) - funnel[-1]["prs"],
+                    "read_share": read / max(1, total), "held_out_missed": 0, "held_out_read_share": 0,
+                    "agentStudy": {"agent": AGENT, "model": AGENT_MODEL, "funnel": funnel, "tasks": rows,
+                                   "notJudgeable": [{"task": n, "language": tasks[n]["language"], "why": not_judgeable_why(val.get(n))}
+                                                    for n in TASKS if val.get(n, {}).get("verdict") != "bug"
+                                                    and val.get(n, {}).get("verdict") != "no_bug"]}},
+        "prs": out,
+    }, indent=1))
+    print(f"saved {OUT_TRIAGE.relative_to(ROOT)}: {funnel[-1]['prs']}/{len(bugs)} bugs kept, read {read}/{total} lines")
