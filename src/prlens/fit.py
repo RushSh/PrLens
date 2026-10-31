@@ -3,8 +3,11 @@
     prlens fit                 # cross-fitted by repo: gate numbers, skip threshold, held-out check
     prlens fit --save          # also fit on everything and write data/triage/combiner.json
 
-Combiner: logistic regression (small L2) on model risk (as log-odds), logic density, test file, region size and
-must-review rule. Every number printed is out-of-fold: a repo is never scored by a fit that saw it.
+Combiner: logistic regression (small L2) on model risk (as log-odds), logic density, test file and region size.
+Fit spec (fixed in advance, Proposal v4): the combiner is fit only on the regions it actually scores; must-review
+regions are always read, so they leave the fit (they still get an out-of-fold score, for ordering and display).
+`--spec with-must-review` is the earlier spec (those regions in the fit, plus a must-review feature), kept for the
+ablation only. Every number printed is out-of-fold: a repo is never scored by a fit that saw it.
 
 Skip threshold: regions below it are skipped (must-review regions never are). A PR counts as missed when none of
 its bug regions is left in the review list. The threshold is the lowest-reading one whose 90% upper bound on the
@@ -25,7 +28,8 @@ from scipy.stats import beta
 from .bugdata import ROOT
 from .trace import OUT as PRS, is_test, logic_density, read_until
 
-FEATURES = ["model log-odds", "log logic", "test file", "log size", "must-review rule"]
+FEATURES = ["model log-odds", "log logic", "test file", "log size"]
+SPECS = {"scored-only": FEATURES, "with-must-review": FEATURES + ["must-review rule"]}
 
 
 def load(model: str, language: str | None = "python"):
@@ -55,12 +59,12 @@ def scored(u) -> bool:
     return not u["skip"] and u["risk"] is not None
 
 
-def feats(u) -> list[float]:
+def feats(u, spec: str = "scored-only") -> list[float]:
     if u["risk"] is None:
         raise ValueError(f"region {u.get('id')} has no model score: it is read, not scored by the combiner")
     r = min(max(u["risk"], 0.01), 0.99)
     return [math.log(r / (1 - r)), math.log1p(logic_density(u)), float(is_test(u)),
-            math.log1p(u["added"] + u["removed"]), float(bool(u["rules"]))]
+            math.log1p(u["added"] + u["removed"])] + ([float(bool(u["rules"]))] if spec == "with-must-review" else [])
 
 
 def fit(X: np.ndarray, y: np.ndarray, l2: float = 1.0):
@@ -114,23 +118,27 @@ def pick(prs, alpha: float) -> float:
     return best
 
 
-def cross_fit(prs) -> tuple[list, np.ndarray, np.ndarray]:
-    """Give every region an out-of-fold bug probability u["p"] (fit without its repo); returns (units, X, y)."""
+def cross_fit(prs, spec: str = "scored-only") -> tuple[list, np.ndarray, np.ndarray]:
+    """Give every scored region an out-of-fold risk score u["p"] (fit without its repo); returns the fit set
+    (units, X, y). Under "scored-only" must-review regions are scored but never fit on."""
     repos = sorted({p["repo"] for p in prs})
-    units = [(p, u) for p in prs for u in p["units"] if scored(u)]
-    X = np.array([feats(u) for _, u in units])
-    y = np.array([float(u["bug"]) for _, u in units])
+    scored_units = [(p, u) for p in prs for u in p["units"] if scored(u)]
+    train = [(p, u) for p, u in scored_units if spec == "with-must-review" or not u["rules"]]
+    X = np.array([feats(u, spec) for _, u in train])
+    y = np.array([float(u["bug"]) for _, u in train])
     for repo in repos:
-        tr = np.array([p["repo"] != repo for p, _ in units])
+        tr = np.array([p["repo"] != repo for p, _ in train])
         m = fit(X[tr], y[tr])
-        for (p, u), pv in zip([x for x, keep in zip(units, ~tr) if keep], predict(m, X[~tr])):
-            u["p"] = float(pv)
+        mine = [u for p, u in scored_units if p["repo"] == repo]
+        if mine:
+            for u, pv in zip(mine, predict(m, np.array([feats(u, spec) for u in mine]))):
+                u["p"] = float(pv)
     for p in prs:
         for u in p["units"]:
             if not u["skip"] and u["risk"] is None:
                 u["p"] = 1.0  # unscored: always read
             u.setdefault("p", 0.0)
-    return units, X, y
+    return train, X, y
 
 
 def held_out(prs, alpha: float) -> tuple[int, int, int]:
@@ -156,12 +164,14 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--alpha", type=float, default=0.2, help="miss-rate bound (90%% confidence)")
     ap.add_argument("--save", action="store_true")
     ap.add_argument("--language", default="python", help="python, typescript or csharp: each is calibrated on its own")
+    ap.add_argument("--spec", choices=sorted(SPECS), default="scored-only",
+                    help="fit spec (default: the fixed v4 spec; with-must-review is for the ablation only)")
     args = ap.parse_args(argv)
     prs = load(args.model, args.language)
     if len(prs) < 20:
         raise SystemExit(f"only {len(prs)} {args.language} PRs with scores; need at least 20 to calibrate")
     repos = sorted({p["repo"] for p in prs})
-    units, X, y = cross_fit(prs)
+    units, X, y = cross_fit(prs, args.spec)
     pos = [u["p"] for _, u in units if u["bug"]]
     neg = [u["p"] for _, u in units if not u["bug"]]
     auc = sum((a > b) + 0.5 * (a == b) for a in pos for b in neg) / (len(pos) * len(neg))
@@ -194,11 +204,13 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.save:
         m = fit(X, y)
-        m.update(features=FEATURES, model=args.model, threshold=t, alpha=args.alpha, prs=len(prs), language=args.language,
+        if args.spec != "scored-only":
+            raise SystemExit("only the fixed spec (scored-only) is saved; other specs are for comparison")
+        m.update(features=SPECS[args.spec], spec=args.spec, model=args.model, threshold=t, alpha=args.alpha, prs=len(prs), language=args.language,
                  note="fit on all traced PRs of this language; threshold from out-of-fold scores")
         out = combiner_path(args.language)
         out.write_text(json.dumps(m, indent=2))
-        print(f"wrote {out.relative_to(ROOT)}; weights {dict(zip(['bias'] + FEATURES, [round(w, 2) for w in m['w']]))}")
+        print(f"wrote {out.relative_to(ROOT)}; weights {dict(zip(['bias'] + SPECS[args.spec], [round(w, 2) for w in m['w']]))}")
 
 
 if __name__ == "__main__":

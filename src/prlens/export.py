@@ -167,7 +167,8 @@ def evaluation(prs, t: float, alpha: float) -> dict:
     for name, frac in (("quarter", 1 / 4), ("third", 1 / 3), ("half", 1 / 2)):
         order = lambda p: sorted([u for u in p["units"] if not u["skip"]], key=lambda u: -u["p"])  # noqa: E731
         gate[name] = round(sum(read_until(p["units"], order(p), frac * p["lines"]) for p in prs) / n, 4)
-    sc = lambda u: not u["skip"] and u["risk"] is not None  # noqa: E731 (unscored regions are read, not ranked)
+    # the regions the combiner ranks (fit spec): scored, and not forced into review by a rule
+    sc = lambda u: not u["skip"] and u["risk"] is not None and not u["rules"]  # noqa: E731
     pos = [u["p"] for p in prs for u in p["units"] if sc(u) and u["bug"]]
     neg = [u["p"] for p in prs for u in p["units"] if sc(u) and not u["bug"]]
     auc = sum((a > b) + 0.5 * (a == b) for a in pos for b in neg) / max(1, len(pos) * len(neg))
