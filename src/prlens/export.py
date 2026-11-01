@@ -194,7 +194,28 @@ def evaluation(prs, t: float, alpha: float) -> dict:
                      "adjacent": sum(b["evidence"] == "adjacent" for p in prs for b in p["bugs"])},
         "alpha": alpha, "confidence": 0.9,
         "drift": orders(prs),
+        "dial": dial(prs),
     }
+
+
+def dial(prs, alphas=None) -> list[dict]:
+    """The miss target as a dial: for each target, the threshold PR Lens would pick and what it costs and risks,
+    from the same out-of-fold scores (no refit). Held out: the threshold chosen without each PR's repository.
+    threshold 0 means no score threshold meets the target, so only the no-model skips remain."""
+    import numpy as np
+
+    from .ablation import bootstrap
+    n = len(prs)
+    out = []
+    for a in alphas if alphas is not None else np.round(np.arange(0.05, 0.401, 0.025), 3).tolist():
+        t = pick(prs, a)
+        k, r, tot, _ = skip_outcome(prs, t)
+        hk, hr, ht = held_out(prs, a)
+        out.append({"alpha": a, "threshold": round(t, 5), "missed": k, "read_share": round(r / tot, 4),
+                    "bound": round(ucb(k, n), 4), "held_out_missed": hk, "held_out_read_share": round(hr / ht, 4),
+                    "held_out_bound": round(ucb(hk, n), 4),
+                    "bootstrap_p90": round(bootstrap(prs, t)["p90"], 4)})
+    return out
 
 
 def main(argv: list[str] | None = None) -> None:

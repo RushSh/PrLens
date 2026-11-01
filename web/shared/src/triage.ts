@@ -226,6 +226,21 @@ export interface TriageEvaluation {
   };
   /** Does the model earn its place? Baselines at the same target, reliability and a repository bootstrap. */
   ablation?: Ablation;
+  /** The miss target as a dial: what each target (5-40%) costs and risks on the same out-of-fold scores. */
+  dial?: DialRow[];
+}
+
+export interface DialRow {
+  alpha: number;
+  /** 0: no score threshold meets this target; only the no-model skips remain. */
+  threshold: number;
+  missed: number;
+  read_share: number;
+  bound: number;
+  held_out_missed: number;
+  held_out_read_share: number;
+  held_out_bound: number;
+  bootstrap_p90: number;
 }
 
 export interface AblationRow {
@@ -450,6 +465,21 @@ export const triageFile = z.object({
           shift: driftReplay,
           random: z.record(z.enum(["fixed", "adaptive", "read_fixed", "read_adaptive"]), z.object({ mean: z.number(), p90: z.number() })),
         })
+        .optional(),
+      dial: z
+        .array(
+          z.object({
+            alpha: z.number(),
+            threshold: z.number(),
+            missed: z.number(),
+            read_share: z.number(),
+            bound: z.number(),
+            held_out_missed: z.number(),
+            held_out_read_share: z.number(),
+            held_out_bound: z.number(),
+            bootstrap_p90: z.number(),
+          }),
+        )
         .optional(),
       ablation: z
         .object({

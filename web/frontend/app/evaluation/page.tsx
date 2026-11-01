@@ -3,6 +3,7 @@ import { EVAL_LANGUAGES, type EvalLanguage, type TriageSetInfo } from "@prlens/s
 import { AblationPanel } from "@/components/AblationPanel";
 import { DriftChart } from "@/components/DriftChart";
 import { EvalChart } from "@/components/EvalChart";
+import { MissDial } from "@/components/MissDial";
 import { Box, Counter, Empty, Pill, Stat } from "@/components/ui";
 import { pct, when } from "@/lib/format";
 import { loadEvalSets } from "@/lib/triage-source";
@@ -156,6 +157,12 @@ function SetDetail({ set, label }: { set: TriageSetInfo; label: string }) {
           </p>
         </div>
       </Box>
+
+      {ev.dial?.length ? (
+        <Box title="The miss target is a dial">
+          <MissDial rows={ev.dial} prs={s.prs} defaultAlpha={ev.alpha} label={`the ${label} set`} />
+        </Box>
+      ) : null}
 
       {ev.ablation ? (
         <Box title="Does the model earn its place?">
