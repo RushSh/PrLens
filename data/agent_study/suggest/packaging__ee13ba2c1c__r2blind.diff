@@ -1,0 +1,52 @@
+diff --git a/src/packaging/version.py b/src/packaging/version.py
+index 3676ff9..0755803 100644
+--- a/src/packaging/version.py
++++ b/src/packaging/version.py
+@@ -380,11 +380,13 @@ class Version(_BaseVersion):
+             exception will be raised.
+         """
+         # Fast path for simple versions (digits and dots only), e.g. "1.2.3".
+-        if all(c in _SIMPLE_VERSION_INDICATORS for c in version):
+-            try:
+-                self._release = tuple(map(int, version.split(".")))
+-            except ValueError:
+-                raise InvalidVersion(f"Invalid version: {version!r}") from None
++        if isinstance(version, str) and all(
++            c in _SIMPLE_VERSION_INDICATORS for c in version
++        ):
++            parts = version.split(".")
++            if "" in parts:
++                raise InvalidVersion(f"Invalid version: {version!r}")
++            self._release = tuple(map(int, parts))
+             self._epoch = 0
+             self._pre = None
+             self._post = None
+diff --git a/tests/test_version.py b/tests/test_version.py
+index afdbe3b..8116e79 100644
+--- a/tests/test_version.py
++++ b/tests/test_version.py
+@@ -135,6 +135,24 @@ class TestVersion:
+         with pytest.raises(InvalidVersion):
+             Version(version)
+ 
++    def test_non_str_version_raises_type_error(self) -> None:
++        # Fast path must not intercept non-str inputs.
++        with pytest.raises(TypeError):
++            Version(["1", ".", "0"])  # type: ignore[arg-type]
++
++    def test_fast_path_preserves_int_conversion_error(self) -> None:
++        # int() digit-limit errors must not be masked as InvalidVersion.
++        if sys.version_info < (3, 11):
++            pytest.skip("int digit limit requires Python 3.11+")
++        old_limit = sys.get_int_max_str_digits()
++        sys.set_int_max_str_digits(1000)
++        try:
++            with pytest.raises(ValueError) as exc_info:
++                Version("9" * 1500)
++            assert type(exc_info.value) is ValueError
++        finally:
++            sys.set_int_max_str_digits(old_limit)
++
+     @pytest.mark.parametrize(
+         ("version", "normalized"),
+         [

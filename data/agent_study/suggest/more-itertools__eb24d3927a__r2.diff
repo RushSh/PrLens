@@ -1,0 +1,49 @@
+diff --git a/more_itertools/recipes.py b/more_itertools/recipes.py
+index f31ad40..b09445b 100644
+--- a/more_itertools/recipes.py
++++ b/more_itertools/recipes.py
+@@ -827,6 +827,12 @@ def iter_index(iterable, value, start=0, stop=None):
+     >>> list(iter_index('AABCADEAF', 'A'))
+     [0, 1, 4, 7]
+     """
++    if start is None:
++        start = 0
++    if operator.index(start) < 0 or (
++        stop is not None and operator.index(stop) < 0
++    ):
++        raise ValueError('start and stop must be non-negative')
+     try:
+         seq_index = iterable.index
+     except AttributeError:
+diff --git a/tests/test_recipes.py b/tests/test_recipes.py
+index 3579756..3bd97cb 100644
+--- a/tests/test_recipes.py
++++ b/tests/test_recipes.py
+@@ -969,6 +969,27 @@ class IterIndexTests(TestCase):
+                     )
+                     self.assertEqual(actual, expected)
+ 
++    def test_negative_start_stop(self):
++        iterable = 'AABCADEAF'
++        for wrapper in (list, iter):
++            for kwargs in (
++                {'start': -1},
++                {'stop': -1},
++                {'start': -2, 'stop': -1},
++            ):
++                with self.subTest(wrapper=wrapper, **kwargs):
++                    with self.assertRaises(ValueError):
++                        list(mi.iter_index(wrapper(iterable), 'A', **kwargs))
++
++    def test_start_none(self):
++        iterable = 'AABCADEAF'
++        for wrapper in (list, iter):
++            with self.subTest(wrapper=wrapper):
++                actual = list(
++                    mi.iter_index(wrapper(iterable), 'A', start=None)
++                )
++                self.assertEqual(actual, [0, 1, 4, 7])
++
+ 
+ class SieveTests(TestCase):
+     def test_basic(self):

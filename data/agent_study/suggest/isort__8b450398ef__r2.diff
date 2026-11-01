@@ -1,0 +1,48 @@
+diff --git a/isort/api.py b/isort/api.py
+index 49a732a..cb39d28 100644
+--- a/isort/api.py
++++ b/isort/api.py
+@@ -231,6 +231,7 @@ def sort_stream(
+                     stacklevel=2,
+                 )
+         if _internal_output != output_stream:
++            _internal_output.seek(0)
+             output_stream.write(_internal_output.read())
+     elif _internal_output is not output_stream:
+         _internal_output.seek(0)
+diff --git a/tests/unit/test_api.py b/tests/unit/test_api.py
+index 2d24b41..b034859 100644
+--- a/tests/unit/test_api.py
++++ b/tests/unit/test_api.py
+@@ -136,3 +136,31 @@ def test_sort_stream_with_sort_reexports_and_non_seekable_output() -> None:
+         input_stream, output_stream, config=Config(sort_reexports=True)
+     )
+     assert output_stream.getvalue() == "__all__ = ('bar', 'foo')\n"
++
++
++def test_sort_stream_atomic_buffered_output_with_cython_syntax_errors() -> None:
++    """Atomic mode must copy full content, not empty output, to buffered streams.
++
++    With atomic=True, Cython syntax errors are ignored, but the internal buffer
++    was left positioned at the end after the syntax check, so copying it to a
++    non-seekable output stream (buffered via sort_reexports) wrote empty output.
++    """
++
++    class NonSeekableOutputStream(StringIO):
++        def seekable(self) -> bool:
++            return False
++
++        def seek(self, *args, **kwargs):  # type: ignore[override]
++            raise io.UnsupportedOperation("Stream is not seekable")
++
++    test_input = "from b import d, c\nfrom a import f, e\nwhile True print 'Hello world'"
++    expected = "from a import e, f\nfrom b import c, d\n\nwhile True print 'Hello world'\n"
++    input_stream = StringIO(test_input)
++    output_stream = NonSeekableOutputStream()
++    assert api.sort_stream(
++        input_stream,
++        output_stream,
++        extension="pyx",
++        config=Config(atomic=True, sort_reexports=True),
++    )
++    assert output_stream.getvalue() == expected

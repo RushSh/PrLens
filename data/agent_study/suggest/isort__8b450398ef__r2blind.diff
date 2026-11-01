@@ -1,0 +1,31 @@
+diff --git a/isort/io.py b/isort/io.py
+index 338ed08..86c9798 100644
+--- a/isort/io.py
++++ b/isort/io.py
+@@ -66,5 +66,8 @@ class _EmptyIO(StringIO):
+     def write(self, *args: Any, **kwargs: Any) -> None:  # type: ignore # skipcq: PTC-W0049
+         pass
+ 
++    def seek(self, offset: int, whence: int = 0) -> int:
++        return 0
++
+ 
+ Empty = _EmptyIO()
+diff --git a/tests/unit/test_api.py b/tests/unit/test_api.py
+index 2d24b41..3216fa3 100644
+--- a/tests/unit/test_api.py
++++ b/tests/unit/test_api.py
+@@ -136,3 +136,13 @@ def test_sort_stream_with_sort_reexports_and_non_seekable_output() -> None:
+         input_stream, output_stream, config=Config(sort_reexports=True)
+     )
+     assert output_stream.getvalue() == "__all__ = ('bar', 'foo')\n"
++
++
++def test_check_stream_with_sort_reexports() -> None:
++    """Ensure check works with sort_reexports when __all__ is present."""
++    assert not api.check_stream(
++        StringIO("__all__ = ('foo', 'bar')\n"), config=Config(sort_reexports=True)
++    )
++    assert api.check_stream(
++        StringIO("__all__ = ('bar', 'foo')\n"), config=Config(sort_reexports=True)
++    )

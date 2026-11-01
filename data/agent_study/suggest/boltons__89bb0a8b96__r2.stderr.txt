@@ -1,0 +1,2 @@
+muse: workspace root: /Users/rushabhshah/muse_suggest/boltons__89bb0a8b96__r2/repo/. (explicit)
+muse: Agent delegation: auto unavailable: workspace is untrusted.

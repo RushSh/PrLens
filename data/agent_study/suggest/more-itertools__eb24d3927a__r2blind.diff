@@ -1,0 +1,40 @@
+diff --git a/more_itertools/recipes.py b/more_itertools/recipes.py
+index f31ad40..da06580 100644
+--- a/more_itertools/recipes.py
++++ b/more_itertools/recipes.py
+@@ -844,10 +844,9 @@ def iter_index(iterable, value, start=0, stop=None):
+         i = start - 1
+         try:
+             while True:
+-                if stop is None:
+-                    i = seq_index(value, i + 1)
+-                else:
+-                    i = seq_index(value, i + 1, stop)
++                i = seq_index(value, i + 1)
++                if stop is not None and i >= stop:
++                    break
+                 yield i
+         except ValueError:
+             pass
+diff --git a/tests/test_recipes.py b/tests/test_recipes.py
+index 3579756..6d19bc9 100644
+--- a/tests/test_recipes.py
++++ b/tests/test_recipes.py
+@@ -969,6 +969,17 @@ class IterIndexTests(TestCase):
+                     )
+                     self.assertEqual(actual, expected)
+ 
++    def test_stop_substring(self):
++        # stop limits yielded start indexes, even when the match itself
++        # extends past stop (str.index would require the full match
++        # within [start:stop]).
++        self.assertEqual(
++            list(mi.iter_index('AAAA', 'AA', stop=1)), [0]
++        )
++        self.assertEqual(
++            list(mi.iter_index('ABCABC', 'ABC', stop=4)), [0, 3]
++        )
++
+ 
+ class SieveTests(TestCase):
+     def test_basic(self):

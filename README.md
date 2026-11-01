@@ -65,10 +65,18 @@ lines to read; both misses are TypeScript regions scored just under the threshol
 (Agent study tab).
 
 We also tried closing the loop: for each of the 8 kept bugs, Muse Code got its own change back with PR Lens's flagged
-regions, Muse Spark's notes and questions (never the bug or the later fix), and was asked for the smallest fix. As a
-control, it got the same change with no flags. The later fix's tests passed after 1 of 8 flagged suggestions and 2 of 8
-control ones (the flagged prompt more often left the code alone: 4 vs 2 made no change). On these 8 PRs the flags did
-not help Muse Code fix the bug; PR Lens's value is in what a human reads, not yet in steering an agent's repair.
+regions and Muse Spark's notes and questions (never the bug or the later fix) and was asked for the smallest fix; as a
+control, it got the same change and request with no flags. The later fix's tests judged every suggestion.
+
+| Fix tests pass after the suggestion (of 8) | With PR Lens's flags | Control, no flags |
+| --- | --- | --- |
+| Round 1 | 1 | 2 |
+| Round 2: notes see the whole PR; both arms asked more firmly to find a bug | 2 | 2 |
+
+The same two bugs were fixed whenever any were (more-itertools `seekable`, sqlglot `COUNT(*) FILTER`), with and without
+the flags; no suggestion broke a test that passed before, where the project's own suite runs. On these 8 PRs the flags
+did not change whether Muse Code could repair the bug, even when the note named it (more-itertools `iter_index`).
+PR Lens's value is in what a human reads, not in steering an agent's repair.
 
 Caveats: most evaluation commits were written by people and are small (median 135 changed lines). The Evaluation tab
 shows the full curves, per-repository results, the ablation and the calibration chart.
