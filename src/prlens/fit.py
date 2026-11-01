@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import functools
 import math
 import sys
 from pathlib import Path
@@ -90,7 +91,9 @@ def predict(m, X: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-(Z @ np.array(m["w"]))))
 
 
+@functools.lru_cache(maxsize=None)
 def ucb(k: int, n: int, conf: float = 0.9) -> float:
+    """Clopper-Pearson upper bound on the miss rate after k misses in n PRs (cached: the sweeps ask it often)."""
     return 1.0 if k >= n else float(beta.ppf(conf, k + 1, n - k))
 
 
@@ -108,14 +111,24 @@ def skip_outcome(prs, t: float):
     return miss, read, tot, shares
 
 
+def miss_above(p) -> float:
+    """The threshold above which this PR's bug is skipped: skip_outcome misses it exactly when t > miss_above(p)."""
+    bugs = [u for u in p["units"] if u["bug"] and not u["skip"]]
+    if any(u["rules"] for u in bugs):
+        return math.inf  # a must-review rule keeps it at any threshold
+    return max((u["p"] for u in bugs), default=-math.inf)
+
+
 def pick(prs, alpha: float) -> float:
+    """The highest threshold (least reading) whose bound still holds. Same answer as trying every threshold with
+    skip_outcome, in O(n log n): the misses at t are the PRs with miss_above < t."""
+    import bisect
     ts = sorted({u["p"] for p in prs for u in p["units"] if not u["skip"]}, reverse=True)
-    best = 0.0
-    for t in ts:  # highest threshold (least reading) whose bound still holds
-        k, *_ = skip_outcome(prs, t)
-        if ucb(k, len(prs)) <= alpha:
+    m = sorted(miss_above(p) for p in prs)
+    for t in ts:
+        if ucb(bisect.bisect_left(m, t), len(prs)) <= alpha:
             return t
-    return best
+    return 0.0
 
 
 def cross_fit(prs, spec: str = "scored-only") -> tuple[list, np.ndarray, np.ndarray]:

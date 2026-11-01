@@ -169,8 +169,18 @@ function SetDetail({ set, label }: { set: TriageSetInfo; label: string }) {
             <DriftChart drift={ev.drift} />
             <div className="space-y-3 text-sm text-fg">
               <p>
-                A threshold calibrated once breaks when new PRs differ from old ones: replayed in date order, the fixed threshold
-                skips {pct(ev.drift.date.fixed[ev.drift.date.fixed.length - 1] ?? 0)} of bugs, against a promised {pct(ev.alpha)}.
+                A threshold calibrated once is right only while new PRs look like the old ones. With the hardest repositories last,
+                the fixed threshold skips {pct(ev.drift.shift.fixed.at(-1) ?? 0)} of bugs against a promised {pct(ev.alpha)}; the
+                adaptive one skips {pct(ev.drift.shift.adaptive.at(-1) ?? 0)}. In date order the fixed threshold
+                {(ev.drift.date.fixed.at(-1) ?? 0) > ev.alpha ? (
+                  <> skips {pct(ev.drift.date.fixed.at(-1) ?? 0)} of bugs, the adaptive one {pct(ev.drift.date.adaptive.at(-1) ?? 0)}.</>
+                ) : (
+                  <>
+                    {" "}errs the other way: the first PRs set it so cautiously that it reads {pct(ev.drift.date.read_share.fixed)} of lines,
+                    while the adaptive one loosens to {pct(ev.drift.date.read_share.adaptive)} and still skips only{" "}
+                    {pct(ev.drift.date.adaptive.at(-1) ?? 0)} of bugs.
+                  </>
+                )}
               </p>
               <p>
                 PR Lens moves each repository&apos;s threshold after every PR in which a bug surfaces (adaptive conformal inference,

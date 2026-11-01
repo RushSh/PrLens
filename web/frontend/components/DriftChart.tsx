@@ -5,8 +5,8 @@ import type { DriftReplay, TriageEvaluation } from "@prlens/shared";
 import { pct } from "@/lib/format";
 
 const ORDERS = [
-  { key: "date", label: "In date order" },
   { key: "shift", label: "Hardest repositories last" },
+  { key: "date", label: "In date order" },
 ] as const;
 
 /**
@@ -14,7 +14,7 @@ const ORDERS = [
  * and the ceiling the adaptive threshold is proven never to exceed.
  */
 export function DriftChart({ drift }: { drift: NonNullable<TriageEvaluation["drift"]> }) {
-  const [order, setOrder] = useState<(typeof ORDERS)[number]["key"]>("date");
+  const [order, setOrder] = useState<(typeof ORDERS)[number]["key"]>("shift");
   const r: DriftReplay = drift[order];
   const W = 640, H = 300, L = 48, R = 16, T = 14, B = 40;
   const YMAX = 0.6;
