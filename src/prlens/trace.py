@@ -29,6 +29,7 @@ from .languages import is_test as is_test_path, language_of, logic_density as la
 
 OUT = ROOT / "data" / "triage" / "prs.jsonl"
 CACHE = ROOT / "data" / "work" / "trace_blame.json"
+PR_CACHE = ROOT / "data" / "work" / "trace_prs.json"  # built PRs (before bugs are marked), so a cut-short run resumes
 MAX_FILES = 30
 MAX_LINES = 1500
 # git on a shared folder is slow; a local copy of data/raw (~/rawlocal) is used first when present
@@ -69,10 +70,27 @@ def fix_old_lines(repo: Path, fix: str, path: str) -> tuple[list[int], bool]:
     return [s for s in inserts if s > 0], True
 
 
+def prefetch(repo: Path, rev: str, path: str) -> None:
+    """In a partial (blob-less) clone, fetch every missing version of `path` in one request. Without this, blame
+    downloads them one at a time, which takes minutes per file."""
+    if not git(repo, "config", "remote.origin.partialclonefilter"):
+        return
+    out = git(repo, "rev-list", "--objects", "--missing=print", rev, "--", path, timeout=60) or ""
+    missing = [l[1:].split()[0] for l in out.splitlines() if l.startswith("?")]
+    if missing:
+        try:
+            subprocess.run(["git", "-C", str(repo), "-c", "fetch.negotiationAlgorithm=noop", "fetch", "-q", "--no-tags",
+                            "--no-write-fetch-head", "--recurse-submodules=no", "--filter=blob:none", "--stdin", "origin"],
+                           input="\n".join(missing) + "\n", capture_output=True, text=True, timeout=120)
+        except subprocess.TimeoutExpired:
+            pass  # blame fetches what is still missing itself
+
+
 def blame(repo: Path, rev: str, path: str, lines: list[int]) -> list[dict]:
     """One record per line: commit, the file name and line number in that commit, and the text."""
     if not lines:
         return []
+    prefetch(repo, rev, path)
     args = ["blame", "--line-porcelain", "-w"]
     ls = sorted(set(lines))
     start = prev = ls[0]
@@ -143,7 +161,13 @@ def trace(args) -> None:
             cache[b["bug_id"]] = {"adjacent": adjacent, "recs": [], "timeout": True}
         CACHE.write_text(json.dumps(cache))
     CACHE.write_text(json.dumps(cache))
+    built = json.loads(PR_CACHE.read_text()) if PR_CACHE.exists() else {}
+    n_built = len(built)
     for b in bugs:
+        if time.time() > deadline:
+            PR_CACHE.write_text(json.dumps(built))
+            print(f"built {len(built)} PRs so far ({len(built) - n_built} this run); run again to continue", flush=True)
+            return
         repo = find_repo(b["repo"])
         if repo is None or cache.get(b["bug_id"]) is None:
             drop["no clone"] += 1
@@ -170,13 +194,23 @@ def trace(args) -> None:
             continue
         key = (b["repo"], sha)
         pr = prs.get(key)
+        ckey = f"{b['repo']}@{sha}"
+        if pr is None and ckey in built:
+            if built[ckey] is None:
+                drop[f"too big (> {MAX_FILES} files or > {MAX_LINES} lines)"] += 1
+                continue
+            pr = prs[key] = json.loads(json.dumps(built[ckey]))
         if pr is None:
             diff = git(repo, "diff", "-U3", "-M", "--no-color", f"{sha}^", sha) or ""
+            if not diff.strip():
+                drop["diff unavailable (git failed)"] += 1  # e.g. a blob-less clone that cannot fetch: not cached
+                continue
             files = parse_diff(diff)
             nfiles = len(files)
             nlines = sum(h.size for f in files for h in f.hunks)
             if nfiles > MAX_FILES or nlines > MAX_LINES:
                 drop[f"too big (> {MAX_FILES} files or > {MAX_LINES} lines)"] += 1
+                built[ckey] = None
                 continue
             meta = (git(repo, "log", "-1", "--format=%an%x00%aI%x00%B", sha) or "\0\0").split("\0", 2)
             hunks = []
@@ -225,6 +259,9 @@ def trace(args) -> None:
                 "bugs": [],
                 "hunks": hunks,
             }
+            built[ckey] = json.loads(json.dumps(pr))
+            if len(built) % 10 == 0:
+                PR_CACHE.write_text(json.dumps(built))
         mine = [r for r in recs if r["sha"] == sha]
         hit, rhit, neutral = set(), set(), 0
         for r in mine:
@@ -257,6 +294,7 @@ def trace(args) -> None:
             "hunks": sorted(hit),
             "lines": [[r.get("file"), r["orig_line"]] for r in mine],
         })
+    PR_CACHE.write_text(json.dumps(built))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with open(OUT, "w") as fh:
         for pr in prs.values():
