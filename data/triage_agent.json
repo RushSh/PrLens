@@ -1,7 +1,7 @@
 {
  "kind": "triage",
  "name": "agent",
- "generated_at": "2026-11-01T04:44:02+00:00",
+ "generated_at": "2026-11-01T16:08:58+00:00",
  "model": "spark_open",
  "threshold": 0.061336526333574365,
  "alpha": 0.2,
@@ -334,8 +334,8 @@
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "88%",
+       "name": "Spark Open rating",
+       "value": "high",
        "weight": 0.88
       },
       {
@@ -876,14 +876,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 4%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "4%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.04
       },
       {
@@ -1291,14 +1291,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -1826,8 +1826,8 @@
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "78%",
+       "name": "Spark Open rating",
+       "value": "high",
        "weight": 0.78
       },
       {
@@ -1927,14 +1927,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -2623,8 +2623,8 @@
      "forcedByRule": true,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "5%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.05
       },
       {
@@ -2723,8 +2723,8 @@
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "99%",
+       "name": "Spark Open rating",
+       "value": "high",
        "weight": 0.99
       },
       {
@@ -2838,14 +2838,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 5%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "5%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.05
       },
       {
@@ -4072,14 +4072,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -4820,14 +4820,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -5893,14 +5893,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 12%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "12%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.12
       },
       {
@@ -6063,14 +6063,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -7715,14 +7715,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 5%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "5%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.05
       },
       {

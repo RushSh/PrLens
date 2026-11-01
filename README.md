@@ -13,8 +13,8 @@ into regions of up to about 25 changed lines and puts each in one of two places:
   lock files, generated code, config, test data, or a combined risk score under a threshold calibrated on real bugs.
 
 The skip threshold is a dial, not a guarantee: it targets a 20% miss rate. Chosen without each PR's own repository,
-17% of Python bugs (28 of 168) landed in skipped code, 90% upper bound 21%; TypeScript 14% (bound 20%); C# 11%
-(bound 18%). It prioritizes human review; it never approves or merges anything.
+16.7% of Python bugs (28 of 168) landed in skipped code, 90% upper bound 20.9%; TypeScript 14.3% (bound 20.4%);
+C# 10.9% (bound 17.7%). It prioritizes human review; it never approves or merges anything.
 
 **Three Meta AI tools, one job each.** The **Muse Code** agent writes the pull request; **Muse Spark Open** (open weights,
 on Baseten) scores every region as structured JSON; the **Muse Spark Model API** writes the one-line note on what

@@ -72,8 +72,8 @@ export function MissDial({ rows, prs, defaultAlpha, label }: { rows: DialRow[]; 
         </div>
         {over ? (
           <p className="text-xs text-muted">
-            The held-out upper bound sits above the target here: the threshold was picked on all repositories, and this many
-            PRs cannot pin the rate tighter. The target is a dial, not a guarantee.
+            Held out by repository, the 90% upper bound sits above the target here: a threshold chosen without a repository does
+            not carry over to it exactly, and {prs} PRs cannot pin the rate tighter. The target is a dial, not a guarantee.
           </p>
         ) : null}
 

@@ -131,6 +131,7 @@ export interface TriageGroundTruth {
 /** Display names for the models in a PR's panel (pr.panel), e.g. "spark_open" -> "Muse Spark Open". */
 export const MODEL_NAMES: Record<string, string> = {
   spark_open: "Muse Spark Open",
+  "Spark Open (Baseten)": "Muse Spark Open",
   spark: "Muse Spark",
   wonder: "Muse Wonder",
   glimmer: "Muse Glimmer",

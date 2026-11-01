@@ -7,6 +7,15 @@ import { itemAnchor, itemLine } from "@/lib/pr";
 import { BugIcon, CheckIcon } from "../Icons";
 import { Avatar, Pill, PriorityPill, button } from "../ui";
 
+/** Spark Open's banded rating for an item (older exports carried a raw percentage; show it as a band too). */
+function sparkRating(item: ReviewItem): string | null {
+  const sig = item.signals.find((x) => x.name === "Spark Open rating" || x.name === "Spark Open risk");
+  if (!sig || sig.value === "no score") return null;
+  if (sig.name === "Spark Open rating") return sig.value;
+  const v = parseFloat(sig.value) / 100;
+  return Number.isNaN(v) ? null : v >= 0.5 ? "high" : v >= 0.2 ? "medium" : "low";
+}
+
 /** A small label naming the Meta model behind a piece of the comment. */
 function ModelChip({ children, title }: { children: ReactNode; title: string }) {
   return (
@@ -68,9 +77,9 @@ export function LensComment({
           <span className="text-xs text-muted">
             risk score <span className="tabular font-semibold text-fg">{pct(item.riskScore)}</span>
           </span>
-          {item.signals.some((x) => x.name === "Spark Open risk" && x.value !== "no score") ? (
-            <ModelChip title="Spark Open's risk for this region, combined with code signals into the risk score">
-              Muse Spark Open {item.signals.find((x) => x.name === "Spark Open risk")?.value}
+          {sparkRating(item) ? (
+            <ModelChip title="Muse Spark Open's own rating of this region (low under 0.2, medium to 0.5, high above). It is not a probability: regions it rates high hold a bug roughly 1 time in 6 on the evaluation sets. The risk score beside it is the calibrated number, combining this rating with code signals.">
+              Muse Spark Open: {sparkRating(item)}
             </ModelChip>
           ) : null}
           {item.forcedByRule ? <Pill title="A rule put this here, not the risk score">always reviewed</Pill> : null}

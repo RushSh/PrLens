@@ -106,6 +106,15 @@ def main(argv: list[str] | None = None) -> None:
             for it in items(pr):
                 k = f"{pr['id']}|{it['id']}|{hashlib.sha1(prompt_for(pr, it).encode()).hexdigest()[:16]}"
                 jobs.append((k, pr, it))
+    # a note is about the region's code: when only the wording around it changed (e.g. how a reason is phrased), reuse
+    # the newest note for the same PR and region with the current prompt shape (questions) instead of asking again
+    latest = {}
+    for k, r in cache.items():
+        if r.get("note") and r.get("questions") and not r.get("error"):
+            latest["|".join(k.split("|")[:2])] = r
+    for k, _, _ in jobs:
+        if (k not in cache or cache[k].get("error")) and "|".join(k.split("|")[:2]) in latest:
+            cache[k] = latest["|".join(k.split("|")[:2])]
     fresh = [j for j in jobs if j[0] not in cache or cache[j[0]].get("error")]
     line, _ = plan_line(s, len(fresh), 120)
     confirm(f"{len(jobs)} review items in {sum(len(d['prs']) for d in sets.values())} PRs; {len(fresh)} need a note from "
