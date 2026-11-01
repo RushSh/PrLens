@@ -44,6 +44,11 @@ export default async function PrLayout({ children, params }: { children: ReactNo
               <>
                 committed <span className="font-mono text-accent">{pr.branch}</span> {when(pr.openedAt)}
               </>
+            ) : pr.source === "agent" ? (
+              <>
+                re-implemented this commit from its message (agent study; not opened on GitHub) on{" "}
+                <span className="rounded-md bg-accent-subtle px-1.5 font-mono text-xs text-accent">{pr.branch}</span>
+              </>
             ) : (
               <>
                 wants to merge into <span className="rounded-md bg-accent-subtle px-1.5 font-mono text-xs text-accent">{pr.base ?? "main"}</span>{" "}

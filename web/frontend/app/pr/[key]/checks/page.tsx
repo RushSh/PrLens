@@ -45,7 +45,7 @@ export default async function ChecksPage({ params }: { params: Promise<{ key: st
           : `${pct(adaptive.threshold, 1)}; moves after each review you finish in Files changed; ${guaranteeText(adaptive)}`
         : "not available",
     ],
-    ["Skip promise", pr.guarantee ? `at most ${pct(pr.guarantee.missBound)} of bugs skipped, ${pct(pr.guarantee.confidence)} confidence; ${pr.guarantee.calibratedOn}` : "none"],
+    ["Skip target", pr.guarantee ? `${pct(pr.guarantee.missBound)} of bugs skipped (${pct(pr.guarantee.confidence)} upper bound at the target on ${pr.guarantee.calibratedOn})` : "none"],
   ];
   if (pr.groundTruth) {
     rows.push(["Known bug", pr.groundTruth.caughtByTriage ? "kept in the review list" : "skipped (a miss)"]);

@@ -27,7 +27,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
   return (
     <div className="gap-8 md:grid md:grid-cols-[minmax(0,1fr)_256px]">
       <div className="min-w-0 space-y-4">
-        <Comment author={pr.author.name} bot={pr.author.kind === "ai_agent"} meta={`${isEval ? "committed" : "opened"} ${when(pr.openedAt)}`}>
+        <Comment author={pr.author.name} bot={pr.author.kind === "ai_agent"} meta={`${isEval ? "committed" : pr.source === "agent" ? "task from" : "opened"} ${when(pr.openedAt)}`}>
           <p className="whitespace-pre-line">{pr.taskSummary || "No description provided."}</p>
         </Comment>
 
@@ -75,8 +75,9 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
             <p className="mt-3 flex gap-2 text-sm text-muted">
               <ShieldIcon className="mt-0.5 shrink-0 text-success" />
               <span>
-                Skip promise: if a PR has a functional bug, it lands in the skipped part at most {pct(pr.guarantee.missBound)} of the time
-                ({pct(pr.guarantee.confidence)} confidence; {pr.guarantee.calibratedOn}).
+                Skip target: if a PR has a functional bug, it should land in the skipped part at most {pct(pr.guarantee.missBound)} of
+                the time. The threshold was chosen so the {pct(pr.guarantee.confidence)} upper bound stays at that target on{" "}
+                {pr.guarantee.calibratedOn}. A dial for prioritizing review, not a guarantee; nothing is approved or merged.
               </span>
             </p>
           ) : null}

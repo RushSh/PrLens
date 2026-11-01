@@ -14,7 +14,7 @@ export function PrList({ list, offline }: { list: TriageList; offline: boolean }
   const live = list.prs.filter((p) => p.source === "live" || p.source === "sample");
   const agents = list.prs.filter((p) => p.source === "agent");
   const evals = list.prs.filter((p) => p.source === "eval");
-  const [view, setView] = useState<View>(live.length ? "live" : "eval");
+  const [view, setView] = useState<View>(agents.length ? "agent" : live.length ? "live" : "eval");
   const [q, setQ] = useState("");
   const [repo, setRepo] = useState("");
   const [language, setLanguage] = useState("");
@@ -65,14 +65,14 @@ export function PrList({ list, offline }: { list: TriageList; offline: boolean }
 
       <div className="rounded-md border border-line">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-md border-b border-line bg-subtle px-4 py-3">
-          <TabButton active={view === "live"} onClick={() => setView("live")} icon={<PullIcon />}>
-            Triaged <Counter>{live.length}</Counter>
-          </TabButton>
           {agents.length ? (
             <TabButton active={view === "agent"} onClick={() => setView("agent")} icon={<AgentIcon />}>
               Muse Code PRs <Counter>{agents.length}</Counter>
             </TabButton>
           ) : null}
+          <TabButton active={view === "live"} onClick={() => setView("live")} icon={<PullIcon />}>
+            Triaged <Counter>{live.length}</Counter>
+          </TabButton>
           <TabButton active={view === "eval"} onClick={() => setView("eval")} icon={<CommitIcon />}>
             Evaluation set <Counter>{evals.length}</Counter>
           </TabButton>

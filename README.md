@@ -1,6 +1,6 @@
 # PR Lens
 
-**Which parts of a pull request need a human reviewer, and which are safe to skip, with a measured miss rate.**
+**A review budget for AI-agent merges.**
 
 AI agents now write pull requests faster than people can read them, and AI reviewers comment on what they find. None of
 them tells the human what is safe *not* to read, and an AI reviewer's silence is not a guarantee. PR Lens splits every PR
@@ -12,11 +12,18 @@ into regions of up to about 25 changed lines and puts each in one of two places:
 - **Skipped**: collapsed in place with its reason: docs, formatting-only changes (proven: the syntax tree is unchanged),
   lock files, generated code, config, test data, or a combined risk score under a threshold calibrated on real bugs.
 
-The threshold comes with a promise: if a PR has a functional bug, it lands in the skipped part at most 20% of the time,
-at 90% confidence, measured on PRs PR Lens never saw while it was fitted.
+The skip threshold is a dial, not a guarantee: it targets a 20% miss rate. Chosen without each PR's own repository,
+17% of Python bugs (28 of 168) landed in skipped code, 90% upper bound 21%; TypeScript 14% (bound 20%); C# 11%
+(bound 18%). It prioritizes human review; it never approves or merges anything.
 
-Built with Meta's Muse models for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon)
-(Indie Developer track).
+**Three Meta AI tools, one job each.** The **Muse Code** agent writes the pull request; **Muse Spark Open** (open weights,
+on Baseten) scores every region as structured JSON; the **Muse Spark Model API** writes the one-line note on what
+to check. On 10 agent-written bugs from Muse Code (9 behaviours it left out, as the human author had, and 1 bug in code it
+wrote), PR Lens kept 8 in the review list while leaving 27% of lines to read — a case study, not a calibrated rate.
+
+Built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon) (Indie
+Developer track). The code was written with Claude Code as a coding assistant; the product itself runs on the Meta
+models above.
 
 ## Results so far (Nov 1 2026)
 
@@ -47,13 +54,15 @@ and how many bugs each ranking keeps when it may read only as much as PR Lens do
 The honest reading: cheap code features do most of the work. Adding Spark Open saves about 5 points of reading in Python
 and keeps 10 more of the 168 bugs at the same budget; in TypeScript and C# it ties code features. The scores are
 calibrated (expected calibration error 0.9% Python, 1.2% TypeScript, 1.5% C#). Resampling whole repositories puts the
-90th-percentile miss rate at 20.2% / 18.0% / 19.7%, next to the Clopper-Pearson bound of 19.7% / 19.1% / 19.5%: the
-bound holds roughly, not with room to spare, when repositories are the unit.
+90th-percentile miss rate at 20.2% / 18.0% / 19.7%: the 20% target holds roughly, not with room to spare, when
+repositories are the unit.
 
 **On agent-written PRs.** The Muse Code agent (muse-spark-1.3-contributor) re-implemented 25 evaluation commits from a
-snapshot of each commit's parent and its message. The fix's own tests could judge 11 of its PRs; 10 held a confirmed bug,
-and PR Lens kept 8 of those 10 in the review list while leaving 27% of lines to read. Both misses are TypeScript regions
-scored just under the threshold. A case study, not a calibrated rate (Agent study tab).
+snapshot of each commit's parent and its message. The fix's own tests could judge 11 of its PRs. In 10 a fix test fails:
+9 are behaviours Muse Code left out, as the human author had, and 1 is a bug in code it wrote (more-itertools, kept for
+review); in the 11th Muse Code avoided the human's bug. PR Lens kept 8 of the 10 in the review list while leaving 27% of
+lines to read; both misses are TypeScript regions scored just under the threshold. A case study, not a calibrated rate
+(Agent study tab).
 
 Caveats: most evaluation commits were written by people and are small (median 135 changed lines). The Evaluation tab
 shows the full curves, per-repository results, the ablation and the calibration chart.
@@ -79,8 +88,26 @@ most `alpha + (theta_1 - logit(floor) + eta*(1 - alpha)) / (eta*n)`, which falls
 The fixed threshold fails both ways: it under-reads when the code gets harder and over-reads when its first PRs were
 unusually risky. The adaptive one spends the stated error budget in both cases.
 
-Assumptions, stated in the product: each outcome is reported before the next PR is triaged, and the no-model skips
-(proven formatting, docs, lock files) hold no functional bug.
+Assumptions, stated in the product: each outcome is reported before the next PR is triaged; the no-model skips
+(proven formatting, docs, lock files) hold no functional bug; and bugs in skipped code are eventually found as often as
+bugs in reviewed code. The bound covers bugs that surface, not bugs nobody reports. If skipped-code bugs are found less
+often (a fraction q as often), an observed 20% corresponds to a higher true share:
+
+| q (how often skipped-code bugs are found, relative) | 1 | 0.7 | 0.5 | 0.3 |
+| --- | --- | --- | --- | --- |
+| True share of bugs in skipped code at an observed 20% | 20% | 26% | 33% | 45% |
+
+So the target is a knob: a team that finds skipped-code bugs late should set it lower.
+
+## Related work
+
+PR Lens does not introduce a new statistical method. The offline threshold uses Clopper-Pearson bounds, and the online
+one is adaptive conformal inference (Gibbs & Candès, NeurIPS 2021), in the family of conformal risk control
+(Angelopoulos et al.) and Learn then Test. The closest software-engineering work is just-in-time conformal defect
+prediction (Shahini, Metzger & Pohl, MSR 2024), which decides whether to trust a classifier's verdict on a whole change.
+Meta's Diff Risk Score and RADAR score whole diffs and gate auto-landing on risk percentiles. AI reviewers (CodeRabbit,
+Copilot review, Greptile, Graphite) add comments and risk levels. What PR Lens adds is the inverted product question,
+which regions a human may skip, answered with a stated miss rate that tightens when a bug surfaces in skipped code.
 
 ## How it works
 
@@ -151,11 +178,11 @@ Evaluation, Agent study, Triage a PR, and Pipeline (every `prlens` step, with co
 
 | Model | Role | Access |
 | --- | --- | --- |
-| Muse Spark Open | Scores every region and writes the reason (all results above) | Open weights on Baseten |
-| Muse Spark | Writes the one-line note on each review item | Meta Model API |
+| Muse Spark Open | Scores every region and writes the reason, as structured JSON (all results above) | Open weights on Baseten |
+| Muse Spark | Writes the one-line note on what to check (demo and agent-study PRs) | Meta Model API |
 | Muse Code (agent) | Writes the agent-study pull requests | Muse Code CLI |
-| Muse Wonder | Alternative scorer for hard cases | Meta Model API |
-| Muse Glimmer | Alternative scorer, free when run locally | Open weights (MLX locally, or Fireworks) |
+| Muse Wonder | Wired as an alternative scorer; not evaluated | Meta Model API |
+| Muse Glimmer | Wired as an alternative scorer; not evaluated | Open weights (MLX locally, or Fireworks) |
 
 ## Built during the hackathon (Oct 26 – Nov 4, 2026)
 

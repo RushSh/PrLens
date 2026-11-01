@@ -232,7 +232,7 @@ function SetDetail({ set, label }: { set: TriageSetInfo; label: string }) {
           <ul className="list-disc space-y-2 py-3 pl-8 pr-4 text-sm text-fg">
             <li>
               Bugs are real: each fix&apos;s tests were run, and they fail before the fix and pass after
-              {label === "Python" ? " (one of 111 Python fixes could not be run in our test environment)" : ""}. The commit
+              {label === "Python" ? " (with one exception: an early Python fix whose tests could not be run in our environment)" : ""}. The commit
               that introduced the bug is found by tracing the fixed lines back ({ev.evidence.deleted} from changed lines,{" "}
               {ev.evidence.adjacent} from where the fix added code, which is weaker evidence).
             </li>

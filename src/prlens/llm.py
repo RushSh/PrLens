@@ -64,14 +64,17 @@ _NO_SCHEMA: set[tuple[str, str]] = set()
 
 
 def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
-         usage_log: Path | None = Path("logs/usage.jsonl"), schema: dict | None = None) -> Reply:
+         usage_log: Path | None = Path("logs/usage.jsonl"), schema: dict | None = None,
+         deadline_s: float = 600) -> Reply:
     """`schema`: a JSON schema the reply must follow (strict structured output). A provider that rejects it gets
-    plain JSON mode instead, once per process."""
+    plain JSON mode instead, once per process. `deadline_s`: give up (an error reply, never an exception) after this
+    many seconds, rate-limit waits included; short deadlines suit optional calls such as review notes."""
     from openai import APIStatusError, OpenAI
 
     if not s.api_key:
         return Reply("", None, None, None, 0.0, f"{s.api_key_env} is not set")
-    client = OpenAI(api_key=s.api_key, base_url=s.base_url)
+    client = (OpenAI(api_key=s.api_key, base_url=s.base_url) if deadline_s >= 600
+              else OpenAI(api_key=s.api_key, base_url=s.base_url, timeout=deadline_s, max_retries=0))
     kwargs: dict = {}
     cap = max_tokens or max_tokens_for(s)
     if cap:
@@ -83,7 +86,7 @@ def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
     if effort:
         kwargs["reasoning_effort"] = effort
     t0 = time.time()
-    deadline = t0 + 600
+    deadline = t0 + deadline_s
     backoff = 2.0
     while True:
         try:
@@ -102,7 +105,7 @@ def chat(s: ModelSpec, prompt: str, purpose: str, max_tokens: int | None = None,
                     wait = float(exc.response.headers.get("retry-after", ""))
                 except (AttributeError, TypeError, ValueError):
                     pass
-                time.sleep(min(60.0, wait if wait else backoff) + random.uniform(0, 1))
+                time.sleep(max(0.0, min(60.0, wait if wait else backoff, deadline - time.time() - 1)) + random.uniform(0, 1))
                 backoff = min(60.0, backoff * 2)
                 continue
             if exc.status_code in (400, 422) and kwargs.get("response_format", {}).get("type") == "json_schema":

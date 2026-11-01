@@ -20,6 +20,7 @@ from .llm import chat, confirm, plan_line, spec
 from .score import fence
 
 CACHE = ROOT / "data" / "triage" / "scores" / "explain"
+NOTE_DEADLINE = 30  # seconds per note, rate-limit waits included
 LABEL = {"spark": "Muse Spark", "wonder": "Muse Wonder", "spark_open": "Spark Open"}
 
 PROMPT = """You help a human review a pull request. An automatic triage already decided this region needs a human.
@@ -64,7 +65,8 @@ def items(pr: dict) -> list[dict]:
 
 
 def note_for(s, pr: dict, item: dict) -> dict:
-    r = chat(s, prompt_for(pr, item), purpose="review-note", schema=SCHEMA, max_tokens=2000)
+    # a note is optional: give up after NOTE_DEADLINE seconds (no note) rather than hold up a triage on rate limits
+    r = chat(s, prompt_for(pr, item), purpose="review-note", schema=SCHEMA, max_tokens=2000, deadline_s=NOTE_DEADLINE)
     js = r.json() if not r.error else None
     text = js.get("note") if isinstance(js, dict) else None
     text = " ".join(str(text).split())[:300] if text else None

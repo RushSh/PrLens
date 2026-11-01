@@ -1,6 +1,6 @@
 /** HTTP API (Fastify). Built as a function so tests can run it against a test database. */
 import { execFile } from "node:child_process";
-import { readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -94,13 +94,27 @@ export function buildApp(opts: AppOptions): FastifyInstance {
     } catch {
       return [];
     }
+    let notes = "";
+    try {
+      notes = await readFile(path.join(root, "data", "triage", "scores", "explain", "spark.jsonl"), "utf8");
+    } catch {
+      // no notes cached yet
+    }
     const out = [];
     for (const f of files) {
       const m = /^(.+?)__(.+?)__(\d+)__(.+)\.jsonl$/.exec(f);
       if (!m) continue;
       const [, owner, repo, n, model] = m;
       const pr = await getTriagePr(db, `github:${owner}/${repo}#${n}`);
-      out.push({ url: `https://github.com/${owner}/${repo}/pull/${n}`, repo: `${owner}/${repo}`, number: Number(n), model, title: pr?.title ?? null });
+      const id = `github:${owner}/${repo}#${n}`;
+      out.push({
+        url: `https://github.com/${owner}/${repo}/pull/${n}`,
+        repo: `${owner}/${repo}`,
+        number: Number(n),
+        model,
+        title: pr?.title ?? null,
+        notes: notes.includes(`"key": "${id}|`),
+      });
     }
     return out;
   });

@@ -113,10 +113,12 @@ export function prsForBound(target: number, threshold0: number, p: AdaptiveParam
   return Math.ceil(c / (target - p.alpha));
 }
 
-/** The guarantee in words: the current ceiling once it means something, else when it will. */
+/** The adaptive ceiling in words: the current one once it means something, else when it will. It covers bugs that get
+ * reported; skipped-code bugs that are never found are outside it. */
 export function guaranteeText(s: Pick<AdaptiveState, "n" | "bound" | "threshold0" | "alpha" | "eta" | "floor">): string {
   const pctOf = (x: number) => `${Math.round(x * 100)}%`;
-  if (s.n > 0 && s.bound <= 0.5) return `long-run miss rate guaranteed ≤ ${pctOf(s.bound)}, falling toward ${pctOf(s.alpha)}`;
+  if (s.n > 0 && s.bound <= 0.5)
+    return `share of reported bugs in skipped code ≤ ${pctOf(s.bound)} (a proven ceiling), falling toward ${pctOf(s.alpha)}`;
   const n30 = prsForBound(0.3, s.threshold0, s);
-  return `the guarantee tightens as bugs are reported: miss rate ≤ 30% once ${n30} PRs with a bug are reported, approaching ${pctOf(s.alpha)}`;
+  return `the ceiling tightens as bugs are reported: share of reported bugs in skipped code ≤ 30% once ${n30} PRs with a bug are reported, approaching ${pctOf(s.alpha)}`;
 }

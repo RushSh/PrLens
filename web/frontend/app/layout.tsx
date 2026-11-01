@@ -7,7 +7,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "PR Lens",
-  description: "Which parts of a pull request need a human reviewer, and which are safe to skip",
+  description:
+    "A review budget for AI-agent merges: which regions of a pull request need a human, which are safe to skip, with a stated miss rate.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
