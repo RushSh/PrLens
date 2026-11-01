@@ -945,11 +945,12 @@
       }
      ],
      "note": {
-      "text": "Check that agg as exp.Count with agg_arg as exp.Star returns CountIf using cond.copy() for COUNT(*) FILTER.",
+      "text": "COUNT(*) FILTER with ORDER BY or DISTINCT loses modifiers because CountIf(this=cond.copy()) drops agg extras.",
       "model": "Muse Spark",
       "questions": [
-       "Does COUNT(*) FILTER (WHERE cond) equal COUNT_IF(cond) for null inputs?",
-       "Does WithinGroup with Star input still bypass this Count branch?"
+       "Does filter_sql receive COUNT(*) with ORDER BY modifiers to preserve?",
+       "Does the IFF path below preserve args the CountIf return discards?",
+       "Is cond ever None so cond.copy() would crash?"
       ]
      }
     }
@@ -1378,12 +1379,12 @@
       }
      ],
      "note": {
-      "text": "Check that urllib.parse.urlsplit(direct_url.url).scheme.lower() rejects all non-file URLs when direct_url.dir_info is present.",
+      "text": "direct_url.url 'file:/tmp/x' with dir_info passes because urlsplit(...).scheme equals 'file' despite missing '//'.",
       "model": "Muse Spark",
       "questions": [
-       "Does FILE:// URL with dir_info still pass validation?",
-       "Does https:// URL with dir_info still raise DirectUrlValidationError?",
-       "Is urllib.parse already imported in direct_url.py?"
+       "Is bare 'file:/path' without '//' acceptable for dir_info?",
+       "Is urllib.parse imported wherever urlsplit is used?",
+       "Does from_dict guarantee url is str before urlsplit?"
       ]
      }
     }
@@ -2745,12 +2746,11 @@
       }
      ],
      "note": {
-      "text": "Check iter_index handles stop=None versus integer stop correctly for start offsets and slicing.",
+      "text": "Negative stop like stop=-1 raises ValueError via islice for general iterables but is accepted by seq_index for sequences.",
       "model": "Muse Spark",
       "questions": [
-       "Does stop=None return same indexes as before for all iterable inputs?",
-       "Does integer stop exclude indexes at or after stop with start offsets?",
-       "Do existing callers passing start positionally still bind correctly?"
+       "Does iter_index with stop=-1 return same results for list and generator inputs?",
+       "Does iter_index with negative start behave identically via islice and seq_index?"
       ]
      }
     },
@@ -2966,12 +2966,12 @@
       }
      ],
      "note": {
-      "text": "Verify that seq_index with stop excludes indices >= stop and stop None preserves old behavior.",
+      "text": "Calling iter_index with stop=-1 yields truncated indexes via seq_index for lists but raises ValueError from islice for general iterables.",
       "model": "Muse Spark",
       "questions": [
-       "Does stop=None yield same indices as before for all sequences?",
-       "Does non-None stop end yielding at stop without ValueError leak?",
-       "Does start beyond stop immediately end iteration via ValueError?"
+       "For stop=-1, do list and iter inputs return identical results?",
+       "Does three-argument seq_index work for every supported sequence type?",
+       "Is TypeError from three-argument seq_index impossible for all callers?"
       ]
      }
     }
@@ -6059,12 +6059,11 @@
       }
      ],
      "note": {
-      "text": "Verify __bool__ and peek handle _index, _cache, _source, default=_marker and StopIteration when exhausted.",
+      "text": "After seek(5) with only three items in self._cache, peek() resets self._index to None and returns the next self._source item.",
       "model": "Muse Spark",
       "questions": [
-       "Does peek return default instead of raising StopIteration when exhausted?",
-       "Does __bool__ return False after _source exhaustion without consuming items?",
-       "Does peek with valid _index return _cache[_index] without advancing _source?"
+       "Does peek() after seek() past cached length still return the seeked item?",
+       "Does __bool__ leave self._index unchanged when self._cache[self._index] raises IndexError?"
       ]
      }
     },
@@ -6229,11 +6228,12 @@
       }
      ],
      "note": {
-      "text": "Verify that resetting self._index to None after IndexError correctly resumes iteration from self._source and self._cache.",
+      "text": "After seek(10) past len(_cache) with live _source, peek discards _index to None and returns next item instead of failing.",
       "model": "Muse Spark",
       "questions": [
-       "Does next(self._source) advance correctly when self._index is None?",
-       "Is default returned only when self._source is exhausted and default is not _marker?"
+       "Is falling through to _source on IndexError from _cache[_index] intended?",
+       "Does peek with _index=None leave the next() result unchanged?",
+       "Is resetting _index to None on exhausted _source with default harmless?"
       ]
      }
     }
@@ -7905,12 +7905,12 @@
       }
      ],
      "note": {
-      "text": "Verify DOMAIN_REGEX lookahead (?=.{1,253}$) rejects overlong domains while still accepting valid 253-character domains.",
+      "text": "DOMAIN_REGEX accepts 'example.com\\n' because $ matches before trailing newline, so newline-terminated domains pass validation.",
       "model": "Muse Spark",
       "questions": [
-       "Does DOMAIN_REGEX accept a max-length 253-character valid domain?",
-       "Does DOMAIN_REGEX reject a 254-character domain input?",
-       "Do all DOMAIN_REGEX callers handle newly rejected long domains safely?"
+       "Does DOMAIN_REGEX reject 'example.com\\n' instead of matching before final newline?",
+       "Does the 253-char lookahead count correctly when input ends with \\n?",
+       "Do domain action callers rely on regex alone without trimming trailing whitespace?"
       ]
      }
     }
