@@ -1,7 +1,7 @@
 {
  "kind": "triage",
  "name": "agent",
- "generated_at": "2026-11-01T16:08:58+00:00",
+ "generated_at": "2026-11-01T17:26:32+00:00",
  "model": "spark_open",
  "threshold": 0.061336526333574365,
  "alpha": 0.2,
@@ -48,7 +48,9 @@
      "read": 2,
      "why": [
       "the new elif chain in singularize still strips the trailing s of words ending in 'ss'; the fix adds the missing branch here"
-     ]
+     ],
+     "suggestion": "not fixed",
+     "suggestionBlind": null
     },
     {
      "task": "sqlglot@47e255dda3",
@@ -60,7 +62,9 @@
      "read": 5,
      "why": [
       "COUNT(*) FILTER special case checks exp.Star only, missing table.* stars; the fix rewrites this check"
-     ]
+     ],
+     "suggestion": "no change",
+     "suggestionBlind": null
     },
     {
      "task": "packaging@e80f70f8b1",
@@ -72,7 +76,9 @@
      "read": 4,
      "why": [
       "dir_info check accepts file: URLs with a relative path; the fix splits this check and adds the absolute-path test"
-     ]
+     ],
+     "suggestion": "no change",
+     "suggestionBlind": null
     },
     {
      "task": "isort@8b450398ef",
@@ -84,7 +90,9 @@
      "read": 6,
      "why": [
       "swapping in a StringIO for a non-seekable stream; the fix replaces this with an explicit ValueError"
-     ]
+     ],
+     "suggestion": "not fixed",
+     "suggestionBlind": null
     },
     {
      "task": "more-itertools@eb24d3927a",
@@ -96,7 +104,9 @@
      "read": 9,
      "why": [
       "islice(iterable, start, stop) rejects the negative stop the fast path accepts; the fix guards this slow path"
-     ]
+     ],
+     "suggestion": "no change",
+     "suggestionBlind": null
     },
     {
      "task": "packaging@ee13ba2c1c",
@@ -108,7 +118,9 @@
      "read": 14,
      "why": [
       "the fast path iterates the version before checking it is a string, so non-strings raise TypeError, not InvalidVersion"
-     ]
+     ],
+     "suggestion": "not fixed",
+     "suggestionBlind": null
     },
     {
      "task": "mistune@8baf90bf10",
@@ -118,7 +130,9 @@
      "caught": null,
      "lines": 54,
      "read": 25,
-     "why": []
+     "why": [],
+     "suggestion": null,
+     "suggestionBlind": null
     },
     {
      "task": "more-itertools@a50ab3eebb",
@@ -130,7 +144,9 @@
      "read": 31,
      "why": [
       "peek appends to the cache, which drops the item when maxlen is 0; the fix puts the item back here"
-     ]
+     ],
+     "suggestion": "fixed",
+     "suggestionBlind": null
     },
     {
      "task": "es-toolkit@97e4eee74a",
@@ -142,7 +158,9 @@
      "read": 0,
      "why": [
       "only NaN is coerced; fractional and string fromIndex are not converted to an integer like lodash"
-     ]
+     ],
+     "suggestion": null,
+     "suggestionBlind": null
     },
     {
      "task": "valibot@a0aa98555c",
@@ -154,7 +172,9 @@
      "read": 2,
      "why": [
       "the domain regex the fix rewrites (case handling); the fix also adds the missing to-json-schema case, which is outside this PR"
-     ]
+     ],
+     "suggestion": "no change",
+     "suggestionBlind": null
     },
     {
      "task": "immer@8848a5b169",
@@ -167,7 +187,9 @@
      "why": [
       "Map draft forEach reads latest() without preparing the copy, so iteration breaks under mutation.",
       "The same for keys()."
-     ]
+     ],
+     "suggestion": null,
+     "suggestionBlind": null
     }
    ],
    "notJudgeable": [
@@ -770,6 +792,27 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "not fixed",
+    "tests": {
+     "passed": 0,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/boltons/strutils.py b/boltons/strutils.py\nindex 4c6dcc2..21b9c90 100644\n--- a/boltons/strutils.py\n+++ b/boltons/strutils.py\n@@ -196,7 +196,7 @@ def singularize(word):\n         singular = word[:-1]  # or just return word?\n     elif word.endswith('ies') and word[-4:-3] not in 'aeiou':\n         singular = word[:-3] + 'y'\n-    elif word.endswith(('ses', 'xes', 'zes', 'ches', 'shes')):\n+    elif word.endswith(('sses', 'xes', 'zes', 'ches', 'shes')) or word == 'buses':\n         singular = word[:-2]\n     else:\n         singular = word[:-1]\ndiff --git a/tests/test_strutils.py b/tests/test_strutils.py\nindex 91ca419..f4e4409 100644\n--- a/tests/test_strutils.py\n+++ b/tests/test_strutils.py\n@@ -57,6 +57,8 @@ def test_singularize():\n     # ordinary -s plurals still lose just the -s\n     assert strutils.singularize('chances') == 'chance'\n     assert strutils.singularize('friends') == 'friend'\n+    assert strutils.singularize('cases') == 'case'\n+    assert strutils.singularize('houses') == 'house'\n     # case is preserved\n     assert strutils.singularize('Classes') == 'Class'\n     assert strutils.singularize('WISHES') == 'WISH'",
+    "suite": {
+     "checked": false,
+     "note": "the project's suite did not run here"
+    },
+    "control": null
    }
   },
   {
@@ -1192,6 +1235,24 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "no change",
+    "tests": {
+     "passed": 1,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 1,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "diff": "",
+    "suite": null,
+    "control": null
    }
   },
   {
@@ -1728,6 +1789,24 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "no change",
+    "tests": {
+     "passed": 4,
+     "failed": 5,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 4,
+     "failed": 5,
+     "not_loading": 0
+    },
+    "diff": "",
+    "suite": null,
+    "control": null
    }
   },
   {
@@ -2532,6 +2611,30 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "not fixed",
+    "tests": {
+     "passed": 0,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/isort/api.py b/isort/api.py\nindex 49a732a..e07b67e 100644\n--- a/isort/api.py\n+++ b/isort/api.py\n@@ -230,7 +230,7 @@ def sort_stream(\n                     f\"{content_source} Python AST errors found but ignored due to Cython extension\",\n                     stacklevel=2,\n                 )\n-        if _internal_output != output_stream:\n+        if _internal_output is not output_stream:\n             output_stream.write(_internal_output.read())\n     elif _internal_output is not output_stream:\n         _internal_output.seek(0)",
+    "suite": {
+     "checked": true,
+     "passed_before": 578,
+     "passed_after": 578,
+     "broken": [],
+     "broken_count": 0
+    },
+    "control": null
    }
   },
   {
@@ -3903,6 +4006,24 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "no change",
+    "tests": {
+     "passed": 1,
+     "failed": 4,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 1,
+     "failed": 4,
+     "not_loading": 0
+    },
+    "diff": "",
+    "suite": null,
+    "control": null
    }
   },
   {
@@ -4574,6 +4695,27 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "not fixed",
+    "tests": {
+     "passed": 0,
+     "failed": 6,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 6,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/src/packaging/version.py b/src/packaging/version.py\nindex 3676ff9..fbe4229 100644\n--- a/src/packaging/version.py\n+++ b/src/packaging/version.py\n@@ -380,7 +380,7 @@ class Version(_BaseVersion):\n             exception will be raised.\n         \"\"\"\n         # Fast path for simple versions (digits and dots only), e.g. \"1.2.3\".\n-        if all(c in _SIMPLE_VERSION_INDICATORS for c in version):\n+        if version and all(c in _SIMPLE_VERSION_INDICATORS for c in version):\n             try:\n                 self._release = tuple(map(int, version.split(\".\")))\n             except ValueError:\ndiff --git a/tests/test_version.py b/tests/test_version.py\nindex afdbe3b..950f410 100644\n--- a/tests/test_version.py\n+++ b/tests/test_version.py\n@@ -236,6 +236,7 @@ class TestVersion:\n             (\"1.0+AbC\", \"1.0+abc\"),\n             # Integer Normalization\n             (\"1.01\", \"1.1\"),\n+            (\"01\", \"1\"),\n             (\"1.0a05\", \"1.0a5\"),\n             (\"1.0b07\", \"1.0b7\"),\n             (\"1.0c056\", \"1.0rc56\"),",
+    "suite": {
+     "checked": false,
+     "note": "the project's suite did not run here"
+    },
+    "control": null
    }
   },
   {
@@ -7284,6 +7426,30 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "fixed",
+    "tests": {
+     "passed": 2,
+     "failed": 0,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 2,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/more_itertools/more.py b/more_itertools/more.py\nindex c21d05b..b35b22a 100755\n--- a/more_itertools/more.py\n+++ b/more_itertools/more.py\n@@ -2644,6 +2644,11 @@ class seekable:\n             return default\n \n         self._cache.append(item)\n+        if len(self._cache) == 0:\n+            # maxlen=0: the cache can't hold the peeked item, so push it\n+            # back onto the source to avoid consuming it.\n+            self._source = chain([item], self._source)\n+            return item\n         self._index = len(self._cache) - 1\n         return item\n \ndiff --git a/tests/test_more.py b/tests/test_more.py\nindex becbd50..df4d64f 100644\n--- a/tests/test_more.py\n+++ b/tests/test_more.py\n@@ -3166,6 +3166,14 @@ class SeekableTest(TestCase):\n         s.seek(0)\n         self.assertTrue(s)\n \n+    def test_peek_maxlen_zero(self):\n+        s = mi.seekable([str(n) for n in range(3)], maxlen=0)\n+        self.assertEqual(s.peek(), '0')\n+        self.assertEqual(s.peek(), '0')\n+        self.assertEqual(next(s), '0')\n+        self.assertTrue(s)\n+        self.assertEqual(next(s), '1')\n+\n \n class SequenceViewTests(TestCase):\n     def test_init(self):",
+    "suite": {
+     "checked": true,
+     "passed_before": 433,
+     "passed_after": 434,
+     "broken": [],
+     "broken_count": 0
+    },
+    "control": null
    }
   },
   {
@@ -8171,6 +8337,24 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "no change",
+    "tests": {
+     "passed": 0,
+     "failed": 2,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 2,
+     "not_loading": 0
+    },
+    "diff": "",
+    "suite": null,
+    "control": null
    }
   },
   {

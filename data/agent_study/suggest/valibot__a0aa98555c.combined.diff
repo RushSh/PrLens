@@ -1,0 +1,43 @@
+diff --git a/library/src/actions/domain/domain.test.ts b/library/src/actions/domain/domain.test.ts
+index 8683d59..0903783 100644
+--- a/library/src/actions/domain/domain.test.ts
++++ b/library/src/actions/domain/domain.test.ts
+@@ -74,6 +74,12 @@ describe('domain', () => {
+         'sub.sub2.example.co.uk',
+       ]);
+     });
++
++    test('for max length domain (253 chars)', () => {
++      expectNoActionIssue(action, [
++        `${'a'.repeat(63)}.${'a'.repeat(63)}.${'a'.repeat(63)}.${'a'.repeat(61)}`,
++      ]);
++    });
+   });
+ 
+   describe('should return dataset with issues', () => {
+@@ -90,6 +96,12 @@ describe('domain', () => {
+       expectActionIssue(action, baseIssue, ['a'.repeat(64) + '.com']);
+     });
+ 
++    test('too long domain (max 253 chars)', () => {
++      expectActionIssue(action, baseIssue, [
++        `${'a'.repeat(63)}.${'a'.repeat(63)}.${'a'.repeat(63)}.${'a'.repeat(62)}`,
++      ]);
++    });
++
+     test('for empty or whitespace strings', () => {
+       expectActionIssue(action, baseIssue, ['', ' ', '\n', '\t']);
+     });
+diff --git a/library/src/regex.ts b/library/src/regex.ts
+index af41c8b..dc9085b 100644
+--- a/library/src/regex.ts
++++ b/library/src/regex.ts
+@@ -32,7 +32,7 @@ export const DIGITS_REGEX: RegExp = /^\d+$/u;
+  */
+ export const DOMAIN_REGEX: RegExp =
+   // eslint-disable-next-line redos-detector/no-unsafe-regex, regexp/require-unicode-regexp
+-  /^([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
++  /^(?=.{1,253}$)([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+ 
+ /**
+  * [Email address](https://en.wikipedia.org/wiki/Email_address) regex.

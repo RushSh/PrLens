@@ -1,0 +1,127 @@
+diff --git a/more_itertools/more.py b/more_itertools/more.py
+index 158f3b3..b35b22a 100755
+--- a/more_itertools/more.py
++++ b/more_itertools/more.py
+@@ -2616,6 +2616,42 @@ class seekable:
+         self._cache.append(item)
+         return item
+ 
++    def __bool__(self):
++        try:
++            self.peek()
++        except StopIteration:
++            return False
++        return True
++
++    def peek(self, default=_marker):
++        """Return the item that will be next returned from ``next()``.
++
++        Return ``default`` if there are no items left. If ``default`` is not
++        provided, raise ``StopIteration``.
++
++        """
++        if self._index is not None:
++            try:
++                return self._cache[self._index]
++            except IndexError:
++                self._index = None
++
++        try:
++            item = next(self._source)
++        except StopIteration:
++            if default is _marker:
++                raise
++            return default
++
++        self._cache.append(item)
++        if len(self._cache) == 0:
++            # maxlen=0: the cache can't hold the peeked item, so push it
++            # back onto the source to avoid consuming it.
++            self._source = chain([item], self._source)
++            return item
++        self._index = len(self._cache) - 1
++        return item
++
+     def elements(self):
+         return SequenceView(self._cache)
+ 
+diff --git a/more_itertools/more.pyi b/more_itertools/more.pyi
+index e0c3d95..ba08120 100644
+--- a/more_itertools/more.pyi
++++ b/more_itertools/more.pyi
+@@ -322,6 +322,11 @@ class seekable(Generic[_T], Iterator[_T]):
+     ) -> None: ...
+     def __iter__(self) -> seekable[_T]: ...
+     def __next__(self) -> _T: ...
++    def __bool__(self) -> bool: ...
++    @overload
++    def peek(self) -> _T: ...
++    @overload
++    def peek(self, default: _U) -> Union[_T, _U]: ...
+     def elements(self) -> SequenceView[_T]: ...
+     def seek(self, index: int) -> None: ...
+ 
+diff --git a/tests/test_more.py b/tests/test_more.py
+index 4885826..df4d64f 100644
+--- a/tests/test_more.py
++++ b/tests/test_more.py
+@@ -3121,6 +3121,59 @@ class SeekableTest(TestCase):
+         self.assertEqual(list(s), iterable)
+         self.assertEqual(list(s.elements()), [])
+ 
++    def test_peek(self):
++        iterable = [str(n) for n in range(10)]
++
++        s = mi.seekable(iterable)
++        self.assertEqual(s.peek(), '0')  # Peeking doesn't advance
++        self.assertEqual(s.peek(), '0')  # Peeking again gives the same item
++        self.assertEqual(next(s), '0')
++        self.assertEqual(s.peek(), '1')
++        self.assertEqual(next(s), '1')
++
++        s.seek(5)
++        self.assertEqual(s.peek(), '5')  # Peeking respects the seek position
++        self.assertEqual(next(s), '5')
++
++    def test_peek_default(self):
++        s = mi.seekable([])
++        self.assertEqual(s.peek('hi'), 'hi')
++        with self.assertRaises(StopIteration):
++            s.peek()
++
++        iterable = [str(n) for n in range(3)]
++        s = mi.seekable(iterable)
++        self.assertEqual(list(s), iterable)  # Exhaust the iterable
++        self.assertEqual(s.peek('hi'), 'hi')
++        with self.assertRaises(StopIteration):
++            s.peek()
++
++        s.seek(0)  # Peeking works again after seeking back
++        self.assertEqual(s.peek(), '0')
++
++    def test_bool(self):
++        s = mi.seekable([])
++        self.assertFalse(s)
++
++        s = mi.seekable(range(3))
++        self.assertTrue(s)
++
++        iterable = [str(n) for n in range(3)]
++        s = mi.seekable(iterable)
++        self.assertEqual(list(s), iterable)  # Exhaust the iterable
++        self.assertFalse(s)
++
++        s.seek(0)
++        self.assertTrue(s)
++
++    def test_peek_maxlen_zero(self):
++        s = mi.seekable([str(n) for n in range(3)], maxlen=0)
++        self.assertEqual(s.peek(), '0')
++        self.assertEqual(s.peek(), '0')
++        self.assertEqual(next(s), '0')
++        self.assertTrue(s)
++        self.assertEqual(next(s), '1')
++
+ 
+ class SequenceViewTests(TestCase):
+     def test_init(self):

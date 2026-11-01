@@ -8,6 +8,14 @@ import { loadEvalSet } from "@/lib/triage-source";
 
 export const dynamic = "force-dynamic";
 
+const OUTCOMES = [
+  { key: "fixed", label: "fix tests pass", match: (s?: string | null) => s === "fixed" },
+  { key: "partly", label: "fewer fail", match: (s?: string | null) => s === "partly fixed" },
+  { key: "not", label: "still fail", match: (s?: string | null) => s === "not fixed" },
+  { key: "none", label: "no change", match: (s?: string | null) => s === "no change" },
+  { key: "other", label: "not judged", match: (s?: string | null) => s === "apply_failed" || s === "not_loading" },
+];
+
 const langLabel = (k: string) => EVAL_LANGUAGES.find((l) => l.key === k)?.label ?? k;
 
 export default async function AgentStudyPage() {
@@ -71,17 +79,44 @@ export default async function AgentStudyPage() {
       </Box>
 
       {suggested.length ? (
-        <Box title="Closing the loop: Muse Code fixes what PR Lens flagged">
-          <p className="px-4 py-3 text-sm text-fg">
-            For each bug PR Lens kept for review, {study.agent} was shown the flagged regions with Muse Spark&apos;s notes and
-            questions (never the bug, the later fix or its tests) and asked for the smallest fix. The later fix&apos;s tests then
-            judged it: <span className="font-semibold">{suggested.filter((t) => t.suggestion === "fixed").length} of {suggested.length}</span>{" "}
-            suggestions make them pass
-            {suggested.some((t) => t.suggestion === "partly fixed")
-              ? `, ${suggested.filter((t) => t.suggestion === "partly fixed").length} partly`
-              : ""}
-            . Every suggestion is labelled “suggested, still needs human review”; PR Lens never applies one.
-          </p>
+        <Box title="Closing the loop: can Muse Code fix what PR Lens flagged?">
+          <div className="space-y-3 px-4 py-3 text-sm">
+            <p className="text-fg">
+              For each bug PR Lens kept for review, {study.agent} got the same task and its own change twice: once with the regions
+              PR Lens flagged and Muse Spark&apos;s notes and questions, once without them (the control). It never saw the bug, the
+              later fix or its tests; the later fix&apos;s tests judged both. {suggested.length} PRs is a case study: read the counts,
+              not a rate.
+            </p>
+            <table className="w-full max-w-xl text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs text-muted">
+                  <th className="py-1.5 pr-3 font-normal" />
+                  {OUTCOMES.map((o) => (
+                    <th key={o.key} className="py-1.5 pr-3 text-right font-normal">{o.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {([["With PR Lens's flags", "suggestion"], ["Without (control)", "suggestionBlind"]] as const).map(([label, k]) => (
+                  <tr key={k} className="border-b border-line-muted last:border-b-0">
+                    <td className="py-1.5 pr-3 text-fg">{label}</td>
+                    {OUTCOMES.map((o) => {
+                      const ran = suggested.filter((t) => t[k]);
+                      return (
+                        <td key={o.key} className="tabular py-1.5 pr-3 text-right">
+                          {ran.length ? ran.filter((t) => o.match(t[k])).length : "—"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-xs text-muted">
+              Every suggestion is labelled “suggested, still needs human review”; PR Lens never applies one. Where the project&apos;s
+              own Python suite runs, each suggestion is also checked for tests it newly breaks.
+            </p>
+          </div>
         </Box>
       ) : null}
 
@@ -129,15 +164,14 @@ export default async function AgentStudyPage() {
                     )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-2">
-                    {t.suggestion === "fixed" ? (
-                      <span className="text-success">fix tests pass</span>
-                    ) : t.suggestion === "partly fixed" ? (
-                      <span className="text-attention">partly</span>
-                    ) : t.suggestion ? (
-                      <span className="text-muted">{t.suggestion === "not fixed" ? "not fixed" : "not judged"}</span>
+                    {t.suggestion ? (
+                      <span className={t.suggestion === "fixed" ? "text-success" : t.suggestion === "partly fixed" ? "text-attention" : "text-muted"}>
+                        {t.suggestion}
+                      </span>
                     ) : (
                       <span className="text-muted">—</span>
                     )}
+                    {t.suggestionBlind ? <span className="block text-xs text-muted">control: {t.suggestionBlind}</span> : null}
                   </td>
                 </tr>
               ))}

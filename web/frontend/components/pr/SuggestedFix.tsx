@@ -11,6 +11,7 @@ const STATUS: Record<Fix["status"], { text: string; tone: string }> = {
   "not fixed": { text: "they still fail", tone: "text-danger" },
   apply_failed: { text: "the suggestion did not apply", tone: "text-muted" },
   not_loading: { text: "they did not load with it", tone: "text-muted" },
+  "no change": { text: "no change made, so they still fail", tone: "text-muted" },
 };
 
 /**
@@ -48,10 +49,24 @@ export function SuggestedFix({ fix }: { fix: Fix }) {
               {fix.before.failed} fail)
             </span>
           </p>
+          {fix.suite ? (
+            <p className="text-muted">
+              {fix.suite.checked
+                ? fix.suite.broken_count
+                  ? `It breaks ${fix.suite.broken_count} of the project's existing tests that passed before.`
+                  : `The project's own suite: no test that passed before fails with it (${fix.suite.passed_after} passing).`
+                : `The project's own suite could not be checked here (${fix.suite.note ?? "not run"}).`}
+            </p>
+          ) : null}
+          {fix.control ? (
+            <p className="text-muted">
+              Control, the same change without PR Lens&apos;s flags: {STATUS[fix.control].text}.
+            </p>
+          ) : null}
           <button type="button" className={button} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
             {open ? "Hide the suggestion" : "Show the suggestion"}
           </button>
-          {open ? (
+          {open && lines.some((l) => l) ? (
             <pre className="max-h-[420px] overflow-auto rounded-md border border-line bg-canvas p-2 font-mono text-xs leading-5">
               {lines.map((l, i) => (
                 <div

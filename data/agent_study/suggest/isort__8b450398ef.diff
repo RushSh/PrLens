@@ -1,0 +1,13 @@
+diff --git a/isort/api.py b/isort/api.py
+index 49a732a..e07b67e 100644
+--- a/isort/api.py
++++ b/isort/api.py
+@@ -230,7 +230,7 @@ def sort_stream(
+                     f"{content_source} Python AST errors found but ignored due to Cython extension",
+                     stacklevel=2,
+                 )
+-        if _internal_output != output_stream:
++        if _internal_output is not output_stream:
+             output_stream.write(_internal_output.read())
+     elif _internal_output is not output_stream:
+         _internal_output.seek(0)

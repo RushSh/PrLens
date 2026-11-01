@@ -90,7 +90,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
         </Comment>
 
         {pr.groundTruth ? <RevealBox pr={pr} /> : null}
-        {pr.suggestion ? <SuggestedFix fix={pr.suggestion} /> : null}
+        {pr.suggestion && pr.suggestion.status !== "no change" ? <SuggestedFix fix={pr.suggestion} /> : null}
 
         <MergeBox pr={pr} />
       </div>

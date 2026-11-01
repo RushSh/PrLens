@@ -142,14 +142,22 @@ export const modelName = (k: string) => MODEL_NAMES[k] ?? k;
 export interface SuggestedFix {
   by: string;
   model: string;
-  /** "fixed": every fix test passes; "partly fixed": fewer fail than on the agent's change alone. */
-  status: "fixed" | "partly fixed" | "not fixed" | "apply_failed" | "not_loading";
+  /** "fixed": every fix test passes; "partly fixed": fewer fail than on the agent's change alone; "no change":
+   * Muse Code left the code as it was. */
+  status: SuggestStatus;
   tests: { passed: number; failed: number; not_loading: number };
   /** The fix tests on the agent's change before the suggestion. */
   before: { passed: number; failed: number; not_loading: number };
   /** The suggestion as a unified diff against the agent's change. */
   diff: string;
+  /** The project's own test suite before and after the suggestion: tests it newly breaks (Python only). */
+  suite?: { checked: boolean; note?: string; passed_before?: number; passed_after?: number; broken?: string[]; broken_count?: number } | null;
+  /** The control: Muse Code on the same change with no flagged regions, notes or questions. */
+  control?: SuggestStatus | null;
 }
+
+export type SuggestStatus = "fixed" | "partly fixed" | "not fixed" | "no change" | "apply_failed" | "not_loading";
+const SUGGEST_STATUS = ["fixed", "partly fixed", "not fixed", "no change", "apply_failed", "not_loading"] as const;
 
 export interface PrTriage {
   id: string;
@@ -330,7 +338,8 @@ export interface AgentStudy {
     read: number;
     why: string[];
     /** The Muse Code suggested fix's result, when one was made. */
-    suggestion?: SuggestedFix["status"] | null;
+    suggestion?: SuggestStatus | null;
+    suggestionBlind?: SuggestStatus | null;
   }[];
   notJudgeable: { task: string; language: string; why: string }[];
 }
@@ -405,10 +414,22 @@ export const prTriageSchema: z.ZodType<PrTriage> = z.object({
     .object({
       by: z.string(),
       model: z.string(),
-      status: z.enum(["fixed", "partly fixed", "not fixed", "apply_failed", "not_loading"]),
+      status: z.enum(SUGGEST_STATUS),
       tests: z.object({ passed: z.number(), failed: z.number(), not_loading: z.number() }),
       before: z.object({ passed: z.number(), failed: z.number(), not_loading: z.number() }),
       diff: z.string(),
+      suite: z
+        .object({
+          checked: z.boolean(),
+          note: z.string().optional(),
+          passed_before: z.number().optional(),
+          passed_after: z.number().optional(),
+          broken: z.array(z.string()).optional(),
+          broken_count: z.number().optional(),
+        })
+        .nullable()
+        .optional(),
+      control: z.enum(SUGGEST_STATUS).nullable().optional(),
     })
     .optional(),
   skipThreshold: z.number().optional(),
@@ -469,7 +490,8 @@ export const triageFile = z.object({
             lines: z.number(),
             read: z.number(),
             why: z.array(z.string()),
-            suggestion: z.enum(["fixed", "partly fixed", "not fixed", "apply_failed", "not_loading"]).nullable().optional(),
+            suggestion: z.enum(SUGGEST_STATUS).nullable().optional(),
+            suggestionBlind: z.enum(SUGGEST_STATUS).nullable().optional(),
           }),
         ),
         notJudgeable: z.array(z.object({ task: z.string(), language: z.string(), why: z.string() })),
