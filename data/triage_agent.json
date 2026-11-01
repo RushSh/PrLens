@@ -1,9 +1,9 @@
 {
  "kind": "triage",
  "name": "agent",
- "generated_at": "2026-10-31T01:52:00+00:00",
+ "generated_at": "2026-11-01T04:44:02+00:00",
  "model": "spark_open",
- "threshold": 0.05429204014766168,
+ "threshold": 0.061336526333574365,
  "alpha": 0.2,
  "summary": {
   "prs": 11,
@@ -323,7 +323,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.2029,
+     "riskScore": 0.1989,
      "priority": "P1",
      "reasons": [
       {
@@ -349,9 +349,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "20.3%",
-       "weight": 0.406
+       "name": "Combined risk score",
+       "value": "19.9%",
+       "weight": 0.398
       }
      ],
      "note": {
@@ -533,8 +533,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.8% is under the skip threshold (5.4%).",
-     "riskScore": 0.008
+     "reason": "Combined risk score 1.1% is under the skip threshold (6.1%).",
+     "riskScore": 0.0106
     }
    ],
    "hunks": [
@@ -751,7 +751,7 @@
     "calibratedOn": "the python evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.05429,
+   "skipThreshold": 0.06134,
    "language": "python",
    "groundTruth": {
     "bugItemIds": [
@@ -866,7 +866,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.0636,
+     "riskScore": 0.0695,
      "priority": "P2",
      "reasons": [
       {
@@ -892,9 +892,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "6.4%",
-       "weight": 0.127
+       "name": "Combined risk score",
+       "value": "6.9%",
+       "weight": 0.139
       }
      ],
      "note": {
@@ -999,8 +999,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.4% is under the skip threshold (5.4%).",
-     "riskScore": 0.0036
+     "reason": "Combined risk score 0.4% is under the skip threshold (6.1%).",
+     "riskScore": 0.0044
     }
    ],
    "hunks": [
@@ -1169,7 +1169,7 @@
     "calibratedOn": "the python evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.05429,
+   "skipThreshold": 0.06134,
    "language": "python",
    "groundTruth": {
     "bugItemIds": [
@@ -1277,7 +1277,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.113,
+     "riskScore": 0.1114,
      "priority": "P2",
      "reasons": [
       {
@@ -1303,9 +1303,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "11.3%",
-       "weight": 0.226
+       "name": "Combined risk score",
+       "value": "11.1%",
+       "weight": 0.223
       }
      ],
      "note": {
@@ -1431,8 +1431,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.2% is under the skip threshold (5.4%).",
-     "riskScore": 0.0017
+     "reason": "Combined risk score 0.3% is under the skip threshold (6.1%).",
+     "riskScore": 0.0025
     },
     {
      "id": "tests/test_direct_url.py#0.1",
@@ -1494,8 +1494,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.1% is under the skip threshold (5.4%).",
-     "riskScore": 0.0012
+     "reason": "Combined risk score 0.1% is under the skip threshold (6.1%).",
+     "riskScore": 0.0014
     }
    ],
    "hunks": [
@@ -1700,7 +1700,7 @@
     "calibratedOn": "the python evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.05429,
+   "skipThreshold": 0.06134,
    "language": "python",
    "groundTruth": {
     "bugItemIds": [
@@ -1801,7 +1801,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.1994,
+     "riskScore": 0.2005,
      "priority": "P1",
      "reasons": [
       {
@@ -1827,9 +1827,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "19.9%",
-       "weight": 0.399
+       "name": "Combined risk score",
+       "value": "20.1%",
+       "weight": 0.401
       }
      ],
      "note": {
@@ -1903,7 +1903,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.0863,
+     "riskScore": 0.0851,
      "priority": "P2",
      "reasons": [
       {
@@ -1929,9 +1929,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "8.6%",
-       "weight": 0.173
+       "name": "Combined risk score",
+       "value": "8.5%",
+       "weight": 0.17
       }
      ],
      "note": {
@@ -1988,8 +1988,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.1% is under the skip threshold (5.4%).",
-     "riskScore": 0.0012
+     "reason": "Combined risk score 0.1% is under the skip threshold (6.1%).",
+     "riskScore": 0.0013
     },
     {
      "id": "tests/unit/test_api.py#1.0",
@@ -2166,8 +2166,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.4% is under the skip threshold (5.4%).",
-     "riskScore": 0.0042
+     "reason": "Combined risk score 0.6% is under the skip threshold (6.1%).",
+     "riskScore": 0.0061
     }
    ],
    "hunks": [
@@ -2494,7 +2494,7 @@
     "calibratedOn": "the python evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.05429,
+   "skipThreshold": 0.06134,
    "language": "python",
    "groundTruth": {
     "bugItemIds": [
@@ -2588,7 +2588,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.0247,
+     "riskScore": 0.0277,
      "priority": "P1",
      "reasons": [
       {
@@ -2614,9 +2614,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "2.5%",
-       "weight": 0.049
+       "name": "Combined risk score",
+       "value": "2.8%",
+       "weight": 0.055
       }
      ],
      "note": {
@@ -2683,7 +2683,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.154,
+     "riskScore": 0.1765,
      "priority": "P1",
      "reasons": [
       {
@@ -2709,9 +2709,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "15.4%",
-       "weight": 0.308
+       "name": "Combined risk score",
+       "value": "17.6%",
+       "weight": 0.353
       }
      ],
      "note": {
@@ -2799,7 +2799,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.0815,
+     "riskScore": 0.0862,
      "priority": "P2",
      "reasons": [
       {
@@ -2825,9 +2825,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "8.2%",
-       "weight": 0.163
+       "name": "Combined risk score",
+       "value": "8.6%",
+       "weight": 0.172
       }
      ],
      "note": {
@@ -2897,8 +2897,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 3.6% is under the skip threshold (5.4%).",
-     "riskScore": 0.0362
+     "reason": "Combined risk score 3.6% is under the skip threshold (6.1%).",
+     "riskScore": 0.0363
     },
     {
      "id": "more_itertools/recipes.pyi#0.0",
@@ -2953,8 +2953,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 2.8% is under the skip threshold (5.4%).",
-     "riskScore": 0.0283
+     "reason": "Combined risk score 2.8% is under the skip threshold (6.1%).",
+     "riskScore": 0.0284
     },
     {
      "id": "tests/test_recipes.py#0.0",
@@ -3121,8 +3121,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.3% is under the skip threshold (5.4%).",
-     "riskScore": 0.0026
+     "reason": "Combined risk score 0.4% is under the skip threshold (6.1%).",
+     "riskScore": 0.0039
     },
     {
      "id": "tests/test_recipes.py#0.1",
@@ -3317,8 +3317,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.2% is under the skip threshold (5.4%).",
-     "riskScore": 0.0024
+     "reason": "Combined risk score 0.4% is under the skip threshold (6.1%).",
+     "riskScore": 0.0038
     }
    ],
    "hunks": [
@@ -3850,7 +3850,7 @@
     "calibratedOn": "the python evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.05429,
+   "skipThreshold": 0.06134,
    "language": "python",
    "groundTruth": {
     "bugItemIds": [
@@ -4028,7 +4028,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.0919,
+     "riskScore": 0.117,
      "priority": "P2",
      "reasons": [
       {
@@ -4054,9 +4054,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "9.2%",
-       "weight": 0.184
+       "name": "Combined risk score",
+       "value": "11.7%",
+       "weight": 0.234
       }
      ],
      "note": {
@@ -4140,8 +4140,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 1.6% is under the skip threshold (5.4%).",
-     "riskScore": 0.0164
+     "reason": "Combined risk score 2.1% is under the skip threshold (6.1%).",
+     "riskScore": 0.021
     },
     {
      "id": "tests/test_version.py#0.0",
@@ -4231,8 +4231,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.1% is under the skip threshold (5.4%).",
-     "riskScore": 0.001
+     "reason": "Combined risk score 0.2% is under the skip threshold (6.1%).",
+     "riskScore": 0.0015
     }
    ],
    "hunks": [
@@ -4516,7 +4516,7 @@
     "calibratedOn": "the python evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.05429,
+   "skipThreshold": 0.06134,
    "language": "python",
    "groundTruth": {
     "bugItemIds": [
@@ -4771,7 +4771,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.1373,
+     "riskScore": 0.1793,
      "priority": "P1",
      "reasons": [
       {
@@ -4797,9 +4797,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "13.7%",
-       "weight": 0.275
+       "name": "Combined risk score",
+       "value": "17.9%",
+       "weight": 0.359
       }
      ],
      "note": {
@@ -4869,8 +4869,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 1.9% is under the skip threshold (5.4%).",
-     "riskScore": 0.0194
+     "reason": "Combined risk score 2.2% is under the skip threshold (6.1%).",
+     "riskScore": 0.0217
     },
     {
      "id": "src/mistune/__init__.py#1.1",
@@ -4932,8 +4932,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 2.8% is under the skip threshold (5.4%).",
-     "riskScore": 0.0281
+     "reason": "Combined risk score 3.2% is under the skip threshold (6.1%).",
+     "riskScore": 0.0316
     },
     {
      "id": "tests/test_misc.py#0.0",
@@ -5156,8 +5156,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.9% is under the skip threshold (5.4%).",
-     "riskScore": 0.0091
+     "reason": "Combined risk score 1.2% is under the skip threshold (6.1%).",
+     "riskScore": 0.0123
     }
    ],
    "hunks": [
@@ -5639,7 +5639,7 @@
     "calibratedOn": "the python evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.05429,
+   "skipThreshold": 0.06134,
    "language": "python"
   },
   {
@@ -5839,7 +5839,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.1451,
+     "riskScore": 0.1818,
      "priority": "P1",
      "reasons": [
       {
@@ -5865,9 +5865,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "14.5%",
-       "weight": 0.29
+       "name": "Combined risk score",
+       "value": "18.2%",
+       "weight": 0.364
       }
      ],
      "note": {
@@ -6004,7 +6004,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.096,
+     "riskScore": 0.1178,
      "priority": "P2",
      "reasons": [
       {
@@ -6030,9 +6030,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "9.6%",
-       "weight": 0.192
+       "name": "Combined risk score",
+       "value": "11.8%",
+       "weight": 0.236
       }
      ],
      "note": {
@@ -6123,8 +6123,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 5.3% is under the skip threshold (5.4%).",
-     "riskScore": 0.0534
+     "reason": "Combined risk score 5.8% is under the skip threshold (6.1%).",
+     "riskScore": 0.0581
     },
     {
      "id": "tests/test_more.py#0.0",
@@ -6305,8 +6305,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.2% is under the skip threshold (5.4%).",
-     "riskScore": 0.0019
+     "reason": "Combined risk score 0.3% is under the skip threshold (6.1%).",
+     "riskScore": 0.0031
     },
     {
      "id": "tests/test_more.py#0.1",
@@ -6529,8 +6529,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.3% is under the skip threshold (5.4%).",
-     "riskScore": 0.0029
+     "reason": "Combined risk score 0.5% is under the skip threshold (6.1%).",
+     "riskScore": 0.0049
     },
     {
      "id": "tests/test_more.py#0.2",
@@ -6585,8 +6585,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.1% is under the skip threshold (5.4%).",
-     "riskScore": 0.0012
+     "reason": "Combined risk score 0.1% is under the skip threshold (6.1%).",
+     "riskScore": 0.0013
     }
    ],
    "hunks": [
@@ -7212,7 +7212,7 @@
     "calibratedOn": "the python evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.05429,
+   "skipThreshold": 0.06134,
    "language": "python",
    "groundTruth": {
     "bugItemIds": [
@@ -7336,8 +7336,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.4% is under the skip threshold (6.9%).",
-     "riskScore": 0.0041
+     "reason": "Combined risk score 0.3% is under the skip threshold (6.8%).",
+     "riskScore": 0.0032
     },
     {
      "id": "src/compat/array/findLastIndex.ts#0.0",
@@ -7406,8 +7406,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 5.6% is under the skip threshold (6.9%).",
-     "riskScore": 0.0562
+     "reason": "Combined risk score 5.2% is under the skip threshold (6.8%).",
+     "riskScore": 0.0524
     }
    ],
    "hunks": [
@@ -7558,7 +7558,7 @@
     "calibratedOn": "the typescript evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.06919,
+   "skipThreshold": 0.06807,
    "language": "typescript",
    "groundTruth": {
     "bugItemIds": [
@@ -7652,7 +7652,7 @@
       }
      ],
      "tier": "review",
-     "riskScore": 0.0957,
+     "riskScore": 0.0848,
      "priority": "P2",
      "reasons": [
       {
@@ -7678,9 +7678,9 @@
        "weight": 0.6
       },
       {
-       "name": "Combined bug chance",
-       "value": "9.6%",
-       "weight": 0.191
+       "name": "Combined risk score",
+       "value": "8.5%",
+       "weight": 0.17
       }
      ],
      "note": {
@@ -7778,8 +7778,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.2% is under the skip threshold (6.9%).",
-     "riskScore": 0.0022
+     "reason": "Combined risk score 0.2% is under the skip threshold (6.8%).",
+     "riskScore": 0.0017
     },
     {
      "id": "library/src/actions/domain/domain.test.ts#1.0",
@@ -7869,8 +7869,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.2% is under the skip threshold (6.9%).",
-     "riskScore": 0.0021
+     "reason": "Combined risk score 0.2% is under the skip threshold (6.8%).",
+     "riskScore": 0.0018
     }
    ],
    "hunks": [
@@ -8094,7 +8094,7 @@
     "calibratedOn": "the typescript evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.06919,
+   "skipThreshold": 0.06807,
    "language": "typescript",
    "groundTruth": {
     "bugItemIds": [
@@ -8246,8 +8246,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.4% is under the skip threshold (6.9%).",
-     "riskScore": 0.0041
+     "reason": "Combined risk score 0.3% is under the skip threshold (6.8%).",
+     "riskScore": 0.0034
     },
     {
      "id": "__tests__/map-set.js#0.1",
@@ -8421,8 +8421,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.7% is under the skip threshold (6.9%).",
-     "riskScore": 0.0067
+     "reason": "Combined risk score 0.6% is under the skip threshold (6.8%).",
+     "riskScore": 0.0056
     },
     {
      "id": "__tests__/map-set.js#0.2",
@@ -8515,8 +8515,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 0.3% is under the skip threshold (6.9%).",
-     "riskScore": 0.0027
+     "reason": "Combined risk score 0.2% is under the skip threshold (6.8%).",
+     "riskScore": 0.0022
     },
     {
      "id": "src/plugins/mapset.ts#0.0",
@@ -8592,8 +8592,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 6.3% is under the skip threshold (6.9%).",
-     "riskScore": 0.0631
+     "reason": "Combined risk score 6.1% is under the skip threshold (6.8%).",
+     "riskScore": 0.061
     },
     {
      "id": "src/plugins/mapset.ts#0.1",
@@ -8669,8 +8669,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 6.3% is under the skip threshold (6.9%).",
-     "riskScore": 0.0631
+     "reason": "Combined risk score 6.1% is under the skip threshold (6.8%).",
+     "riskScore": 0.061
     },
     {
      "id": "src/plugins/mapset.ts#1.0",
@@ -8725,8 +8725,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 3.8% is under the skip threshold (6.9%).",
-     "riskScore": 0.0378
+     "reason": "Combined risk score 3.4% is under the skip threshold (6.8%).",
+     "riskScore": 0.0344
     },
     {
      "id": "src/plugins/mapset.ts#2.0",
@@ -8802,8 +8802,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 5.9% is under the skip threshold (6.9%).",
-     "riskScore": 0.0589
+     "reason": "Combined risk score 5.6% is under the skip threshold (6.8%).",
+     "riskScore": 0.0565
     },
     {
      "id": "src/plugins/mapset.ts#3.0",
@@ -8879,8 +8879,8 @@
      ],
      "tier": "skip",
      "category": "low_score",
-     "reason": "Combined bug chance 6.3% is under the skip threshold (6.9%).",
-     "riskScore": 0.0631
+     "reason": "Combined risk score 6.1% is under the skip threshold (6.8%).",
+     "riskScore": 0.061
     }
    ],
    "hunks": [
@@ -9430,7 +9430,7 @@
     "calibratedOn": "the typescript evaluation set (human-written PRs); not calibrated on agent PRs"
    },
    "source": "agent",
-   "skipThreshold": 0.06919,
+   "skipThreshold": 0.06807,
    "language": "typescript",
    "groundTruth": {
     "bugItemIds": [
