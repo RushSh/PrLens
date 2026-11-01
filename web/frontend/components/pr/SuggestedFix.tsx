@@ -35,6 +35,7 @@ export function SuggestedFix({ fix }: { fix: Fix }) {
             suggested, still needs human review
           </span>
           <span className="rounded-full border border-accent/30 bg-canvas px-1.5 text-[11px] font-medium text-accent">Meta AI</span>
+          {fix.round ? <span className="text-xs text-muted">round {fix.round}</span> : null}
         </div>
         <div className="space-y-2 px-4 py-3 text-sm">
           <p className="text-muted">

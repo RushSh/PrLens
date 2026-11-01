@@ -154,6 +154,8 @@ export interface SuggestedFix {
   suite?: { checked: boolean; note?: string; passed_before?: number; passed_after?: number; broken?: string[]; broken_count?: number } | null;
   /** The control: Muse Code on the same change with no flagged regions, notes or questions. */
   control?: SuggestStatus | null;
+  /** 1: original prompts; 2: softer prompts in both arms and version-2 Muse Spark notes. */
+  round?: number;
 }
 
 export type SuggestStatus = "fixed" | "partly fixed" | "not fixed" | "no change" | "apply_failed" | "not_loading";
@@ -340,6 +342,8 @@ export interface AgentStudy {
     /** The Muse Code suggested fix's result, when one was made. */
     suggestion?: SuggestStatus | null;
     suggestionBlind?: SuggestStatus | null;
+    /** Every round's result by variant: flagged, blind (round 1), flagged2, blind2 (round 2). */
+    suggestionRounds?: Record<string, SuggestStatus>;
   }[];
   notJudgeable: { task: string; language: string; why: string }[];
 }
@@ -430,6 +434,7 @@ export const prTriageSchema: z.ZodType<PrTriage> = z.object({
         .nullable()
         .optional(),
       control: z.enum(SUGGEST_STATUS).nullable().optional(),
+      round: z.number().optional(),
     })
     .optional(),
   skipThreshold: z.number().optional(),
@@ -492,6 +497,7 @@ export const triageFile = z.object({
             why: z.array(z.string()),
             suggestion: z.enum(SUGGEST_STATUS).nullable().optional(),
             suggestionBlind: z.enum(SUGGEST_STATUS).nullable().optional(),
+            suggestionRounds: z.record(z.string(), z.enum(SUGGEST_STATUS)).optional(),
           }),
         ),
         notJudgeable: z.array(z.object({ task: z.string(), language: z.string(), why: z.string() })),

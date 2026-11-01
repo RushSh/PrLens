@@ -58,7 +58,35 @@ refactor, and do not undo the task.
 About this environment: the sandbox has no network access, so dependencies may not install and the tests may not run
 here. That is expected. Do not edit build or tool configuration and do not install anything; reason from the code.
 """
-VARIANTS = {"flagged": ("", PROMPT), "blind": ("__blind", PROMPT_BLIND)}
+# Round 2 (Nov 1): both arms softened the same way, so the flags stay the only difference. Round 1's "if it is
+# already right, leave it alone" mostly produced no change at all. Round 2's flagged prompt also carries the version-2
+# Muse Spark notes (whole PR as context, boundary-input checklist).
+_SOFT_TAIL = """
+Assume the reviewer suspects a real bug that the task's own tests would not catch. Find it and fix it with the
+smallest change to the library source; if, after checking carefully, you find no bug at all, leave the code as it is.
+You may add tests for the behaviour you fix. Do not refactor, and do not undo the task.
+
+About this environment: the sandbox has no network access, so dependencies may not install and the tests may not run
+here. That is expected. Do not edit build or tool configuration and do not install anything; reason from the code.
+"""
+PROMPT2 = """You are working in a checkout of the {repo} repository ({language}). The last commit is a change written
+for this task:
+
+{message}
+
+A reviewer is looking at that change in PR Lens. PR Lens flagged these regions as needing a human, with notes on what
+to check. Treat them as leads, not a diagnosis: the bug may involve inputs the notes do not name.
+
+{regions}
+""" + _SOFT_TAIL
+PROMPT_BLIND2 = """You are working in a checkout of the {repo} repository ({language}). The last commit is a change written
+for this task:
+
+{message}
+""" + _SOFT_TAIL
+VARIANTS = {"flagged": ("", PROMPT), "blind": ("__blind", PROMPT_BLIND),
+            "flagged2": ("__r2", PROMPT2), "blind2": ("__r2blind", PROMPT_BLIND2)}
+DEFAULT_VARIANTS = ["flagged2", "blind2"]
 
 
 def kept_bug_tasks() -> list[str]:
@@ -226,11 +254,11 @@ def main(argv: list[str] | None = None) -> None:
     sub = ap.add_subparsers(dest="step", required=True)
     p = sub.add_parser("prepare")
     p.add_argument("--only", nargs="*")
-    p.add_argument("--variants", nargs="*", default=list(VARIANTS), choices=list(VARIANTS))
+    p.add_argument("--variants", nargs="*", default=DEFAULT_VARIANTS, choices=list(VARIANTS))
     v = sub.add_parser("validate")
     v.add_argument("--only", nargs="*")
     v.add_argument("--redo", action="store_true")
-    v.add_argument("--variants", nargs="*", default=list(VARIANTS), choices=list(VARIANTS))
+    v.add_argument("--variants", nargs="*", default=DEFAULT_VARIANTS, choices=list(VARIANTS))
     v.add_argument("--no-suite", action="store_true", help="skip the regression run of the project's own tests")
     args = ap.parse_args(argv)
     {"prepare": prepare, "validate": validate}[args.step](args)

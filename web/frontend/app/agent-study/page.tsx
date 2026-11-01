@@ -16,6 +16,13 @@ const OUTCOMES = [
   { key: "other", label: "not judged", match: (s?: string | null) => s === "apply_failed" || s === "not_loading" },
 ];
 
+const ARMS = [
+  { key: "flagged", label: "Round 1, with PR Lens's flags" },
+  { key: "blind", label: "Round 1, control (no flags)" },
+  { key: "flagged2", label: "Round 2, with flags (whole-PR notes, softer prompt)" },
+  { key: "blind2", label: "Round 2, control (softer prompt)" },
+];
+
 const langLabel = (k: string) => EVAL_LANGUAGES.find((l) => l.key === k)?.label ?? k;
 
 export default async function AgentStudyPage() {
@@ -35,7 +42,7 @@ export default async function AgentStudyPage() {
   const lines = study.tasks.reduce((a, t) => a + t.lines, 0);
   const top = study.funnel[0]?.prs ?? 1;
   const omissions = bugs.filter((t) => t.bugKind === "omission").length;
-  const suggested = study.tasks.filter((t) => t.suggestion);
+  const suggested = study.tasks.filter((t) => t.suggestionRounds && Object.keys(t.suggestionRounds).length);
 
   return (
     <div className="space-y-6">
@@ -84,8 +91,8 @@ export default async function AgentStudyPage() {
             <p className="text-fg">
               For each bug PR Lens kept for review, {study.agent} got the same task and its own change twice: once with the regions
               PR Lens flagged and Muse Spark&apos;s notes and questions, once without them (the control). It never saw the bug, the
-              later fix or its tests; the later fix&apos;s tests judged both. {suggested.length} PRs is a case study: read the counts,
-              not a rate.
+              later fix or its tests; the later fix&apos;s tests judged both. Round 2 softened the request the same way in both arms
+              and used notes that see the whole PR. {suggested.length} PRs is a case study: read the counts, not a rate.
             </p>
             <table className="w-full max-w-xl text-sm">
               <thead>
@@ -97,19 +104,19 @@ export default async function AgentStudyPage() {
                 </tr>
               </thead>
               <tbody>
-                {([["With PR Lens's flags", "suggestion"], ["Without (control)", "suggestionBlind"]] as const).map(([label, k]) => (
-                  <tr key={k} className="border-b border-line-muted last:border-b-0">
-                    <td className="py-1.5 pr-3 text-fg">{label}</td>
-                    {OUTCOMES.map((o) => {
-                      const ran = suggested.filter((t) => t[k]);
-                      return (
+                {ARMS.filter((a) => suggested.some((t) => t.suggestionRounds?.[a.key])).map((a) => {
+                  const ran = suggested.filter((t) => t.suggestionRounds?.[a.key]);
+                  return (
+                    <tr key={a.key} className="border-b border-line-muted last:border-b-0">
+                      <td className="py-1.5 pr-3 text-fg">{a.label}</td>
+                      {OUTCOMES.map((o) => (
                         <td key={o.key} className="tabular py-1.5 pr-3 text-right">
-                          {ran.length ? ran.filter((t) => o.match(t[k])).length : "—"}
+                          {ran.filter((t) => o.match(t.suggestionRounds?.[a.key])).length}
                         </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             <p className="text-xs text-muted">
