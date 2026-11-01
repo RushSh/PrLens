@@ -40,6 +40,7 @@ STEPS: dict[str, tuple[str, list[str]]] = {
     "sample": ("sample", []),
     "ablation": ("ablation", []),
     "explain": ("explain", []),
+    "suggest": ("suggest", []),
 }
 
 
