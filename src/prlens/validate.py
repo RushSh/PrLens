@@ -29,6 +29,7 @@ from pathlib import Path
 from .mine import repo_lines
 
 TIMEOUT = 900
+MAX_TIMEOUTS = 2  # after this many timeouts in a row, the rest of a repository's candidates are skipped
 
 
 def sh(cmd: str, cwd: Path, timeout: int = TIMEOUT) -> subprocess.CompletedProcess:
@@ -371,8 +372,16 @@ def main(argv: list[str] | None = None) -> None:
     print(f"{len(cands)} candidates to validate ({len(done)} already done)", flush=True)
     copies: dict[str, WorkingCopy] = {}
     ok = 0
+    timeouts: dict[str, int] = {}  # consecutive timeouts per repository
     with open(out_path, "a") as out, open(rej_path, "a") as rej, open(skip_path, "a") as skp:
         for c in cands:
+            if timeouts.get(c["name"], 0) >= MAX_TIMEOUTS:
+                # a repository whose tests hang (a browser, a network server) would cost 15+ minutes per candidate
+                why = f"skipped: {MAX_TIMEOUTS} timeouts in a row in this repository"
+                print(f"SKIP      {c['name']} {c['sha'][:8]} {c['subject'][:60]}  ({why})", flush=True)
+                skp.write(json.dumps({**c, "why": why}) + "\n")
+                skp.flush()
+                continue
             repo = Path(args.workdir) / c["name"]
             lang = c.get("language", "python")
             t0 = time.time()
@@ -387,6 +396,7 @@ def main(argv: list[str] | None = None) -> None:
                 confirmed, why = None, "timed out"
             except RuntimeError as e:
                 confirmed, why = None, str(e)
+            timeouts[c["name"]] = timeouts.get(c["name"], 0) + 1 if why == "timed out" else 0
             tag = "CONFIRMED" if confirmed else ("rejected " if confirmed is False else "SKIP     ")
             print(f"{tag} {c['name']} {c['sha'][:8]} {c['subject'][:60]}  ({why[:80]}; {time.time() - t0:.0f}s)", flush=True)
             if confirmed:
