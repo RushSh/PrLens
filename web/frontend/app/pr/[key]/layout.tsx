@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { AgentIcon, CommitIcon, PullIcon } from "@/components/Icons";
+import { ModelPipeline } from "@/components/pr/ModelPipeline";
 import { PrTabs } from "@/components/pr/PrTabs";
 import { when } from "@/lib/format";
 import { buildFiles, prIdFromKey } from "@/lib/pr";
@@ -66,6 +67,7 @@ export default async function PrLayout({ children, params }: { children: ReactNo
           </span>
         </div>
       </div>
+      <ModelPipeline pr={pr} />
       <PrTabs base={`/pr/${key}`} files={files} toReview={reviewQueue(pr.toReview).length} />
       {children}
     </div>

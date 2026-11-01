@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { reviewQueue, triageLoad, type PrTriage } from "@prlens/shared";
+import { modelName, reviewQueue, triageLoad, type PrTriage } from "@prlens/shared";
 import { CheckIcon, LensIcon, ShieldIcon } from "@/components/Icons";
 import { RevealBox } from "@/components/pr/RevealBox";
 import { Avatar, Pill, PriorityPill, buttonPrimary } from "@/components/ui";
@@ -34,7 +34,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
         <div className="ml-4 flex items-center gap-2 border-l-2 border-line py-1 pl-6 text-sm text-muted md:ml-5">
           <LensIcon className="-ml-[33px] rounded-full bg-canvas p-0.5" size={20} />
           <span>
-            <span className="font-semibold text-fg">PR Lens</span> scored every changed region with {pr.panel.join(" + ")}
+            <span className="font-semibold text-fg">PR Lens</span> scored every changed region with {pr.panel.map(modelName).join(" + ")}
           </span>
         </div>
 
@@ -119,7 +119,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
           </Side>
         ) : null}
         <Side title="Scored by">
-          <p className="text-muted">{pr.panel.join(", ")}</p>
+          <p className="text-muted">{pr.panel.map(modelName).join(", ")}</p>
         </Side>
         <Side title="Repository">
           <p className="font-mono text-xs text-muted">{pr.repo}</p>

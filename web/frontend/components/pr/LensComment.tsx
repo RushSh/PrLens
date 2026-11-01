@@ -1,11 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { REVIEW_REASONS, type ReviewItem } from "@prlens/shared";
 import { pct } from "@/lib/format";
 import { itemAnchor, itemLine } from "@/lib/pr";
 import { BugIcon, CheckIcon } from "../Icons";
 import { Avatar, Pill, PriorityPill, button } from "../ui";
+
+/** A small label naming the Meta model behind a piece of the comment. */
+function ModelChip({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <span title={title} className="whitespace-nowrap rounded-full border border-accent/30 bg-canvas px-1.5 py-px text-[11px] font-medium text-accent">
+      {children}
+    </span>
+  );
+}
 
 /** PR Lens's inline review comment under the lines of one review item, styled like a GitHub review comment. */
 export function LensComment({
@@ -59,6 +68,11 @@ export function LensComment({
           <span className="text-xs text-muted">
             risk score <span className="tabular font-semibold text-fg">{pct(item.riskScore)}</span>
           </span>
+          {item.signals.some((x) => x.name === "Spark Open risk" && x.value !== "no score") ? (
+            <ModelChip title="Spark Open's risk for this region, combined with code signals into the risk score">
+              Muse Spark Open {item.signals.find((x) => x.name === "Spark Open risk")?.value}
+            </ModelChip>
+          ) : null}
           {item.forcedByRule ? <Pill title="A rule put this here, not the risk score">always reviewed</Pill> : null}
           {item.sameEdit ? <Pill title="The same edit appears in several places; reviewing it here covers them all">same edit in {item.sameEdit.size} places</Pill> : null}
           {isBug ? (
@@ -69,11 +83,27 @@ export function LensComment({
         </div>
         <div className="space-y-2 px-3 py-2.5 text-sm text-fg">
           {item.note ? (
-            <p className="rounded-md border-l-2 border-accent bg-accent-subtle px-2.5 py-1.5">
-              <span className="mr-1.5 font-semibold">Check:</span>
-              {item.note.text}
-              <span className="ml-1.5 whitespace-nowrap text-xs text-muted">· {item.note.model}</span>
-            </p>
+            <div className="rounded-md border-l-2 border-accent bg-accent-subtle px-2.5 py-1.5">
+              <p>
+                <span className="mr-1.5 font-semibold">Check:</span>
+                {item.note.text}
+                <span className="ml-1.5">
+                  <ModelChip title="Written by the Muse Spark Model API (structured JSON); it never changes what is read or skipped">
+                    {item.note.model}
+                  </ModelChip>
+                </span>
+              </p>
+              {item.note.questions?.length ? (
+                <ul className="mt-1.5 space-y-0.5">
+                  {item.note.questions.map((q, i) => (
+                    <li key={i} className="flex gap-1.5">
+                      <span className="text-muted" aria-hidden>☐</span>
+                      <span>{q}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           ) : null}
           {item.reasons.map((r, i) => (
             <p key={i}>

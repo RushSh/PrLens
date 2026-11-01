@@ -90,7 +90,7 @@ export interface ReviewItem extends TriageHunk {
   /** Set when several regions make the same edit: `group` is the id of the one shown in full, `size` how many. */
   sameEdit?: { group: string; size: number };
   /** One sentence on what to check here, written by the Muse Spark Model API (`prlens explain`). */
-  note?: { text: string; model: string };
+  note?: { text: string; model: string; questions?: string[] };
 }
 
 export interface SkippedItem extends TriageHunk {
@@ -127,6 +127,16 @@ export interface TriageGroundTruth {
   /** The later commits that fixed it; evidence "deleted" = traced from changed lines, "adjacent" = from an insertion point. */
   fixes: { sha: string; subject: string; evidence: "deleted" | "adjacent" | "labelled" }[];
 }
+
+/** Display names for the models in a PR's panel (pr.panel), e.g. "spark_open" -> "Muse Spark Open". */
+export const MODEL_NAMES: Record<string, string> = {
+  spark_open: "Muse Spark Open",
+  spark: "Muse Spark",
+  wonder: "Muse Wonder",
+  glimmer: "Muse Glimmer",
+  glimmer_fw: "Muse Glimmer",
+};
+export const modelName = (k: string) => MODEL_NAMES[k] ?? k;
 
 export interface PrTriage {
   id: string;
@@ -335,7 +345,7 @@ const reviewItem = z.object({
   signals: z.array(z.object({ name: z.string(), value: z.string(), weight: z.number() })),
   forcedByRule: z.boolean(),
   sameEdit: z.object({ group: z.string(), size: z.number().int() }).optional(),
-  note: z.object({ text: z.string(), model: z.string() }).optional(),
+  note: z.object({ text: z.string(), model: z.string(), questions: z.array(z.string()).optional() }).optional(),
 });
 const skippedItem = z.object({
   ...hunk,
