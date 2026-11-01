@@ -18,63 +18,66 @@ at 90% confidence, measured on PRs PR Lens never saw while it was fitted.
 Built with Meta's Muse models for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon)
 (Indie Developer track).
 
-## Results so far (Oct 30 2026)
+## Results so far (Nov 1 2026)
 
-183 real commits from 27 open-source libraries in three languages, each of which introduced a bug that a later commit
+316 real commits from 58 open-source libraries in three languages, each of which introduced a bug that a later commit
 fixed (the fix's own tests fail before it and pass after). PR Lens triaged each without knowing where the bug was. Each
 language is fitted and calibrated on its own; every number is out of fold (a repository is never scored by a fit that
 saw it).
 
 | | Python | TypeScript | C# |
 | --- | --- | --- | --- |
-| PRs (repositories) | 75 (10) | 72 (9) | 36 (8) |
-| Bug kept in the review list | 65 of 75 | 63 of 72 | 33 of 36 |
-| Lines left to read | 49% | 43% | 47% |
-| Threshold chosen without the PR's repository | 9 skipped, 50% read | 10 skipped, 44% read | 3 skipped, 47% read |
-| Ranking quality (AUC), combined / model alone | 0.82 / 0.74 | 0.82 / 0.73 | 0.69 / 0.72 |
+| PRs (repositories) | 168 (27) | 84 (14) | 64 (17) |
+| Bug kept in the review list | 142 of 168 | 73 of 84 | 56 of 64 |
+| Lines left to read | 44% | 41% | 40% |
+| Threshold chosen without the PR's repository | 28 skipped, 44% read | 12 skipped, 42% read | 7 skipped, 41% read |
+| Ranking quality (AUC), combined / model alone | 0.81 / 0.74 | 0.83 / 0.76 | 0.74 / 0.70 |
 
-**Does the model earn its place?** At the same 20% miss target, held out by repository, the share of lines left to read:
+**Does the model earn its place?** At the same 20% miss target, held out by repository, the share of lines left to read,
+and how many bugs each ranking keeps when it may read only as much as PR Lens does:
 
-| Ranking | Python | TypeScript |
-| --- | --- | --- |
-| Random skipping | 83% | 72% |
-| Logic density alone | 70% | 71% |
-| Code features, no model | 52% | 44% |
-| Spark Open alone | 66% | 53% |
-| **PR Lens (combined)** | **50%** | **44%** |
+| Ranking | Python read | Python kept | TypeScript read | TypeScript kept | C# read | C# kept |
+| --- | --- | --- | --- | --- | --- | --- |
+| Random skipping | 76% | 85 | 70% | 47 | 80% | 30 |
+| Logic density alone | 63% | 95 | 65% | 54 | 67% | 30 |
+| Code features, no model | 49% | 132 | 42% | 73 | 41% | 55 |
+| Spark Open alone | 53% | 134 | 42% | 71 | 55% | 46 |
+| **PR Lens (combined)** | **44%** | **142** | **42%** | **73** | **41%** | **56** |
 
-The honest reading: most of the saving comes from cheap code features; Spark Open saves 0–2 more points of reading on
-top, and on its own it ranks worse than they do. The scores are calibrated (expected calibration error 1.6% Python, 1.7%
-TypeScript), and resampling whole repositories puts the 90th-percentile miss rate (19.0% / 17.6%) inside the
-Clopper-Pearson bound (19.8% / 19.0%). C# has too few PRs for its combiner to beat code features alone; it is shown with
-that caveat.
+The honest reading: cheap code features do most of the work. Adding Spark Open saves about 5 points of reading in Python
+and keeps 10 more of the 168 bugs at the same budget; in TypeScript and C# it ties code features. The scores are
+calibrated (expected calibration error 0.9% Python, 1.2% TypeScript, 1.5% C#). Resampling whole repositories puts the
+90th-percentile miss rate at 20.2% / 18.0% / 19.7%, next to the Clopper-Pearson bound of 19.7% / 19.1% / 19.5%: the
+bound holds roughly, not with room to spare, when repositories are the unit.
 
 **On agent-written PRs.** The Muse Code agent (muse-spark-1.3-contributor) re-implemented 25 evaluation commits from a
 snapshot of each commit's parent and its message. The fix's own tests could judge 11 of its PRs; 10 held a confirmed bug,
 and PR Lens kept 8 of those 10 in the review list while leaving 27% of lines to read. Both misses are TypeScript regions
 scored just under the threshold. A case study, not a calibrated rate (Agent study tab).
 
-Caveats: most evaluation commits were written by people and are small; 183 PRs is a modest set. The Evaluation tab shows
-the full curves, per-repository results, the ablation and the calibration chart.
+Caveats: most evaluation commits were written by people and are small (median 135 changed lines). The Evaluation tab
+shows the full curves, per-repository results, the ablation and the calibration chart.
 
 ## A promise that survives drift
 
-A threshold calibrated once breaks when new PRs differ from old ones. Replayed in date order, the fixed Python
-threshold skips 43% of bugs against a promised 20%. PR Lens instead moves each repository's threshold whenever a bug
-surfaces: a bug in skipped code tightens it, a bug in code it sent to review loosens it, and a PR with no bug leaves it
-alone (each PR counts once):
+A threshold calibrated once is right only while new PRs look like the old ones. PR Lens moves each repository's
+threshold whenever a bug surfaces: a bug in skipped code tightens it, a bug in code it sent to review loosens it, and a
+PR with no bug leaves it alone (each PR counts once):
 
     theta_{t+1} = theta_t - eta * (err_t - alpha)        (threshold = sigmoid(theta); adaptive conformal inference)
 
 For every sequence of PRs, drifting or even adversarial, the share of the n surfaced bugs that sat in skipped code is at
-most `alpha + (theta_1 - logit(floor) + eta*(1 - alpha)) / (eta*n)`. That is 32% after 60 bugs and 23% after 200, falling
-toward 20% (proof in `src/prlens/adaptive.py`; the tests check it against an adversary).
+most `alpha + (theta_1 - logit(floor) + eta*(1 - alpha)) / (eta*n)`, which falls toward 20% as n grows (proof in
+`src/prlens/adaptive.py`; the tests check it against an adversary).
 
-| Replay of the Python evaluation PRs (60 after a 15-PR warm-up) | Fixed threshold | Adaptive threshold |
+| Replay of the Python evaluation PRs (153 after a 15-PR warm-up) | Fixed threshold | Adaptive threshold |
 | --- | --- | --- |
-| Date order | 43% of bugs skipped | 22% skipped, under the proven ceiling of 32% |
-| Hardest repositories last | 43% | 23% |
-| 200 random orders (no drift) | 6% skipped, 57% of lines read | 17% skipped, **48%** read (worst tenth 20%) |
+| Hardest repositories last | 46% of bugs skipped | 23% skipped (proven ceiling 25%) |
+| Date order | 0% skipped, but 82% of lines read | 16% skipped, 50% of lines read |
+| 200 random orders (no drift) | 6% skipped, 62% of lines read | 19% skipped, **45%** read (worst tenth 20%) |
+
+The fixed threshold fails both ways: it under-reads when the code gets harder and over-reads when its first PRs were
+unusually risky. The adaptive one spends the stated error budget in both cases.
 
 Assumptions, stated in the product: each outcome is reported before the next PR is triaged, and the no-model skips
 (proven formatting, docs, lock files) hold no functional bug.
