@@ -548,6 +548,9 @@ def triage(args) -> None:
                 fh.write(json.dumps({**r, "key": k}) + "\n")
     cache.update(new)
 
+    sugg_path = STUDY / "suggestions.jsonl"
+    suggestions = ({json.loads(l)["task"]: json.loads(l) for l in sugg_path.read_text().splitlines() if l.strip()}
+                   if sugg_path.exists() else {})
     out, rows = [], []
     for n, pr in prs.items():
         bug_ids = label(pr, labels.get(n, [])) if val[n]["verdict"] == "bug" else []
@@ -565,11 +568,18 @@ def triage(args) -> None:
         o.update(source="agent", language=language, branch=f"muse/{tasks[n]['repo']}-{pr['sha'][:7]}",
                  author={"name": AGENT, "kind": "ai_agent", "agent": f"{AGENT} ({AGENT_MODEL})"},
                  panel=[s.name, "combiner", "rules"], taskSummary=pr["message"][:1500])
+        sg = suggestions.get(n)
+        sg_diff = STUDY / "suggest" / f"{n.replace('@', '__')}.diff"
+        if sg and sg_diff.exists():
+            text = "".join(b for p_, b in split_diff(sg_diff.read_text()) if not ARTEFACT.search(p_) and not ENV_FILES.search(p_))
+            o["suggestion"] = {"by": AGENT, "model": AGENT_MODEL, "status": sg["status"], "tests": sg["tests"],
+                               "before": sg["before"], "diff": "\n".join(text.splitlines()[:400])}
         out.append(o)
         read = sum(i["added"] + i["removed"] for i in o["toReview"])
         rows.append({"task": n, "prId": o["id"], "verdict": val[n]["verdict"], "bugKind": val[n].get("bug_kind"),
                      "caught": o["groundTruth"]["caughtByTriage"] if bug_ids else None, "lines": pr["lines"],
-                     "read": read, "why": [lb["why"] for lb in labels.get(n, [])]})
+                     "read": read, "why": [lb["why"] for lb in labels.get(n, [])],
+                     "suggestion": sg["status"] if sg and "suggestion" in o else None})
         print(f"{n:28s} {val[n]['verdict']:7s} read {read:4d}/{pr['lines']:<4d} "
               + ("" if not bug_ids else ("bug KEPT for review" if o["groundTruth"]["caughtByTriage"] else "bug SKIPPED")))
 

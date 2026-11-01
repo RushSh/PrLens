@@ -27,6 +27,7 @@ export default async function AgentStudyPage() {
   const lines = study.tasks.reduce((a, t) => a + t.lines, 0);
   const top = study.funnel[0]?.prs ?? 1;
   const omissions = bugs.filter((t) => t.bugKind === "omission").length;
+  const suggested = study.tasks.filter((t) => t.suggestion);
 
   return (
     <div className="space-y-6">
@@ -69,6 +70,21 @@ export default async function AgentStudyPage() {
         </p>
       </Box>
 
+      {suggested.length ? (
+        <Box title="Closing the loop: Muse Code fixes what PR Lens flagged">
+          <p className="px-4 py-3 text-sm text-fg">
+            For each bug PR Lens kept for review, {study.agent} was shown the flagged regions with Muse Spark&apos;s notes and
+            questions (never the bug, the later fix or its tests) and asked for the smallest fix. The later fix&apos;s tests then
+            judged it: <span className="font-semibold">{suggested.filter((t) => t.suggestion === "fixed").length} of {suggested.length}</span>{" "}
+            suggestions make them pass
+            {suggested.some((t) => t.suggestion === "partly fixed")
+              ? `, ${suggested.filter((t) => t.suggestion === "partly fixed").length} partly`
+              : ""}
+            . Every suggestion is labelled “suggested, still needs human review”; PR Lens never applies one.
+          </p>
+        </Box>
+      ) : null}
+
       <Box title={`The ${study.tasks.length} judgeable agent PRs`}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px] text-sm">
@@ -78,6 +94,7 @@ export default async function AgentStudyPage() {
                 <th className="px-4 py-2 font-normal">Fix tests</th>
                 <th className="px-4 py-2 text-right font-normal">Lines read</th>
                 <th className="px-4 py-2 font-normal">PR Lens</th>
+                <th className="px-4 py-2 font-normal">Muse Code fix</th>
               </tr>
             </thead>
             <tbody>
@@ -109,6 +126,17 @@ export default async function AgentStudyPage() {
                       <span className="inline-flex items-center gap-1 text-danger"><XIcon size={14} /> skipped</span>
                     ) : (
                       <span className="text-muted">no bug to keep</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-2">
+                    {t.suggestion === "fixed" ? (
+                      <span className="text-success">fix tests pass</span>
+                    ) : t.suggestion === "partly fixed" ? (
+                      <span className="text-attention">partly</span>
+                    ) : t.suggestion ? (
+                      <span className="text-muted">{t.suggestion === "not fixed" ? "not fixed" : "not judged"}</span>
+                    ) : (
+                      <span className="text-muted">—</span>
                     )}
                   </td>
                 </tr>
