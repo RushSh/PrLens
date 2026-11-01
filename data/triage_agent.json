@@ -1,7 +1,7 @@
 {
  "kind": "triage",
  "name": "agent",
- "generated_at": "2026-11-01T17:26:32+00:00",
+ "generated_at": "2026-11-01T18:33:40+00:00",
  "model": "spark_open",
  "threshold": 0.061336526333574365,
  "alpha": 0.2,
@@ -50,7 +50,7 @@
       "the new elif chain in singularize still strips the trailing s of words ending in 'ss'; the fix adds the missing branch here"
      ],
      "suggestion": "not fixed",
-     "suggestionBlind": null
+     "suggestionBlind": "not fixed"
     },
     {
      "task": "sqlglot@47e255dda3",
@@ -64,7 +64,7 @@
       "COUNT(*) FILTER special case checks exp.Star only, missing table.* stars; the fix rewrites this check"
      ],
      "suggestion": "no change",
-     "suggestionBlind": null
+     "suggestionBlind": "fixed"
     },
     {
      "task": "packaging@e80f70f8b1",
@@ -78,7 +78,7 @@
       "dir_info check accepts file: URLs with a relative path; the fix splits this check and adds the absolute-path test"
      ],
      "suggestion": "no change",
-     "suggestionBlind": null
+     "suggestionBlind": "not fixed"
     },
     {
      "task": "isort@8b450398ef",
@@ -92,7 +92,7 @@
       "swapping in a StringIO for a non-seekable stream; the fix replaces this with an explicit ValueError"
      ],
      "suggestion": "not fixed",
-     "suggestionBlind": null
+     "suggestionBlind": "not fixed"
     },
     {
      "task": "more-itertools@eb24d3927a",
@@ -106,7 +106,7 @@
       "islice(iterable, start, stop) rejects the negative stop the fast path accepts; the fix guards this slow path"
      ],
      "suggestion": "no change",
-     "suggestionBlind": null
+     "suggestionBlind": "no change"
     },
     {
      "task": "packaging@ee13ba2c1c",
@@ -120,7 +120,7 @@
       "the fast path iterates the version before checking it is a string, so non-strings raise TypeError, not InvalidVersion"
      ],
      "suggestion": "not fixed",
-     "suggestionBlind": null
+     "suggestionBlind": "not fixed"
     },
     {
      "task": "mistune@8baf90bf10",
@@ -146,7 +146,7 @@
       "peek appends to the cache, which drops the item when maxlen is 0; the fix puts the item back here"
      ],
      "suggestion": "fixed",
-     "suggestionBlind": null
+     "suggestionBlind": "fixed"
     },
     {
      "task": "es-toolkit@97e4eee74a",
@@ -174,7 +174,7 @@
       "the domain regex the fix rewrites (case handling); the fix also adds the missing to-json-schema case, which is outside this PR"
      ],
      "suggestion": "no change",
-     "suggestionBlind": null
+     "suggestionBlind": "no change"
     },
     {
      "task": "immer@8848a5b169",
@@ -812,7 +812,7 @@
      "checked": false,
      "note": "the project's suite did not run here"
     },
-    "control": null
+    "control": "not fixed"
    }
   },
   {
@@ -1252,7 +1252,7 @@
     },
     "diff": "",
     "suite": null,
-    "control": null
+    "control": "fixed"
    }
   },
   {
@@ -1806,7 +1806,7 @@
     },
     "diff": "",
     "suite": null,
-    "control": null
+    "control": "not fixed"
    }
   },
   {
@@ -2634,7 +2634,7 @@
      "broken": [],
      "broken_count": 0
     },
-    "control": null
+    "control": "not fixed"
    }
   },
   {
@@ -4023,7 +4023,7 @@
     },
     "diff": "",
     "suite": null,
-    "control": null
+    "control": "no change"
    }
   },
   {
@@ -4715,7 +4715,7 @@
      "checked": false,
      "note": "the project's suite did not run here"
     },
-    "control": null
+    "control": "not fixed"
    }
   },
   {
@@ -7449,7 +7449,7 @@
      "broken": [],
      "broken_count": 0
     },
-    "control": null
+    "control": "fixed"
    }
   },
   {
@@ -8354,7 +8354,7 @@
     },
     "diff": "",
     "suite": null,
-    "control": null
+    "control": "no change"
    }
   },
   {

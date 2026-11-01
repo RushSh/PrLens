@@ -64,6 +64,12 @@ review); in the 11th Muse Code avoided the human's bug. PR Lens kept 8 of the 10
 lines to read; both misses are TypeScript regions scored just under the threshold. A case study, not a calibrated rate
 (Agent study tab).
 
+We also tried closing the loop: for each of the 8 kept bugs, Muse Code got its own change back with PR Lens's flagged
+regions, Muse Spark's notes and questions (never the bug or the later fix), and was asked for the smallest fix. As a
+control, it got the same change with no flags. The later fix's tests passed after 1 of 8 flagged suggestions and 2 of 8
+control ones (the flagged prompt more often left the code alone: 4 vs 2 made no change). On these 8 PRs the flags did
+not help Muse Code fix the bug; PR Lens's value is in what a human reads, not yet in steering an agent's repair.
+
 Caveats: most evaluation commits were written by people and are small (median 135 changed lines). The Evaluation tab
 shows the full curves, per-repository results, the ablation and the calibration chart.
 

@@ -1,0 +1,31 @@
+diff --git a/src/packaging/version.py b/src/packaging/version.py
+index 3676ff9..df9458b 100644
+--- a/src/packaging/version.py
++++ b/src/packaging/version.py
+@@ -380,7 +380,9 @@ class Version(_BaseVersion):
+             exception will be raised.
+         """
+         # Fast path for simple versions (digits and dots only), e.g. "1.2.3".
+-        if all(c in _SIMPLE_VERSION_INDICATORS for c in version):
++        if isinstance(version, str) and all(
++            c in _SIMPLE_VERSION_INDICATORS for c in version
++        ):
+             try:
+                 self._release = tuple(map(int, version.split(".")))
+             except ValueError:
+diff --git a/tests/test_version.py b/tests/test_version.py
+index afdbe3b..302292b 100644
+--- a/tests/test_version.py
++++ b/tests/test_version.py
+@@ -135,6 +135,11 @@ class TestVersion:
+         with pytest.raises(InvalidVersion):
+             Version(version)
+ 
++    @pytest.mark.parametrize("version", [None, ["1", ".", "0"]])
++    def test_non_string_versions(self, version: object) -> None:
++        with pytest.raises(TypeError):
++            Version(version)  # type: ignore[arg-type]
++
+     @pytest.mark.parametrize(
+         ("version", "normalized"),
+         [
