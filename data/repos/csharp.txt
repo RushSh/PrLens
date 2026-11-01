@@ -1,0 +1,13 @@
+# C# repositories for the evaluation set (approved Oct 28, 2026).
+# One per line: url | install command (optional) | test command with {files} (optional).
+# Without them, prlens validate runs `dotnet test <test project> --filter FullyQualifiedName~<test class>`.
+https://github.com/Humanizr/Humanizer
+https://github.com/xoofx/markdig
+https://github.com/scriban/scriban
+https://github.com/JamesNK/Newtonsoft.Json
+https://github.com/spectreconsole/spectre.console
+https://github.com/aaubry/YamlDotNet
+https://github.com/FluentValidation/FluentValidation
+https://github.com/morelinq/MoreLINQ
+https://github.com/nodatime/nodatime
+https://github.com/bchavez/Bogus

@@ -1,0 +1,25 @@
+https://github.com/more-itertools/more-itertools.git | pip install -e . pytest
+https://github.com/mahmoud/boltons.git | pip install -e . pytest
+https://github.com/andialbrecht/sqlparse.git | pip install -e . pytest
+https://github.com/python-humanize/humanize.git | pip install -e . pytest freezegun
+https://github.com/python-poetry/tomlkit.git | pip install -e . pytest
+https://github.com/marshmallow-code/marshmallow.git | pip install -e .[tests]
+https://github.com/python-attrs/attrs.git | pip install -e .[tests]
+https://github.com/dateutil/dateutil.git | pip install -e . pytest hypothesis freezegun
+https://github.com/pytoolz/toolz.git | pip install -e . pytest
+https://github.com/pyparsing/pyparsing.git | pip install -e . pytest
+https://github.com/tobymao/sqlglot.git | pip install -e . pytest
+https://github.com/networkx/networkx.git | pip install -e . pytest
+https://github.com/Textualize/rich.git | pip install -e . pytest
+https://github.com/pallets/click.git | pip install -e . pytest
+https://github.com/PyCQA/isort.git | pip install -e . pytest hypothesis black colorama
+https://github.com/pygments/pygments.git | pip install -e . pytest
+https://github.com/Python-Markdown/markdown.git | pip install -e . pytest
+https://github.com/lepture/mistune.git | pip install -e . pytest
+https://github.com/pypa/packaging.git | pip install -e . pytest pretend
+https://github.com/astanin/python-tabulate.git | pip install -e . pytest
+https://github.com/arrow-py/arrow.git | pip install -e . pytest pytz simplejson dateparser
+https://github.com/python-attrs/cattrs.git | pip install -e . pytest hypothesis
+https://github.com/python-babel/babel.git | pip install -e . pytest freezegun
+https://github.com/python-semver/python-semver.git | pip install -e . pytest
+https://github.com/un33k/python-slugify.git | pip install -e . pytest

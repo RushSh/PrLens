@@ -1,0 +1,15 @@
+# TypeScript repositories for the dataset growth (Oct 30): small unjs utilities and focused libraries with vitest/jest
+https://github.com/unjs/ufo
+https://github.com/unjs/defu
+https://github.com/unjs/ofetch
+https://github.com/unjs/destr
+https://github.com/unjs/pathe
+https://github.com/unjs/unstorage
+https://github.com/unjs/consola
+https://github.com/gvergnaud/ts-pattern
+https://github.com/flightcontrolhq/superjson
+https://github.com/supermacro/neverthrow
+https://github.com/101arrowz/fflate
+https://github.com/sindresorhus/ky
+https://github.com/ianstormtaylor/superstruct
+https://github.com/jquense/yup

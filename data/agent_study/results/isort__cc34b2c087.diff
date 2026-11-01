@@ -1,0 +1,70 @@
+diff --git a/isort/main.py b/isort/main.py
+index 95e910d..34614c6 100644
+--- a/isort/main.py
++++ b/isort/main.py
+@@ -853,12 +853,21 @@ def main(argv: Optional[Sequence[str]] = None, stdin: Optional[TextIOWrapper] =
+         print(json.dumps(config.__dict__, indent=4, separators=(",", ": "), default=_preconvert))
+         return
+     elif file_names == ["-"]:
+-        api.sort_stream(
+-            input_stream=sys.stdin if stdin is None else stdin,
+-            output_stream=sys.stdout,
+-            config=config,
+-            show_diff=show_diff,
+-        )
++        if check:
++            incorrectly_sorted = not api.check_stream(
++                input_stream=sys.stdin if stdin is None else stdin,
++                config=config,
++                show_diff=show_diff,
++            )
++            if incorrectly_sorted:
++                wrong_sorted_files = True
++        else:
++            api.sort_stream(
++                input_stream=sys.stdin if stdin is None else stdin,
++                output_stream=sys.stdout,
++                config=config,
++                show_diff=show_diff,
++            )
+     else:
+         skipped: List[str] = []
+         broken: List[str] = []
+diff --git a/tests/unit/test_main.py b/tests/unit/test_main.py
+index 82561b3..827ab73 100644
+--- a/tests/unit/test_main.py
++++ b/tests/unit/test_main.py
+@@ -300,6 +300,33 @@ import b
+         main.main(["-sp", str(config_file), "-"], stdin=input_content)
+ 
+ 
++def test_main_stdin_check_only(capsys):
++    # Correctly sorted stdin should pass check without exiting
++    sorted_input = TextIOWrapper(BytesIO(b"import a\nimport b\n"))
++    main.main(["-", "--check"], stdin=sorted_input)
++    out, error = capsys.readouterr()
++    assert out == ""
++    assert "ERROR" not in error
++
++    # Incorrectly sorted stdin should fail check with a non-zero exit
++    unsorted_input = TextIOWrapper(BytesIO(b"import b\nimport a\n"))
++    with pytest.raises(SystemExit) as exc_info:
++        main.main(["-", "--check"], stdin=unsorted_input)
++    assert exc_info.value.code == 1
++    out, error = capsys.readouterr()
++    assert out == ""
++    assert "ERROR" in error
++
++    # Check with diff should show the diff and still fail check
++    unsorted_input = TextIOWrapper(BytesIO(b"import b\nimport a\n"))
++    with pytest.raises(SystemExit) as exc_info:
++        main.main(["-", "--check", "--diff"], stdin=unsorted_input)
++    assert exc_info.value.code == 1
++    out, error = capsys.readouterr()
++    assert "import a" in out
++    assert "import b" in out
++
++
+ def test_isort_command():
+     """Ensure ISortCommand got registered, otherwise setuptools error must have occurred"""
+     assert main.ISortCommand

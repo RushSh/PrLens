@@ -1,0 +1,49 @@
+diff --git a/src/utils/url.test.ts b/src/utils/url.test.ts
+index a299620..0310ff7 100644
+--- a/src/utils/url.test.ts
++++ b/src/utils/url.test.ts
+@@ -254,6 +254,21 @@ describe('url', () => {
+       searchParams = new URLSearchParams('?name=sam=tom')
+       expect(getQueryParam('name', searchParams.get('name')?.toString()))
+     })
++
++    it('Search behind the question mark', () => {
++      // keys in the path must be ignored
++      expect(getQueryParam('http://example.com/&name=evil?foo=bar', 'name')).toBe(undefined)
++      expect(getQueryParam('http://example.com/&name=evil?name=good', 'name')).toBe('good')
++      expect(getQueryParam('http://example.com/&name&foo=bar?baz=qux', 'name')).toBe(undefined)
++      expect(getQueryParam('http://example.com/&name=evil', 'name')).toBe(undefined)
++      expect(getQueryParam('http://example.com/path', 'name')).toBe(undefined)
++      // `?` inside a query value does not start a new parameter
++      expect(getQueryParam('http://example.com/?foo=?name=evil', 'name')).toBe(undefined)
++      expect(getQueryParam('http://example.com/?foo=?name=evil&name=good', 'name')).toBe('good')
++      // first-parameter prefix collisions still fall through to later parameters
++      expect(getQueryParam('http://example.com/?name1=bad&name=good', 'name')).toBe('good')
++      expect(getQueryParam('http://example.com/?name1=bad', 'name')).toBe(undefined)
++    })
+   })
+ 
+   describe('getQueryParams', () => {
+diff --git a/src/utils/url.ts b/src/utils/url.ts
+index 8e4dcb4..037c8ac 100644
+--- a/src/utils/url.ts
++++ b/src/utils/url.ts
+@@ -217,10 +217,15 @@ const _getQueryParam = (
+   if (!multiple && key && !/[%+]/.test(key)) {
+     // optimized for unencoded key
+ 
+-    let keyIndex = url.indexOf(`?${key}`, 8)
+-    if (keyIndex === -1) {
+-      keyIndex = url.indexOf(`&${key}`, 8)
++    const queryIndex = url.indexOf('?', 8)
++    if (queryIndex === -1) {
++      return undefined
+     }
++    // Search behind the question mark only.
++    // The first parameter follows `?`, the rest follow `&`.
++    let keyIndex = url.startsWith(key, queryIndex + 1)
++      ? queryIndex
++      : url.indexOf(`&${key}`, queryIndex + 1)
+     while (keyIndex !== -1) {
+       const trailingKeyCode = url.charCodeAt(keyIndex + key.length + 1)
+       if (trailingKeyCode === 61) {

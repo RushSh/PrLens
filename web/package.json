@@ -1,0 +1,16 @@
+{
+  "name": "prlens-web",
+  "private": true,
+  "type": "module",
+  "workspaces": ["shared", "backend", "frontend"],
+  "scripts": {
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test -w backend",
+    "build": "npm run build -w frontend"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
+}

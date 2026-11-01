@@ -1,0 +1,24 @@
+# C# repositories for growing the evaluation set (Oct 30, 2026): the 9 from csharp.txt (Humanizer left out: its
+# build runs out of memory here) plus 12 actively maintained libraries with unit tests that build on .NET 8/10.
+# One per line: url | install command (optional) | test command with {files} (optional).
+https://github.com/xoofx/markdig
+https://github.com/scriban/scriban
+https://github.com/JamesNK/Newtonsoft.Json
+https://github.com/spectreconsole/spectre.console
+https://github.com/aaubry/YamlDotNet
+https://github.com/FluentValidation/FluentValidation
+https://github.com/morelinq/MoreLINQ
+https://github.com/nodatime/nodatime
+https://github.com/bchavez/Bogus
+https://github.com/App-vNext/Polly
+https://github.com/sebastienros/jint
+https://github.com/sebastienros/fluid
+https://github.com/AngleSharp/AngleSharp
+https://github.com/JoshClose/CsvHelper
+https://github.com/RicoSuter/NJsonSchema
+https://github.com/zzzprojects/System.Linq.Dynamic.Core
+https://github.com/Tyrrrz/CliWrap
+https://github.com/Tyrrrz/CliFx
+https://github.com/mganss/HtmlSanitizer
+https://github.com/shouldly/shouldly
+https://github.com/ardalis/GuardClauses

@@ -1,0 +1,50 @@
+diff --git a/sqlparse/engine/grouping.py b/sqlparse/engine/grouping.py
+index 2fb0a4c..d86e67a 100644
+--- a/sqlparse/engine/grouping.py
++++ b/sqlparse/engine/grouping.py
+@@ -342,14 +342,25 @@ def group_functions(tlist):
+     has_create = False
+     has_table = False
+     for tmp_token in tlist.tokens:
+-        if tmp_token.value == 'CREATE':
++        if tmp_token.normalized == 'CREATE':
+             has_create = True
+-        if tmp_token.value == 'TABLE':
++        if tmp_token.normalized == 'TABLE':
+             has_table = True
+     if has_create and has_table:
+-        return
++        # Don't group the table name and column definitions as a function,
++        # but do group functions in a CREATE TABLE AS SELECT statement.
++        select_idx, _ = tlist.token_next_by(t=T.DML)
++        as_idx, _ = tlist.token_next_by(m=(T.Keyword, 'AS'))
++        if select_idx is not None:
++            start_idx = select_idx
++        elif as_idx is not None:
++            start_idx = as_idx
++        else:
++            return
++    else:
++        start_idx = -1
+ 
+-    tidx, token = tlist.token_next_by(t=T.Name)
++    tidx, token = tlist.token_next_by(t=T.Name, idx=start_idx)
+     while token:
+         nidx, next_ = tlist.token_next(tidx)
+         if isinstance(next_, sql.Parenthesis):
+diff --git a/tests/test_grouping.py b/tests/test_grouping.py
+index cf629e9..63214e3 100644
+--- a/tests/test_grouping.py
++++ b/tests/test_grouping.py
+@@ -317,6 +317,11 @@ def test_grouping_alias():
+     assert p.tokens[4].get_alias() == 'view'
+ 
+ 
++def test_grouping_alias_ctas():
++    p = sqlparse.parse('CREATE TABLE tbl AS SELECT foo(bar) AS baz')[0]
++    assert p.tokens[-1].get_alias() == 'baz'
++
++
+ def test_grouping_alias_case():
+     # see issue46
+     p = sqlparse.parse('CASE WHEN 1 THEN 2 ELSE 3 END foo')[0]

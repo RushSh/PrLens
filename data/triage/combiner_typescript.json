@@ -1,0 +1,34 @@
+{
+  "mu": [
+    -2.8056723761345794,
+    0.9438977131307872,
+    0.3340227507755946,
+    1.947229872017319
+  ],
+  "sd": [
+    1.5467804588627205,
+    0.9179370471776056,
+    0.47164770081406554,
+    0.9216424285970424
+  ],
+  "w": [
+    -3.7829729472147178,
+    0.35178554085867,
+    0.6566649339580425,
+    -1.719077689786832,
+    0.10661517331180269
+  ],
+  "features": [
+    "model log-odds",
+    "log logic",
+    "test file",
+    "log size"
+  ],
+  "spec": "scored-only",
+  "model": "spark_open",
+  "threshold": 0.06807157901899474,
+  "alpha": 0.2,
+  "prs": 84,
+  "language": "typescript",
+  "note": "fit on all traced PRs of this language; threshold from out-of-fold scores"
+}

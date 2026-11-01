@@ -1,0 +1,31 @@
+diff --git a/src/compat/array/findLastIndex.spec.ts b/src/compat/array/findLastIndex.spec.ts
+index 9df6868..37d1493 100644
+--- a/src/compat/array/findLastIndex.spec.ts
++++ b/src/compat/array/findLastIndex.spec.ts
+@@ -107,6 +107,12 @@ describe('findLastIndex', () => {
+     expect(findLastIndex(array, x => x === 2, 4.2)).toBe(4);
+   });
+ 
++  it('findLastIndex with NaN fromIndex should coerce to 0', () => {
++    const arr = [1, 2, 3];
++    expect(findLastIndex(arr, x => x === 1, NaN)).toBe(0);
++    expect(findLastIndex(arr, x => x === 3, NaN)).toBe(-1);
++  });
++
+   it('should return `-1` when provided `null` or `undefined`', () => {
+     expect(findLastIndex(null, 'a')).toBe(-1);
+     expect(findLastIndex(undefined, 'a')).toBe(-1);
+diff --git a/src/compat/array/findLastIndex.ts b/src/compat/array/findLastIndex.ts
+index b4db226..e1ff001 100644
+--- a/src/compat/array/findLastIndex.ts
++++ b/src/compat/array/findLastIndex.ts
+@@ -61,6 +61,9 @@ export function findLastIndex<T>(
+   if (!arr) {
+     return -1;
+   }
++  if (Number.isNaN(fromIndex)) {
++    fromIndex = 0;
++  }
+   if (fromIndex < 0) {
+     fromIndex = Math.max(arr.length + fromIndex, 0);
+   } else {

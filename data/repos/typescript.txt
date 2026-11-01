@@ -1,0 +1,13 @@
+# TypeScript repositories for the evaluation set (approved Oct 28, 2026).
+# One per line: url | install command (optional) | test command with {files} (optional).
+# Without them, prlens validate picks the package manager from the lockfile and runs vitest or jest per test file.
+https://github.com/colinhacks/zod
+https://github.com/date-fns/date-fns
+https://github.com/eemeli/yaml
+https://github.com/remeda/remeda
+https://github.com/immerjs/immer
+https://github.com/h3js/h3
+https://github.com/open-circle/valibot
+https://github.com/toss/es-toolkit
+https://github.com/honojs/hono
+https://github.com/radashi-org/radashi

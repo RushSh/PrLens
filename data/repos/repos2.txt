@@ -1,0 +1,16 @@
+# Second batch of pure-Python repos for mining (repo URL | install command).
+https://github.com/tobymao/sqlglot.git | pip install -e . pytest
+https://github.com/networkx/networkx.git | pip install -e . pytest
+https://github.com/Textualize/rich.git | pip install -e . pytest
+https://github.com/pallets/click.git | pip install -e . pytest
+https://github.com/PyCQA/isort.git | pip install -e . pytest hypothesis
+https://github.com/pygments/pygments.git | pip install -e . pytest
+https://github.com/Python-Markdown/markdown.git | pip install -e . pytest
+https://github.com/lepture/mistune.git | pip install -e . pytest
+https://github.com/pypa/packaging.git | pip install -e . pytest pretend
+https://github.com/astanin/python-tabulate.git | pip install -e . pytest
+https://github.com/arrow-py/arrow.git | pip install -e . pytest pytz simplejson dateparser
+https://github.com/python-attrs/cattrs.git | pip install -e . pytest hypothesis
+https://github.com/python-babel/babel.git | pip install -e . pytest freezegun
+https://github.com/python-semver/python-semver.git | pip install -e . pytest
+https://github.com/un33k/python-slugify.git | pip install -e . pytest

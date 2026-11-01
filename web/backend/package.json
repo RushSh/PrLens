@@ -1,0 +1,35 @@
+{
+  "name": "backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "import": "tsx src/import/cli.ts",
+    "migrate": "dotenv -e .env -- node-pg-migrate up --migration-file-language sql",
+    "migrate:down": "dotenv -e .env -- node-pg-migrate down 1",
+    "migrate:create": "dotenv -e .env -- node-pg-migrate create --migration-file-language sql",
+    "db:reset": "node scripts/dev-db-reset.js",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@prlens/shared": "*",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.4",
+    "fastify": "^5.12.7",
+    "node-pg-migrate": "^9.0.0",
+    "pg": "^8.23.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@types/pg": "^8.15.5",
+    "dotenv-cli": "^11.0.0",
+    "embedded-postgres": "17.10.0-beta.17",
+    "tsx": "^4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

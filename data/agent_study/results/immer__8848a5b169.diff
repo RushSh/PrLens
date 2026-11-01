@@ -1,0 +1,97 @@
+diff --git a/__tests__/map-set.js b/__tests__/map-set.js
+index 1a485e1..058abe9 100644
+--- a/__tests__/map-set.js
++++ b/__tests__/map-set.js
+@@ -533,3 +533,40 @@ describe("RTK-5159: DraftSet leakage in Map", () => {
+ 		expect(() => JSON.stringify(result)).not.toThrow()
+ 	})
+ })
++
++describe("#1298: revoked Map/Set drafts throw on reads", () => {
++	const {produce} = new Immer({autoFreeze: true})
++	const isProd = process.env.NODE_ENV === "production"
++	const revokedError = isProd
++		? "[Immer] minified error nr: 3. Full error at: https://bit.ly/3cXEKWf"
++		: "[Immer] Cannot use a proxy that has been revoked"
++
++	test("Map draft reads throw after produce returns", () => {
++		let draft
++		let emptyDraft
++		produce({map: new Map([["a", 1]]), empty: new Map()}, d => {
++			draft = d.map
++			emptyDraft = d.empty
++		})
++		expect(() => draft.has("a")).toThrowError(revokedError)
++		expect(() => draft.size).toThrowError(revokedError)
++		expect(() => draft.keys()).toThrowError(revokedError)
++		expect(() => draft.values()).toThrowError(revokedError)
++		expect(() => draft.entries()).toThrowError(revokedError)
++		expect(() => draft.forEach(() => {})).toThrowError(revokedError)
++		// forEach on an empty map never reached `get`, so it silently returned
++		expect(() => emptyDraft.forEach(() => {})).toThrowError(revokedError)
++		// Already threw before the fix, kept for parity
++		expect(() => draft.get("a")).toThrowError(revokedError)
++	})
++
++	test("Set draft size throws after produce returns", () => {
++		let draft
++		produce({set: new Set(["a"])}, d => {
++			draft = d.set
++		})
++		expect(() => draft.size).toThrowError(revokedError)
++		// Already threw before the fix, kept for parity
++		expect(() => draft.has("a")).toThrowError(revokedError)
++	})
++})
+diff --git a/src/plugins/mapset.ts b/src/plugins/mapset.ts
+index 0cc2158..c9b21cb 100644
+--- a/src/plugins/mapset.ts
++++ b/src/plugins/mapset.ts
+@@ -54,11 +54,15 @@ export function enableMapSet() {
+ 		}
+ 
+ 		get size(): number {
+-			return latest(this[DRAFT_STATE]).size
++			const state: MapState = this[DRAFT_STATE]
++			assertUnrevoked(state)
++			return latest(state).size
+ 		}
+ 
+ 		has(key: any): boolean {
+-			return latest(this[DRAFT_STATE]).has(key)
++			const state: MapState = this[DRAFT_STATE]
++			assertUnrevoked(state)
++			return latest(state).has(key)
+ 		}
+ 
+ 		set(key: any, value: any) {
+@@ -109,6 +113,7 @@ export function enableMapSet() {
+ 
+ 		forEach(cb: (value: any, key: any, self: any) => void, thisArg?: any) {
+ 			const state: MapState = this[DRAFT_STATE]
++			assertUnrevoked(state)
+ 			latest(state).forEach((_value: any, key: any, _map: any) => {
+ 				cb.call(thisArg, this.get(key), key, this)
+ 			})
+@@ -132,7 +137,9 @@ export function enableMapSet() {
+ 		}
+ 
+ 		keys(): IterableIterator<any> {
+-			return latest(this[DRAFT_STATE]).keys()
++			const state: MapState = this[DRAFT_STATE]
++			assertUnrevoked(state)
++			return latest(state).keys()
+ 		}
+ 
+ 		values(): IterableIterator<any> {
+@@ -225,7 +232,9 @@ export function enableMapSet() {
+ 		}
+ 
+ 		get size(): number {
+-			return latest(this[DRAFT_STATE]).size
++			const state: SetState = this[DRAFT_STATE]
++			assertUnrevoked(state)
++			return latest(state).size
+ 		}
+ 
+ 		has(value: any): boolean {

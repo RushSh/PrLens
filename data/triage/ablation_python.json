@@ -1,0 +1,151 @@
+{
+ "alpha": 0.2,
+ "prs": 168,
+ "budget": 0.443977713602287,
+ "rows": [
+  {
+   "key": "random",
+   "label": "Random skipping",
+   "threshold": 0.1983,
+   "missed": 26.0,
+   "read_share": 0.7591,
+   "held_out_missed": 26.65,
+   "held_out_read_share": 0.7604,
+   "auc": 0.5018,
+   "kept_at_budget": 85.19
+  },
+  {
+   "key": "logic density",
+   "label": "Logic density alone",
+   "threshold": 0.6931,
+   "missed": 26,
+   "read_share": 0.6307,
+   "held_out_missed": 27,
+   "held_out_read_share": 0.6306,
+   "auc": 0.7323,
+   "kept_at_budget": 95
+  },
+  {
+   "key": "code features",
+   "label": "Code features, no model",
+   "threshold": 0.0539,
+   "missed": 26,
+   "read_share": 0.4802,
+   "held_out_missed": 27,
+   "held_out_read_share": 0.4856,
+   "auc": 0.7808,
+   "kept_at_budget": 132
+  },
+  {
+   "key": "spark open",
+   "label": "Spark Open alone",
+   "threshold": 0.05,
+   "missed": 26,
+   "read_share": 0.5323,
+   "held_out_missed": 28,
+   "held_out_read_share": 0.5327,
+   "auc": 0.7435,
+   "kept_at_budget": 134
+  },
+  {
+   "key": "combined",
+   "label": "PR Lens combined",
+   "threshold": 0.0613,
+   "missed": 26,
+   "read_share": 0.444,
+   "held_out_missed": 28,
+   "held_out_read_share": 0.4437,
+   "auc": 0.8094,
+   "kept_at_budget": 142
+  },
+  {
+   "key": "with-must-review",
+   "label": "PR Lens, must-review regions in the fit (comparison)",
+   "threshold": 0.0631,
+   "missed": 26,
+   "read_share": 0.4403,
+   "held_out_missed": 27,
+   "held_out_read_share": 0.4434,
+   "auc": 0.8093,
+   "kept_at_budget": 142
+  }
+ ],
+ "reliability": {
+  "bins": [
+   {
+    "mean_score": 0.0015,
+    "bug_rate": 0.0,
+    "regions": 335,
+    "bugs": 0
+   },
+   {
+    "mean_score": 0.0052,
+    "bug_rate": 0.006,
+    "regions": 336,
+    "bugs": 2
+   },
+   {
+    "mean_score": 0.0207,
+    "bug_rate": 0.0208,
+    "regions": 336,
+    "bugs": 7
+   },
+   {
+    "mean_score": 0.027,
+    "bug_rate": 0.0327,
+    "regions": 336,
+    "bugs": 11
+   },
+   {
+    "mean_score": 0.0307,
+    "bug_rate": 0.0179,
+    "regions": 336,
+    "bugs": 6
+   },
+   {
+    "mean_score": 0.038,
+    "bug_rate": 0.0209,
+    "regions": 335,
+    "bugs": 7
+   },
+   {
+    "mean_score": 0.052,
+    "bug_rate": 0.0506,
+    "regions": 336,
+    "bugs": 17
+   },
+   {
+    "mean_score": 0.0751,
+    "bug_rate": 0.0982,
+    "regions": 336,
+    "bugs": 33
+   },
+   {
+    "mean_score": 0.1243,
+    "bug_rate": 0.128,
+    "regions": 336,
+    "bugs": 43
+   },
+   {
+    "mean_score": 0.2775,
+    "bug_rate": 0.2589,
+    "regions": 336,
+    "bugs": 87
+   }
+  ],
+  "brier": 0.05397,
+  "brier_base_rate": 0.05941,
+  "ece": 0.0085,
+  "regions": 3358,
+  "base_rate": 0.0634
+ },
+ "bootstrap": {
+  "draws": 2000,
+  "repos": 27,
+  "observed": 0.15476190476190477,
+  "p50": 0.15384615384615385,
+  "p90": 0.20238095238095238,
+  "p95": 0.21678321678321677,
+  "clopper_pearson_90": 0.19660675740812267
+ }
+}

@@ -1,0 +1,277 @@
+diff --git a/isort/api.py b/isort/api.py
+index 4e48fc2..c6fbf63 100644
+--- a/isort/api.py
++++ b/isort/api.py
+@@ -636,6 +636,7 @@ def _config(
+         config is DEFAULT_CONFIG
+         and "settings_path" not in config_kwargs
+         and "settings_file" not in config_kwargs
++        and "config_root" not in config_kwargs
+     ):
+         config_kwargs["settings_path"] = path
+ 
+diff --git a/isort/main.py b/isort/main.py
+index afd2300..c6e0b52 100644
+--- a/isort/main.py
++++ b/isort/main.py
+@@ -267,6 +267,13 @@ def _build_arg_parser() -> argparse.ArgumentParser:
+         help="Tells isort to resolve the configs for all sub-directories "
+         "and sort files in terms of its closest config files.",
+     )
++    general_group.add_argument(
++        "--cr",
++        "--config-root",
++        dest="config_root",
++        help="Explicitly set the root directory for resolving all configuration files, "
++        "instead of automatically determining it.",
++    )
+     general_group.add_argument(
+         "--profile",
+         dest="profile",
+@@ -1052,6 +1059,11 @@ def main(argv: Optional[Sequence[str]] = None, stdin: Optional[TextIOWrapper] =
+         else:
+             arguments["settings_path"] = os.path.abspath(arguments["settings_path"])
+ 
++    if "config_root" in arguments:
++        arguments["config_root"] = os.path.abspath(arguments["config_root"])
++        if os.path.isfile(arguments["config_root"]):
++            arguments["config_root"] = os.path.dirname(arguments["config_root"])
++
+     if "virtual_env" in arguments:
+         venv = arguments["virtual_env"]
+         arguments["virtual_env"] = os.path.abspath(venv)
+@@ -1064,7 +1076,7 @@ def main(argv: Optional[Sequence[str]] = None, stdin: Optional[TextIOWrapper] =
+         if arguments:
+             sys.exit("Error: arguments passed in without any paths or content.")
+         return
+-    if "settings_path" not in arguments:
++    if "settings_path" not in arguments and "config_root" not in arguments:
+         arguments["settings_path"] = (
+             os.path.abspath(file_names[0] if file_names else ".") or os.getcwd()
+         )
+@@ -1089,7 +1101,16 @@ def main(argv: Optional[Sequence[str]] = None, stdin: Optional[TextIOWrapper] =
+ 
+     config_trie: Optional[Trie] = None
+     if resolve_all_configs:
+-        config_trie = find_all_configs(config_dict.get("src_paths", (".")))
++        if "config_root" in config_dict:
++            config_trie = find_all_configs(config_dict["config_root"])
++        elif "src_paths" in config_dict:
++            src_paths = config_dict["src_paths"]
++            if isinstance(src_paths, (list, tuple, set)):
++                config_trie = find_all_configs(tuple(str(p) for p in src_paths))
++            else:
++                config_trie = find_all_configs(str(src_paths))
++        else:
++            config_trie = find_all_configs(".")
+ 
+     if "src_paths" in config_dict:
+         config_dict["src_paths"] = {
+diff --git a/isort/settings.py b/isort/settings.py
+index 63ec6d4..500d1fe 100644
+--- a/isort/settings.py
++++ b/isort/settings.py
+@@ -207,6 +207,7 @@ class _Config:
+     conda_env: str = ""
+     ensure_newline_before_comments: bool = False
+     directory: str = ""
++    config_root: str = ""
+     profile: str = ""
+     honor_noqa: bool = False
+     src_paths: Tuple[Path, ...] = ()
+@@ -348,6 +349,14 @@ class Config(_Config):
+ 
+             settings_path = os.path.abspath(settings_path)
+             project_root, config_settings = _find_config(settings_path)
++        elif config_overrides.get("config_root"):
++            config_root = config_overrides["config_root"]
++            if not os.path.exists(config_root):
++                raise InvalidSettingsPath(str(config_root))
++
++            config_root = os.path.abspath(config_root)
++            config_overrides["config_root"] = config_root
++            project_root, config_settings = _find_config(config_root)
+         else:
+             config_settings = {}
+             project_root = os.getcwd()
+@@ -787,7 +796,9 @@ def _find_config(path: str) -> Tuple[str, Dict[str, Any]]:
+ 
+ 
+ @lru_cache()
+-def find_all_configs(path: str) -> Trie:
++def find_all_configs(
++    path: Union[str, Path, Tuple[Union[str, Path], ...]],
++) -> Trie:
+     """
+     Looks for config files in the path provided and in all of its sub-directories.
+     Parses and stores any config file encountered in a trie and returns the root of
+@@ -795,24 +806,31 @@ def find_all_configs(path: str) -> Trie:
+     """
+     trie_root = Trie("default", {})
+ 
+-    for (dirpath, _, _) in os.walk(path):
+-        for config_file_name in CONFIG_SOURCES:
+-            potential_config_file = os.path.join(dirpath, config_file_name)
+-            if os.path.isfile(potential_config_file):
+-                config_data: Dict[str, Any]
+-                try:
+-                    config_data = _get_config_data(
+-                        potential_config_file, CONFIG_SECTIONS[config_file_name]
+-                    )
+-                except Exception:
+-                    warn(
+-                        f"Failed to pull configuration information from {potential_config_file}"
+-                    )
+-                    config_data = {}
++    paths: Tuple[Union[str, Path], ...]
++    if isinstance(path, tuple):
++        paths = path
++    else:
++        paths = (path,)
++
++    for root_path in paths:
++        for dirpath, _, _ in os.walk(root_path):
++            for config_file_name in CONFIG_SOURCES:
++                potential_config_file = os.path.join(dirpath, config_file_name)
++                if os.path.isfile(potential_config_file):
++                    config_data: Dict[str, Any]
++                    try:
++                        config_data = _get_config_data(
++                            potential_config_file, CONFIG_SECTIONS[config_file_name]
++                        )
++                    except Exception:
++                        warn(
++                            f"Failed to pull configuration information from {potential_config_file}"
++                        )
++                        config_data = {}
+ 
+-                if config_data:
+-                    trie_root.insert(potential_config_file, config_data)
+-                    break
++                    if config_data:
++                        trie_root.insert(potential_config_file, config_data)
++                        break
+ 
+     return trie_root
+ 
+diff --git a/tests/unit/test_main.py b/tests/unit/test_main.py
+index 2b13f9a..76c648f 100644
+--- a/tests/unit/test_main.py
++++ b/tests/unit/test_main.py
+@@ -79,6 +79,8 @@ def test_parse_args():
+     assert main.parse_args(["--dont-follow-links"]) == {"follow_links": False}
+     assert main.parse_args(["--overwrite-in-place"]) == {"overwrite_in_place": True}
+     assert main.parse_args(["--from-first"]) == {"from_first": True}
++    assert main.parse_args(["--config-root", "/tmp"]) == {"config_root": "/tmp"}
++    assert main.parse_args(["--cr", "/tmp"]) == {"config_root": "/tmp"}
+ 
+ 
+ def test_ascii_art(capsys):
+@@ -130,6 +132,50 @@ def test_show_files(capsys, tmpdir):
+         main.main([str(tmpdir), "--show-files", "--show-config"])
+ 
+ 
++def test_config_root(capsys, tmpdir):
++    config_file = tmpdir.join(".isort.cfg")
++    config_file.write(
++        """
++[settings]
++profile=hug
++"""
++    )
++    main.main(["--config-root", str(tmpdir), "--show-config"])
++    out, error = capsys.readouterr()
++    returned_config = json.loads(out)
++    assert returned_config["profile"] == "hug"
++    assert returned_config["config_root"] == os.path.abspath(str(tmpdir))
++    assert not error
++
++    with pytest.raises(InvalidSettingsPath):
++        main.main(
++            ["--config-root", "/random-root-folder-that-cant-exist-right?", "--show-config"]
++        )
++
++
++def test_resolve_all_configs_with_config_root(tmpdir):
++    from isort import settings
++
++    settings.find_all_configs.cache_clear()
++    settings._find_config.cache_clear()
++    settings._get_config_data.cache_clear()
++
++    dir1 = tmpdir.mkdir("subdir1")
++    dir1.join(".isort.cfg").write("[settings]\nforce_single_line=true\n")
++    file1 = dir1.join("file1.py")
++    file1.write("from foo import b, a\n")
++
++    dir2 = tmpdir.mkdir("subdir2")
++    dir2.join(".isort.cfg").write("[settings]\nforce_single_line=false\n")
++    file2 = dir2.join("file2.py")
++    file2.write("from foo import b, a\n")
++
++    main.main([str(tmpdir), "--resolve-all-configs", "--config-root", str(tmpdir)])
++
++    assert "from foo import a\nfrom foo import b" in file1.read()
++    assert "from foo import a, b" in file2.read()
++
++
+ def test_missing_default_section(tmpdir):
+     config_file = tmpdir.join(".isort.cfg")
+     config_file.write(
+diff --git a/tests/unit/test_settings.py b/tests/unit/test_settings.py
+index 119f188..dd7261e 100644
+--- a/tests/unit/test_settings.py
++++ b/tests/unit/test_settings.py
+@@ -288,3 +288,52 @@ profile=black
+ 
+     config_info_4 = config_trie.search(str(tmpdir / "file4.py"))
+     assert config_info_4[0] == "default"
++
++
++def test_find_all_configs_with_single_path(tmpdir):
++    isort_cfg = """
++[settings]
++profile=black
++"""
++    subdir = tmpdir / "subdir"
++    subdir.mkdir()
++    isort_cfg_file = subdir / ".isort.cfg"
++    isort_cfg_file.write_text(isort_cfg, "utf-8")
++
++    settings.find_all_configs.cache_clear()
++    settings._get_config_data.cache_clear()
++    config_trie = settings.find_all_configs(str(tmpdir))
++
++    config_info = config_trie.search(str(subdir / "test.py"))
++    assert config_info[0] == str(isort_cfg_file)
++    assert "profile" in config_info[1] and config_info[1]["profile"] == "black"
++
++
++def test_config_root(tmpdir):
++    config_file = tmpdir.join(".isort.cfg")
++    config_file.write_text(
++        """
++[settings]
++profile=hug
++verbose=true
++""",
++        "utf8",
++    )
++    nested = tmpdir.mkdir("nested")
++
++    settings._find_config.cache_clear()
++    settings._get_config_data.cache_clear()
++    config = Config(config_root=str(tmpdir))
++    assert config.profile == "hug"
++    assert config.verbose is True
++
++    # config_root is used even when the cwd would not find the config
++    settings._find_config.cache_clear()
++    settings._get_config_data.cache_clear()
++    config_from_nested = Config(config_root=str(nested.join("..")))
++    assert config_from_nested.profile == "hug"
++
++
++def test_invalid_config_root():
++    with pytest.raises(exceptions.InvalidSettingsPath):
++        Config(config_root="this_couldnt_possibly_actually_exists/could_it")
