@@ -377,12 +377,11 @@
       }
      ],
      "note": {
-      "text": "Verify that word.endswith(('ses','xes','zes','ches','shes')) with singular=word[:-2] preserves e-ending singulars like cases and houses.",
+      "text": "For word 'houses' the ses branch makes singular 'hous' instead of 'house'.",
       "model": "Muse Spark",
       "questions": [
-       "Does 'cases' return 'case' rather than 'cas' through this branch?",
-       "Does 'houses' keep final e instead of becoming 'hous'?",
-       "Is singular=word[:-2] correct for true es-plurals like boxes?"
+       "Does singularize('cases') return 'case' not 'cas' via word[:-1]?",
+       "Does singularize('horses') avoid word[:-2] branch and keep final e?"
       ]
      }
     }
@@ -1926,12 +1925,12 @@
       }
      ],
      "note": {
-      "text": "Verify _internal_output StringIO content is flushed back to output_stream after core.process() for non-seekable case.",
+      "text": "When config.atomic and sort_reexports combine with non-seekable output_stream, _internal_output is never rewound before copy, so output_stream receives empty output.",
       "model": "Muse Spark",
       "questions": [
-       "Is buffered _internal_output written back to output_stream after processing completes?",
-       "Does --sort-reexports from stdin produce output on non-seekable stdout?",
-       "When output_stream is seekable, does sort_reexports still use original stream directly?"
+       "Does atomic-path copy seek _internal_output to 0 before writing to output_stream?",
+       "Does _internal_output != output_stream correctly distinguish buffers for all TextIO types?",
+       "Does existing test cover sort_stream with atomic=True and non-seekable output?"
       ]
      }
     },
@@ -2033,12 +2032,11 @@
       }
      ],
      "note": {
-      "text": "Verify the != versus is not comparison of _internal_output and output_stream avoids double output_stream.write calls.",
+      "text": "When config.atomic is True with non-seekable output_stream, _internal_output.read() returns empty because atomic branch never calls seek(0).",
       "model": "Muse Spark",
       "questions": [
-       "Is _internal_output always seekable when _internal_output.seek(0) executes?",
-       "Does the elif avoid a second output_stream.write when the if already wrote?",
-       "Does sort_stream with stdin and sort_reexports produce complete output without crash?"
+       "Does atomic=True with sort_reexports and non-seekable output_stream write full sorted content?",
+       "Does atomic branch seek _internal_output to 0 before read like elif branch does?"
       ]
      }
     }
@@ -2847,12 +2845,12 @@
       }
      ],
      "note": {
-      "text": "Check that iter_index defines stop parameter before islice uses start and stop for general iterables.",
+      "text": "Negative stop passed to iter_index raises ValueError via islice on general iterables while seq_index truncates sequences.",
       "model": "Muse Spark",
       "questions": [
-       "Does def iter_index include stop parameter with expected default?",
-       "Does the AttributeError slow path run on a generator without NameError?",
-       "Does the seq_index fast path enforce stop for list inputs?"
+       "Does iter_index with negative stop behave identically for list and iter inputs?",
+       "Does iter_index handle negative start identically on seq_index and islice paths?",
+       "Are None start and stop tested on both sequence and iterator branches?"
       ]
      }
     },
@@ -4220,12 +4218,12 @@
       }
      ],
      "note": {
-      "text": "Check that version like '01.0' via _SIMPLE_VERSION_INDICATORS bypasses regex validation incorrectly.",
+      "text": "Version('01') enters the fast path via _SIMPLE_VERSION_INDICATORS and int() accepts leading zeros that _regex would reject.",
       "model": "Muse Spark",
       "questions": [
-       "Does '01' raise InvalidVersion instead of setting self._release to (1,)?",
-       "Does '1..2' take ValueError branch to raise InvalidVersion?",
-       "Does '' trigger InvalidVersion rather than setting empty _release tuple?"
+       "Does Version('01') raise InvalidVersion instead of setting _release?",
+       "Does Version('1.00') reject leading zeros on every split segment?",
+       "Does empty _release from Version('') still raise InvalidVersion?"
       ]
      }
     }
@@ -4989,12 +4987,11 @@
       }
      ],
      "note": {
-      "text": "Check that non-string renderer bypass and tuple-normalized plugins_key prevent __cached_parsers sharing mutable parser state.",
+      "text": "Passing plugins=\"table\" makes tuple(plugins) split into characters so create_markdown receives plugins_key ('t','a','b','l','e') and fails.",
       "model": "Muse Spark",
       "questions": [
-       "Does non-string renderer path call create_markdown on every invocation without caching?",
-       "Does tuple(plugins) conversion preserve existing list-plugins behavior in __cached_parsers?",
-       "Does unhashable plugins_key fallback still parse via create_markdown without error?"
+       "Can you confirm string plugins input still works after tuple normalization?",
+       "Can you confirm generator plugins callers still work after tuple() consumes them?"
       ]
      }
     }

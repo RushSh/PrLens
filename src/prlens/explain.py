@@ -87,7 +87,7 @@ def items(pr: dict) -> list[dict]:
 
 def note_for(s, pr: dict, item: dict) -> dict:
     # a note is optional: give up after NOTE_DEADLINE seconds (no note) rather than hold up a triage on rate limits
-    r = chat(s, prompt_for(pr, item), purpose="review-note", schema=SCHEMA, max_tokens=2000, deadline_s=NOTE_DEADLINE)
+    r = chat(s, prompt_for(pr, item), purpose="review-note", schema=SCHEMA, max_tokens=6000, deadline_s=NOTE_DEADLINE)
     js = r.json() if not r.error else None
     text = js.get("note") if isinstance(js, dict) else None
     text = " ".join(str(text).split())[:300] if text else None
