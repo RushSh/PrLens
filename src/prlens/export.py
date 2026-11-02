@@ -78,6 +78,14 @@ def group_same_edits(items: list[dict]) -> None:
             m["sameEdit"] = {"group": lead["id"], "size": len(members)}
 
 
+def spark_band(risk: float | None) -> str:
+    """Spark Open's own rating as a band. Its raw number is not a probability (regions it rates 80%+ hold a bug about
+    12-19% of the time across the evaluation sets); the calibrated number is the combined risk score."""
+    if risk is None:
+        return "no score"
+    return "high" if risk >= 0.5 else "medium" if risk >= 0.2 else "low"
+
+
 def build(pr, t: float, guarantee: dict) -> dict:
     to_review, skipped, bug_ids, hunks = [], [], [], []
     for h in pr["hunks"]:
@@ -110,14 +118,14 @@ def build(pr, t: float, guarantee: dict) -> dict:
                 if p >= t:
                     reasons.append({"code": "bug_risk", "detail": reason or
                                     f"Logic-heavy change in {'a test' if is_test(u) else 'source'} file; "
-                                    f"Spark Open rated it {risk:.0%}."})
+                                    f"Spark Open rated it {spark_band(u['risk'])}."})
                 for code, detail in g["rules"]:
                     if code in RULE_CODES:
                         reasons.append({"code": code, "detail": detail})
                 logic = logic_density(u)
                 to_review.append(dict(base, tier="review", riskScore=round(p, 4), priority=priority(p, g["rules"]),
                                       reasons=reasons, forcedByRule=bool(g["rules"]) and p < t, signals=[
-                                          {"name": "Spark Open risk", "value": "no score" if u["risk"] is None else f"{risk:.0%}",
+                                          {"name": "Spark Open rating", "value": spark_band(u["risk"]),
                                            "weight": round(risk, 3)},
                                           {"name": "Logic operators changed", "value": str(int(logic)),
                                            "weight": round(min(1.0, logic / 12), 3)},
@@ -137,7 +145,7 @@ def build(pr, t: float, guarantee: dict) -> dict:
     return {
         "id": pr["pr_id"], "number": None, "title": pr["subject"], "repo": pr["repo"], "branch": pr["sha"][:10],
         "author": {"name": pr["author"] or "unknown", "kind": "human"}, "openedAt": pr["date"],
-        "taskSummary": msg[:600], "panel": ["Spark Open (Baseten)", "combiner", "rules"],
+        "taskSummary": msg[:600], "panel": ["spark_open", "combiner", "rules"],
         "toReview": to_review, "skipped": skipped, "hunks": hunks, "guarantee": guarantee, "source": "eval",
         "skipThreshold": round(t, 5), "language": pr.get("language", "python"),
         "groundTruth": {"bugItemIds": bug_ids, "caughtByTriage": caught, "fixes": [

@@ -1,0 +1,47 @@
+diff --git a/sqlglot/generators/snowflake.py b/sqlglot/generators/snowflake.py
+index 0e2d3be..4ece9e1 100644
+--- a/sqlglot/generators/snowflake.py
++++ b/sqlglot/generators/snowflake.py
+@@ -1182,10 +1182,13 @@ class SnowflakeGenerator(generator.Generator):
+         agg_arg = agg.this
+         cond = expression.expression.this
+ 
+-        if isinstance(agg, exp.Count) and isinstance(agg_arg, exp.Star):
+-            # A star is not a valid IFF argument, so COUNT(*) FILTER can't use the
+-            # rewrite below; it counts qualifying rows, i.e. Snowflake's COUNT_IF
+-            return self.sql(exp.CountIf(this=cond.copy()))
++        if isinstance(agg, exp.Count):
++            # ORDER BY doesn't affect COUNT, so look through it for the star check
++            count_arg = agg_arg.this if isinstance(agg_arg, exp.Order) else agg_arg
++            if isinstance(count_arg, exp.Expression) and count_arg.is_star:
++                # A star is not a valid IFF argument, so COUNT(*) FILTER can't use the
++                # rewrite below; it counts qualifying rows, i.e. Snowflake's COUNT_IF
++                return self.sql(exp.CountIf(this=cond.copy()))
+ 
+         if isinstance(agg, exp.WithinGroup):
+             # Ordered-set aggregates take their input from the ORDER BY key, so the
+diff --git a/tests/dialects/test_duckdb.py b/tests/dialects/test_duckdb.py
+index 6a89f46..7291640 100644
+--- a/tests/dialects/test_duckdb.py
++++ b/tests/dialects/test_duckdb.py
+@@ -380,6 +380,20 @@ class TestDuckDB(Validator):
+                 "snowflake": "SELECT COUNT_IF(b > 0) FROM t",
+             },
+         )
++        self.validate_all(
++            "SELECT COUNT(* ORDER BY x) FILTER (WHERE b > 0) FROM t",
++            write={
++                "duckdb": "SELECT COUNT(* ORDER BY x) FILTER(WHERE b > 0) FROM t",
++                "snowflake": "SELECT COUNT_IF(b > 0) FROM t",
++            },
++        )
++        self.validate_all(
++            "SELECT COUNT(t.*) FILTER (WHERE b > 0) FROM t",
++            write={
++                "duckdb": "SELECT COUNT(t.*) FILTER(WHERE b > 0) FROM t",
++                "snowflake": "SELECT COUNT_IF(b > 0) FROM t",
++            },
++        )
+         self.validate_all(
+             "SELECT ARRAY_AGG(DISTINCT a) FILTER (WHERE a IS NOT NULL)",
+             write={

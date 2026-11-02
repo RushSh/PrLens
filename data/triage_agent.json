@@ -1,7 +1,7 @@
 {
  "kind": "triage",
  "name": "agent",
- "generated_at": "2026-11-01T04:44:02+00:00",
+ "generated_at": "2026-11-01T20:05:02+00:00",
  "model": "spark_open",
  "threshold": 0.061336526333574365,
  "alpha": 0.2,
@@ -48,7 +48,15 @@
      "read": 2,
      "why": [
       "the new elif chain in singularize still strips the trailing s of words ending in 'ss'; the fix adds the missing branch here"
-     ]
+     ],
+     "suggestion": "not fixed",
+     "suggestionBlind": "not fixed",
+     "suggestionRounds": {
+      "flagged": "not fixed",
+      "blind": "not fixed",
+      "flagged2": "not fixed",
+      "blind2": "not fixed"
+     }
     },
     {
      "task": "sqlglot@47e255dda3",
@@ -60,7 +68,15 @@
      "read": 5,
      "why": [
       "COUNT(*) FILTER special case checks exp.Star only, missing table.* stars; the fix rewrites this check"
-     ]
+     ],
+     "suggestion": "fixed",
+     "suggestionBlind": "fixed",
+     "suggestionRounds": {
+      "flagged": "no change",
+      "blind": "fixed",
+      "flagged2": "fixed",
+      "blind2": "fixed"
+     }
     },
     {
      "task": "packaging@e80f70f8b1",
@@ -72,7 +88,15 @@
      "read": 4,
      "why": [
       "dir_info check accepts file: URLs with a relative path; the fix splits this check and adds the absolute-path test"
-     ]
+     ],
+     "suggestion": "not fixed",
+     "suggestionBlind": "not fixed",
+     "suggestionRounds": {
+      "flagged": "no change",
+      "blind": "not fixed",
+      "flagged2": "not fixed",
+      "blind2": "not fixed"
+     }
     },
     {
      "task": "isort@8b450398ef",
@@ -84,7 +108,15 @@
      "read": 6,
      "why": [
       "swapping in a StringIO for a non-seekable stream; the fix replaces this with an explicit ValueError"
-     ]
+     ],
+     "suggestion": "not fixed",
+     "suggestionBlind": "not fixed",
+     "suggestionRounds": {
+      "flagged": "not fixed",
+      "blind": "not fixed",
+      "flagged2": "not fixed",
+      "blind2": "not fixed"
+     }
     },
     {
      "task": "more-itertools@eb24d3927a",
@@ -96,7 +128,15 @@
      "read": 9,
      "why": [
       "islice(iterable, start, stop) rejects the negative stop the fast path accepts; the fix guards this slow path"
-     ]
+     ],
+     "suggestion": "not fixed",
+     "suggestionBlind": "not fixed",
+     "suggestionRounds": {
+      "flagged": "no change",
+      "blind": "no change",
+      "flagged2": "not fixed",
+      "blind2": "not fixed"
+     }
     },
     {
      "task": "packaging@ee13ba2c1c",
@@ -108,7 +148,15 @@
      "read": 14,
      "why": [
       "the fast path iterates the version before checking it is a string, so non-strings raise TypeError, not InvalidVersion"
-     ]
+     ],
+     "suggestion": "no change",
+     "suggestionBlind": "not fixed",
+     "suggestionRounds": {
+      "flagged": "not fixed",
+      "blind": "not fixed",
+      "flagged2": "no change",
+      "blind2": "not fixed"
+     }
     },
     {
      "task": "mistune@8baf90bf10",
@@ -118,7 +166,10 @@
      "caught": null,
      "lines": 54,
      "read": 25,
-     "why": []
+     "why": [],
+     "suggestion": null,
+     "suggestionBlind": null,
+     "suggestionRounds": {}
     },
     {
      "task": "more-itertools@a50ab3eebb",
@@ -130,7 +181,15 @@
      "read": 31,
      "why": [
       "peek appends to the cache, which drops the item when maxlen is 0; the fix puts the item back here"
-     ]
+     ],
+     "suggestion": "fixed",
+     "suggestionBlind": "fixed",
+     "suggestionRounds": {
+      "flagged": "fixed",
+      "blind": "fixed",
+      "flagged2": "fixed",
+      "blind2": "fixed"
+     }
     },
     {
      "task": "es-toolkit@97e4eee74a",
@@ -142,7 +201,10 @@
      "read": 0,
      "why": [
       "only NaN is coerced; fractional and string fromIndex are not converted to an integer like lodash"
-     ]
+     ],
+     "suggestion": null,
+     "suggestionBlind": null,
+     "suggestionRounds": {}
     },
     {
      "task": "valibot@a0aa98555c",
@@ -154,7 +216,15 @@
      "read": 2,
      "why": [
       "the domain regex the fix rewrites (case handling); the fix also adds the missing to-json-schema case, which is outside this PR"
-     ]
+     ],
+     "suggestion": "no change",
+     "suggestionBlind": "not fixed",
+     "suggestionRounds": {
+      "flagged": "no change",
+      "blind": "no change",
+      "flagged2": "no change",
+      "blind2": "not fixed"
+     }
     },
     {
      "task": "immer@8848a5b169",
@@ -167,7 +237,10 @@
      "why": [
       "Map draft forEach reads latest() without preparing the copy, so iteration breaks under mutation.",
       "The same for keys()."
-     ]
+     ],
+     "suggestion": null,
+     "suggestionBlind": null,
+     "suggestionRounds": {}
     }
    ],
    "notJudgeable": [
@@ -334,8 +407,8 @@
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "88%",
+       "name": "Spark Open rating",
+       "value": "high",
        "weight": 0.88
       },
       {
@@ -355,12 +428,11 @@
       }
      ],
      "note": {
-      "text": "Verify that word.endswith(('ses','xes','zes','ches','shes')) with singular=word[:-2] preserves e-ending singulars like cases and houses.",
+      "text": "For word 'houses' the ses branch makes singular 'hous' instead of 'house'.",
       "model": "Muse Spark",
       "questions": [
-       "Does 'cases' return 'case' rather than 'cas' through this branch?",
-       "Does 'houses' keep final e instead of becoming 'hous'?",
-       "Is singular=word[:-2] correct for true es-plurals like boxes?"
+       "Does singularize('cases') return 'case' not 'cas' via word[:-1]?",
+       "Does singularize('horses') avoid word[:-2] branch and keep final e?"
       ]
      }
     }
@@ -770,6 +842,28 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "not fixed",
+    "tests": {
+     "passed": 0,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/boltons/strutils.py b/boltons/strutils.py\nindex 4c6dcc2..88620e3 100644\n--- a/boltons/strutils.py\n+++ b/boltons/strutils.py\n@@ -196,7 +196,7 @@ def singularize(word):\n         singular = word[:-1]  # or just return word?\n     elif word.endswith('ies') and word[-4:-3] not in 'aeiou':\n         singular = word[:-3] + 'y'\n-    elif word.endswith(('ses', 'xes', 'zes', 'ches', 'shes')):\n+    elif word == 'buses' or word.endswith(('sses', 'xes', 'zes', 'ches', 'shes')):\n         singular = word[:-2]\n     else:\n         singular = word[:-1]\ndiff --git a/tests/test_strutils.py b/tests/test_strutils.py\nindex 91ca419..ab21cf3 100644\n--- a/tests/test_strutils.py\n+++ b/tests/test_strutils.py\n@@ -65,6 +65,13 @@ def test_singularize():\n     assert strutils.singularize(strutils.pluralize('wish')) == 'wish'\n \n \n+def test_singularize_se_singulars():\n+    # singulars ending in -se pluralize with just -s, so only -s is removed\n+    assert strutils.singularize('houses') == 'house'\n+    assert strutils.singularize('cases') == 'case'\n+    assert strutils.singularize('horses') == 'horse'\n+\n+\n class TestMultiReplace(TestCase):\n \n     def test_simple_substitutions(self):",
+    "suite": {
+     "checked": false,
+     "note": "the project's suite did not run here"
+    },
+    "control": "not fixed",
+    "round": 2
    }
   },
   {
@@ -876,14 +970,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 4%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "4%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.04
       },
       {
@@ -903,11 +997,12 @@
       }
      ],
      "note": {
-      "text": "Check that agg as exp.Count with agg_arg as exp.Star returns CountIf using cond.copy() for COUNT(*) FILTER.",
+      "text": "COUNT(*) FILTER with ORDER BY or DISTINCT loses modifiers because CountIf(this=cond.copy()) drops agg extras.",
       "model": "Muse Spark",
       "questions": [
-       "Does COUNT(*) FILTER (WHERE cond) equal COUNT_IF(cond) for null inputs?",
-       "Does WithinGroup with Star input still bypass this Count branch?"
+       "Does filter_sql receive COUNT(*) with ORDER BY modifiers to preserve?",
+       "Does the IFF path below preserve args the CountIf return discards?",
+       "Is cond ever None so cond.copy() would crash?"
       ]
      }
     }
@@ -1192,6 +1287,28 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "fixed",
+    "tests": {
+     "passed": 1,
+     "failed": 0,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 1,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/sqlglot/generators/snowflake.py b/sqlglot/generators/snowflake.py\nindex 0e2d3be..c2c24fe 100644\n--- a/sqlglot/generators/snowflake.py\n+++ b/sqlglot/generators/snowflake.py\n@@ -1182,10 +1182,18 @@ class SnowflakeGenerator(generator.Generator):\n         agg_arg = agg.this\n         cond = expression.expression.this\n \n-        if isinstance(agg, exp.Count) and isinstance(agg_arg, exp.Star):\n-            # A star is not a valid IFF argument, so COUNT(*) FILTER can't use the\n-            # rewrite below; it counts qualifying rows, i.e. Snowflake's COUNT_IF\n-            return self.sql(exp.CountIf(this=cond.copy()))\n+        if isinstance(agg, exp.Count):\n+            # A star is not a valid IFF argument, so star-shaped COUNT(*) FILTER\n+            # can't use the rewrite below; it counts qualifying rows, i.e. COUNT_IF\n+            star_arg = agg_arg.this if isinstance(agg_arg, exp.Order) else agg_arg\n+            if isinstance(star_arg, exp.Distinct):\n+                star_exprs = star_arg.expressions\n+                is_star = len(star_exprs) == 1 and star_exprs[0].is_star\n+            else:\n+                is_star = star_arg is None or star_arg.is_star\n+\n+            if is_star:\n+                return self.sql(exp.CountIf(this=cond.copy()))\n \n         if isinstance(agg, exp.WithinGroup):\n             # Ordered-set aggregates take their input from the ORDER BY key, so the\ndiff --git a/tests/dialects/test_duckdb.py b/tests/dialects/test_duckdb.py\nindex 6a89f46..bc7ed0f 100644\n--- a/tests/dialects/test_duckdb.py\n+++ b/tests/dialects/test_duckdb.py\n@@ -380,6 +380,34 @@ class TestDuckDB(Validator):\n                 \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n             },\n         )\n+        self.validate_all(\n+            \"SELECT COUNT(t.*) FILTER (WHERE b > 0) FROM t\",\n+            write={\n+                \"duckdb\": \"SELECT COUNT(t.*) FILTER(WHERE b > 0) FROM t\",\n+                \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n+            },\n+        )\n+        self.validate_all(\n+            \"SELECT COUNT(* ORDER BY b) FILTER (WHERE b > 0) FROM t\",\n+            write={\n+                \"duckdb\": \"SELECT COUNT(* ORDER BY b) FILTER(WHERE b > 0) FROM t\",\n+                \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n+            },\n+        )\n+        self.validate_all(\n+            \"SELECT COUNT(DISTINCT *) FILTER (WHERE b > 0) FROM t\",\n+            write={\n+                \"duckdb\": \"SELECT COUNT(DISTINCT *) FILTER(WHERE b > 0) FROM t\",\n+                \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n+            },\n+        )\n+        self.validate_all(\n+            \"SELECT COUNT() FILTER (WHERE b > 0) FROM t\",\n+            write={\n+                \"duckdb\": \"SELECT COUNT() FILTER(WHERE b > 0) FROM t\",\n+                \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n+            },\n+        )\n         self.validate_all(\n             \"SELECT ARRAY_AGG(DISTINCT a) FILTER (WHERE a IS NOT NULL)\",\n             write={",
+    "suite": {
+     "checked": false,
+     "note": "the project's suite did not run here"
+    },
+    "control": "fixed",
+    "round": 2
    }
   },
   {
@@ -1291,14 +1408,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -1318,12 +1435,12 @@
       }
      ],
      "note": {
-      "text": "Check that urllib.parse.urlsplit(direct_url.url).scheme.lower() rejects all non-file URLs when direct_url.dir_info is present.",
+      "text": "direct_url.url 'file:/tmp/x' with dir_info passes because urlsplit(...).scheme equals 'file' despite missing '//'.",
       "model": "Muse Spark",
       "questions": [
-       "Does FILE:// URL with dir_info still pass validation?",
-       "Does https:// URL with dir_info still raise DirectUrlValidationError?",
-       "Is urllib.parse already imported in direct_url.py?"
+       "Is bare 'file:/path' without '//' acceptable for dir_info?",
+       "Is urllib.parse imported wherever urlsplit is used?",
+       "Does from_dict guarantee url is str before urlsplit?"
       ]
      }
     }
@@ -1728,6 +1845,28 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "not fixed",
+    "tests": {
+     "passed": 3,
+     "failed": 6,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 4,
+     "failed": 5,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/src/packaging/direct_url.py b/src/packaging/direct_url.py\nindex b4ed128..5da744e 100644\n--- a/src/packaging/direct_url.py\n+++ b/src/packaging/direct_url.py\n@@ -290,7 +290,7 @@ class DirectUrl:\n                 \"Exactly one of vcs_info, archive_info, dir_info must be present\"\n             )\n         if direct_url.dir_info is not None and (\n-            urllib.parse.urlsplit(direct_url.url).scheme.lower() != \"file\"\n+            not direct_url.url.lower().startswith(\"file://\")\n         ):\n             raise DirectUrlValidationError(\n                 \"URL scheme must be file:// when dir_info is present\",\ndiff --git a/tests/test_direct_url.py b/tests/test_direct_url.py\nindex b7b5b24..1f8bedb 100644\n--- a/tests/test_direct_url.py\n+++ b/tests/test_direct_url.py\n@@ -227,6 +227,27 @@ def test_dir_info_url_scheme_file(url: str) -> None:\n         )\n \n \n+@pytest.mark.parametrize(\n+    \"url\",\n+    [\n+        \"file:/tmp/x\",\n+        \"FILE:/tmp/x\",\n+        \"file:foo\",\n+    ],\n+)\n+def test_dir_info_rejects_file_scheme_without_double_slash(url: str) -> None:\n+    with pytest.raises(\n+        DirectUrlValidationError,\n+        match=r\"URL scheme must be file:// when dir_info is present\",\n+    ):\n+        DirectUrl.from_dict(\n+            {\n+                \"url\": url,\n+                \"dir_info\": {},\n+            }\n+        )\n+\n+\n def test_missing_url() -> None:\n     with pytest.raises(\n         DirectUrlValidationError,",
+    "suite": {
+     "checked": false,
+     "note": "the project's suite did not run here"
+    },
+    "control": "not fixed",
+    "round": 2
    }
   },
   {
@@ -1826,8 +1965,8 @@
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "78%",
+       "name": "Spark Open rating",
+       "value": "high",
        "weight": 0.78
       },
       {
@@ -1847,12 +1986,12 @@
       }
      ],
      "note": {
-      "text": "Verify _internal_output StringIO content is flushed back to output_stream after core.process() for non-seekable case.",
+      "text": "When config.atomic and sort_reexports combine with non-seekable output_stream, _internal_output is never rewound before copy, so output_stream receives empty output.",
       "model": "Muse Spark",
       "questions": [
-       "Is buffered _internal_output written back to output_stream after processing completes?",
-       "Does --sort-reexports from stdin produce output on non-seekable stdout?",
-       "When output_stream is seekable, does sort_reexports still use original stream directly?"
+       "Does atomic-path copy seek _internal_output to 0 before writing to output_stream?",
+       "Does _internal_output != output_stream correctly distinguish buffers for all TextIO types?",
+       "Does existing test cover sort_stream with atomic=True and non-seekable output?"
       ]
      }
     },
@@ -1927,14 +2066,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -1954,12 +2093,11 @@
       }
      ],
      "note": {
-      "text": "Verify the != versus is not comparison of _internal_output and output_stream avoids double output_stream.write calls.",
+      "text": "When config.atomic is True with non-seekable output_stream, _internal_output.read() returns empty because atomic branch never calls seek(0).",
       "model": "Muse Spark",
       "questions": [
-       "Is _internal_output always seekable when _internal_output.seek(0) executes?",
-       "Does the elif avoid a second output_stream.write when the if already wrote?",
-       "Does sort_stream with stdin and sort_reexports produce complete output without crash?"
+       "Does atomic=True with sort_reexports and non-seekable output_stream write full sorted content?",
+       "Does atomic branch seek _internal_output to 0 before read like elif branch does?"
       ]
      }
     }
@@ -2532,6 +2670,31 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "not fixed",
+    "tests": {
+     "passed": 0,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 1,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/isort/api.py b/isort/api.py\nindex 49a732a..cb39d28 100644\n--- a/isort/api.py\n+++ b/isort/api.py\n@@ -231,6 +231,7 @@ def sort_stream(\n                     stacklevel=2,\n                 )\n         if _internal_output != output_stream:\n+            _internal_output.seek(0)\n             output_stream.write(_internal_output.read())\n     elif _internal_output is not output_stream:\n         _internal_output.seek(0)\ndiff --git a/tests/unit/test_api.py b/tests/unit/test_api.py\nindex 2d24b41..b034859 100644\n--- a/tests/unit/test_api.py\n+++ b/tests/unit/test_api.py\n@@ -136,3 +136,31 @@ def test_sort_stream_with_sort_reexports_and_non_seekable_output() -> None:\n         input_stream, output_stream, config=Config(sort_reexports=True)\n     )\n     assert output_stream.getvalue() == \"__all__ = ('bar', 'foo')\\n\"\n+\n+\n+def test_sort_stream_atomic_buffered_output_with_cython_syntax_errors() -> None:\n+    \"\"\"Atomic mode must copy full content, not empty output, to buffered streams.\n+\n+    With atomic=True, Cython syntax errors are ignored, but the internal buffer\n+    was left positioned at the end after the syntax check, so copying it to a\n+    non-seekable output stream (buffered via sort_reexports) wrote empty output.\n+    \"\"\"\n+\n+    class NonSeekableOutputStream(StringIO):\n+        def seekable(self) -> bool:\n+            return False\n+\n+        def seek(self, *args, **kwargs):  # type: ignore[override]\n+            raise io.UnsupportedOperation(\"Stream is not seekable\")\n+\n+    test_input = \"from b import d, c\\nfrom a import f, e\\nwhile True print 'Hello world'\"\n+    expected = \"from a import e, f\\nfrom b import c, d\\n\\nwhile True print 'Hello world'\\n\"\n+    input_stream = StringIO(test_input)\n+    output_stream = NonSeekableOutputStream()\n+    assert api.sort_stream(\n+        input_stream,\n+        output_stream,\n+        extension=\"pyx\",\n+        config=Config(atomic=True, sort_reexports=True),\n+    )\n+    assert output_stream.getvalue() == expected",
+    "suite": {
+     "checked": true,
+     "passed_before": 578,
+     "passed_after": 579,
+     "broken": [],
+     "broken_count": 0
+    },
+    "control": "not fixed",
+    "round": 2
    }
   },
   {
@@ -2623,8 +2786,8 @@
      "forcedByRule": true,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "5%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.05
       },
       {
@@ -2644,12 +2807,11 @@
       }
      ],
      "note": {
-      "text": "Check iter_index handles stop=None versus integer stop correctly for start offsets and slicing.",
+      "text": "Negative stop like stop=-1 raises ValueError via islice for general iterables but is accepted by seq_index for sequences.",
       "model": "Muse Spark",
       "questions": [
-       "Does stop=None return same indexes as before for all iterable inputs?",
-       "Does integer stop exclude indexes at or after stop with start offsets?",
-       "Do existing callers passing start positionally still bind correctly?"
+       "Does iter_index with stop=-1 return same results for list and generator inputs?",
+       "Does iter_index with negative start behave identically via islice and seq_index?"
       ]
      }
     },
@@ -2723,8 +2885,8 @@
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "99%",
+       "name": "Spark Open rating",
+       "value": "high",
        "weight": 0.99
       },
       {
@@ -2744,12 +2906,12 @@
       }
      ],
      "note": {
-      "text": "Check that iter_index defines stop parameter before islice uses start and stop for general iterables.",
+      "text": "Negative stop passed to iter_index raises ValueError via islice on general iterables while seq_index truncates sequences.",
       "model": "Muse Spark",
       "questions": [
-       "Does def iter_index include stop parameter with expected default?",
-       "Does the AttributeError slow path run on a generator without NameError?",
-       "Does the seq_index fast path enforce stop for list inputs?"
+       "Does iter_index with negative stop behave identically for list and iter inputs?",
+       "Does iter_index handle negative start identically on seq_index and islice paths?",
+       "Are None start and stop tested on both sequence and iterator branches?"
       ]
      }
     },
@@ -2838,14 +3000,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 5%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "5%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.05
       },
       {
@@ -2865,12 +3027,12 @@
       }
      ],
      "note": {
-      "text": "Verify that seq_index with stop excludes indices >= stop and stop None preserves old behavior.",
+      "text": "Calling iter_index with stop=-1 yields truncated indexes via seq_index for lists but raises ValueError from islice for general iterables.",
       "model": "Muse Spark",
       "questions": [
-       "Does stop=None yield same indices as before for all sequences?",
-       "Does non-None stop end yielding at stop without ValueError leak?",
-       "Does start beyond stop immediately end iteration via ValueError?"
+       "For stop=-1, do list and iter inputs return identical results?",
+       "Does three-argument seq_index work for every supported sequence type?",
+       "Is TypeError from three-argument seq_index impossible for all callers?"
       ]
      }
     }
@@ -3903,6 +4065,31 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "not fixed",
+    "tests": {
+     "passed": 1,
+     "failed": 8,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 1,
+     "failed": 4,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/more_itertools/recipes.py b/more_itertools/recipes.py\nindex f31ad40..b09445b 100644\n--- a/more_itertools/recipes.py\n+++ b/more_itertools/recipes.py\n@@ -827,6 +827,12 @@ def iter_index(iterable, value, start=0, stop=None):\n     >>> list(iter_index('AABCADEAF', 'A'))\n     [0, 1, 4, 7]\n     \"\"\"\n+    if start is None:\n+        start = 0\n+    if operator.index(start) < 0 or (\n+        stop is not None and operator.index(stop) < 0\n+    ):\n+        raise ValueError('start and stop must be non-negative')\n     try:\n         seq_index = iterable.index\n     except AttributeError:\ndiff --git a/tests/test_recipes.py b/tests/test_recipes.py\nindex 3579756..3bd97cb 100644\n--- a/tests/test_recipes.py\n+++ b/tests/test_recipes.py\n@@ -969,6 +969,27 @@ class IterIndexTests(TestCase):\n                     )\n                     self.assertEqual(actual, expected)\n \n+    def test_negative_start_stop(self):\n+        iterable = 'AABCADEAF'\n+        for wrapper in (list, iter):\n+            for kwargs in (\n+                {'start': -1},\n+                {'stop': -1},\n+                {'start': -2, 'stop': -1},\n+            ):\n+                with self.subTest(wrapper=wrapper, **kwargs):\n+                    with self.assertRaises(ValueError):\n+                        list(mi.iter_index(wrapper(iterable), 'A', **kwargs))\n+\n+    def test_start_none(self):\n+        iterable = 'AABCADEAF'\n+        for wrapper in (list, iter):\n+            with self.subTest(wrapper=wrapper):\n+                actual = list(\n+                    mi.iter_index(wrapper(iterable), 'A', start=None)\n+                )\n+                self.assertEqual(actual, [0, 1, 4, 7])\n+\n \n class SieveTests(TestCase):\n     def test_basic(self):",
+    "suite": {
+     "checked": true,
+     "passed_before": 604,
+     "passed_after": 606,
+     "broken": [],
+     "broken_count": 0
+    },
+    "control": "not fixed",
+    "round": 2
    }
   },
   {
@@ -4072,14 +4259,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -4099,12 +4286,12 @@
       }
      ],
      "note": {
-      "text": "Check that version like '01.0' via _SIMPLE_VERSION_INDICATORS bypasses regex validation incorrectly.",
+      "text": "Version('01') enters the fast path via _SIMPLE_VERSION_INDICATORS and int() accepts leading zeros that _regex would reject.",
       "model": "Muse Spark",
       "questions": [
-       "Does '01' raise InvalidVersion instead of setting self._release to (1,)?",
-       "Does '1..2' take ValueError branch to raise InvalidVersion?",
-       "Does '' trigger InvalidVersion rather than setting empty _release tuple?"
+       "Does Version('01') raise InvalidVersion instead of setting _release?",
+       "Does Version('1.00') reject leading zeros on every split segment?",
+       "Does empty _release from Version('') still raise InvalidVersion?"
       ]
      }
     }
@@ -4574,6 +4761,25 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "no change",
+    "tests": {
+     "passed": 0,
+     "failed": 6,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 6,
+     "not_loading": 0
+    },
+    "diff": "",
+    "suite": null,
+    "control": "not fixed",
+    "round": 2
    }
   },
   {
@@ -4820,14 +5026,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -4847,12 +5053,11 @@
       }
      ],
      "note": {
-      "text": "Check that non-string renderer bypass and tuple-normalized plugins_key prevent __cached_parsers sharing mutable parser state.",
+      "text": "Passing plugins=\"table\" makes tuple(plugins) split into characters so create_markdown receives plugins_key ('t','a','b','l','e') and fails.",
       "model": "Muse Spark",
       "questions": [
-       "Does non-string renderer path call create_markdown on every invocation without caching?",
-       "Does tuple(plugins) conversion preserve existing list-plugins behavior in __cached_parsers?",
-       "Does unhashable plugins_key fallback still parse via create_markdown without error?"
+       "Can you confirm string plugins input still works after tuple normalization?",
+       "Can you confirm generator plugins callers still work after tuple() consumes them?"
       ]
      }
     }
@@ -5893,14 +6098,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 12%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "12%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.12
       },
       {
@@ -5920,12 +6125,11 @@
       }
      ],
      "note": {
-      "text": "Verify __bool__ and peek handle _index, _cache, _source, default=_marker and StopIteration when exhausted.",
+      "text": "After seek(5) with only three items in self._cache, peek() resets self._index to None and returns the next self._source item.",
       "model": "Muse Spark",
       "questions": [
-       "Does peek return default instead of raising StopIteration when exhausted?",
-       "Does __bool__ return False after _source exhaustion without consuming items?",
-       "Does peek with valid _index return _cache[_index] without advancing _source?"
+       "Does peek() after seek() past cached length still return the seeked item?",
+       "Does __bool__ leave self._index unchanged when self._cache[self._index] raises IndexError?"
       ]
      }
     },
@@ -6063,14 +6267,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 8%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "8%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.08
       },
       {
@@ -6090,11 +6294,12 @@
       }
      ],
      "note": {
-      "text": "Verify that resetting self._index to None after IndexError correctly resumes iteration from self._source and self._cache.",
+      "text": "After seek(10) past len(_cache) with live _source, peek discards _index to None and returns next item instead of failing.",
       "model": "Muse Spark",
       "questions": [
-       "Does next(self._source) advance correctly when self._index is None?",
-       "Is default returned only when self._source is exhausted and default is not _marker?"
+       "Is falling through to _source on IndexError from _cache[_index] intended?",
+       "Does peek with _index=None leave the next() result unchanged?",
+       "Is resetting _index to None on exhausted _source with default harmless?"
       ]
      }
     }
@@ -7284,6 +7489,31 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "fixed",
+    "tests": {
+     "passed": 2,
+     "failed": 0,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 2,
+     "not_loading": 0
+    },
+    "diff": "diff --git a/more_itertools/more.py b/more_itertools/more.py\nindex c21d05b..7aab609 100755\n--- a/more_itertools/more.py\n+++ b/more_itertools/more.py\n@@ -2644,6 +2644,10 @@ class seekable:\n             return default\n \n         self._cache.append(item)\n+        if len(self._cache) == 0:\n+            # maxlen=0: the cache discarded the item; put it back for next()\n+            self._source = chain([item], self._source)\n+            return item\n         self._index = len(self._cache) - 1\n         return item\n \ndiff --git a/tests/test_more.py b/tests/test_more.py\nindex becbd50..e7bd474 100644\n--- a/tests/test_more.py\n+++ b/tests/test_more.py\n@@ -3166,6 +3166,16 @@ class SeekableTest(TestCase):\n         s.seek(0)\n         self.assertTrue(s)\n \n+    def test_peek_bool_maxlen_zero(self):\n+        s = mi.seekable(range(3), maxlen=0)\n+        self.assertEqual(s.peek(), 0)\n+        self.assertEqual(s.peek(), 0)\n+        self.assertEqual(next(s), 0)\n+        self.assertTrue(s)\n+        self.assertEqual(next(s), 1)\n+        self.assertEqual(list(s), [2])\n+        self.assertFalse(s)\n+\n \n class SequenceViewTests(TestCase):\n     def test_init(self):",
+    "suite": {
+     "checked": true,
+     "passed_before": 433,
+     "passed_after": 434,
+     "broken": [],
+     "broken_count": 0
+    },
+    "control": "fixed",
+    "round": 2
    }
   },
   {
@@ -7715,14 +7945,14 @@
      "reasons": [
       {
        "code": "bug_risk",
-       "detail": "Logic-heavy change in source file; Spark Open rated it 5%."
+       "detail": "Logic-heavy change in source file; Spark Open rated it low."
       }
      ],
      "forcedByRule": false,
      "signals": [
       {
-       "name": "Spark Open risk",
-       "value": "5%",
+       "name": "Spark Open rating",
+       "value": "low",
        "weight": 0.05
       },
       {
@@ -7742,12 +7972,12 @@
       }
      ],
      "note": {
-      "text": "Verify DOMAIN_REGEX lookahead (?=.{1,253}$) rejects overlong domains while still accepting valid 253-character domains.",
+      "text": "DOMAIN_REGEX accepts 'example.com\\n' because $ matches before trailing newline, so newline-terminated domains pass validation.",
       "model": "Muse Spark",
       "questions": [
-       "Does DOMAIN_REGEX accept a max-length 253-character valid domain?",
-       "Does DOMAIN_REGEX reject a 254-character domain input?",
-       "Do all DOMAIN_REGEX callers handle newly rejected long domains safely?"
+       "Does DOMAIN_REGEX reject 'example.com\\n' instead of matching before final newline?",
+       "Does the 253-char lookahead count correctly when input ends with \\n?",
+       "Do domain action callers rely on regex alone without trimming trailing whitespace?"
       ]
      }
     }
@@ -8171,6 +8401,25 @@
       "evidence": "labelled"
      }
     ]
+   },
+   "suggestion": {
+    "by": "Muse Code",
+    "model": "muse-spark-1.3-contributor",
+    "status": "no change",
+    "tests": {
+     "passed": 0,
+     "failed": 2,
+     "not_loading": 0
+    },
+    "before": {
+     "passed": 0,
+     "failed": 2,
+     "not_loading": 0
+    },
+    "diff": "",
+    "suite": null,
+    "control": "not fixed",
+    "round": 2
    }
   },
   {

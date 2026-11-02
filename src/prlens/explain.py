@@ -21,13 +21,22 @@ from .llm import chat, confirm, plan_line, spec
 from .score import fence
 
 CACHE = ROOT / "data" / "triage" / "scores" / "explain"
-NOTE_DEADLINE = 30  # seconds per note, rate-limit waits included
+NOTE_DEADLINE = 45  # seconds per note, rate-limit waits included (the whole PR is in the prompt)
 LABEL = {"spark": "Muse Spark", "wonder": "Muse Wonder", "spark_open": "Spark Open"}
 
-PROMPT = """You help a human review a pull request. An automatic triage already decided this region needs a human.
-Write ONE sentence (at most 25 words) telling the reviewer exactly what to check in this region: the specific
-condition, input or behaviour that could be wrong. Name identifiers from the code. No hedging, no praise, do not
-restate the risk score, do not say "review carefully".
+NOTE_VERSION = 2  # 1: the region alone; 2: the whole PR as context and a boundary-input checklist
+
+PROMPT = """You help a human review a pull request. An automatic triage already decided one region needs a human.
+Find the most likely way that region is wrong, using the whole pull request below as context: how the region's code is
+called, what other changed code assumes about it, and what the task asked for.
+
+Think through boundary inputs and states before you answer: None or missing values, empty inputs, zero, negative
+numbers and indices, values past a length or limit, non-sequence iterables and generators, wrong types, duplicates,
+ordering, errors raised versus caught, and behaviour that other code paths in the PR handle differently.
+
+Then write ONE sentence (at most 30 words) naming the most likely concrete failure: the specific input or state, and
+what goes wrong. Name identifiers from the code. No hedging, no praise, do not restate the risk score, do not say
+"review carefully".
 
 Then write 2 or 3 short questions (at most 18 words each) the reviewer should be able to answer "yes" to before
 approving this region, each about a concrete input, branch or caller. Do not repeat the sentence.
@@ -40,11 +49,12 @@ Pull request title and description:
 {message}
 </pr_data>
 
-File: <pr_data>{file}</pr_data>
+The whole pull request (every changed hunk; "+" added, "-" removed, " " context):
+<pr_data>
+{pr_diff}
+</pr_data>
 
-Why the triage flagged it: {reasons}
-
-The region ("+" added, "-" removed, " " context):
+The region to explain, in {file} ({reasons}):
 <pr_data>
 {diff}
 </pr_data>
@@ -62,8 +72,12 @@ def prompt_for(pr: dict, item: dict) -> str:
     sign = {"add": "+", "del": "-", "ctx": " "}
     diff = "\n".join(sign[l["kind"]] + l["text"] for l in item["diff"])[:6000]
     reasons = "; ".join(f"{r['code']}: {r['detail']}" for r in item["reasons"])[:800]
+    whole = []
+    for h in pr.get("hunks") or []:
+        whole.append(f"### {h['file']}  {h['header']}\n" + "\n".join(sign[l["kind"]] + l["text"] for l in h["diff"]))
     return PROMPT.format(message=fence(f"{pr['title']}\n\n{pr.get('taskSummary', '')}"[:1500]),
-                         file=fence(item["file"]), reasons=fence(reasons), diff=fence(diff))
+                         pr_diff=fence("\n".join(whole)[:60000]), file=fence(item["file"]), reasons=fence(reasons),
+                         diff=fence(diff))
 
 
 def items(pr: dict) -> list[dict]:
@@ -73,13 +87,13 @@ def items(pr: dict) -> list[dict]:
 
 def note_for(s, pr: dict, item: dict) -> dict:
     # a note is optional: give up after NOTE_DEADLINE seconds (no note) rather than hold up a triage on rate limits
-    r = chat(s, prompt_for(pr, item), purpose="review-note", schema=SCHEMA, max_tokens=2000, deadline_s=NOTE_DEADLINE)
+    r = chat(s, prompt_for(pr, item), purpose="review-note", schema=SCHEMA, max_tokens=6000, deadline_s=NOTE_DEADLINE)
     js = r.json() if not r.error else None
     text = js.get("note") if isinstance(js, dict) else None
     text = " ".join(str(text).split())[:300] if text else None
     qs = js.get("questions") if isinstance(js, dict) else None
     qs = [" ".join(str(q).split())[:200] for q in qs if str(q).strip()][:3] if isinstance(qs, list) else []
-    return {"note": text, "questions": qs, "error": r.error or (None if text else f"no note in reply: {r.text[:200]}"),
+    return {"note": text, "questions": qs, "v": NOTE_VERSION, "error": r.error or (None if text else f"no note in reply: {r.text[:200]}"),
             "input_tokens": r.input_tokens, "output_tokens": r.output_tokens}
 
 
@@ -106,6 +120,15 @@ def main(argv: list[str] | None = None) -> None:
             for it in items(pr):
                 k = f"{pr['id']}|{it['id']}|{hashlib.sha1(prompt_for(pr, it).encode()).hexdigest()[:16]}"
                 jobs.append((k, pr, it))
+    # a note is about the region's code: when only the wording around it changed (e.g. how a reason is phrased), reuse
+    # the newest note for the same PR and region with the current prompt shape (questions) instead of asking again
+    latest = {}
+    for k, r in cache.items():
+        if r.get("note") and r.get("questions") and r.get("v") == NOTE_VERSION and not r.get("error"):
+            latest["|".join(k.split("|")[:2])] = r
+    for k, _, _ in jobs:
+        if (k not in cache or cache[k].get("error")) and "|".join(k.split("|")[:2]) in latest:
+            cache[k] = latest["|".join(k.split("|")[:2])]
     fresh = [j for j in jobs if j[0] not in cache or cache[j[0]].get("error")]
     line, _ = plan_line(s, len(fresh), 120)
     confirm(f"{len(jobs)} review items in {sum(len(d['prs']) for d in sets.values())} PRs; {len(fresh)} need a note from "

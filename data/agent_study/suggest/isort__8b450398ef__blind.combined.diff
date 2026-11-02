@@ -1,0 +1,96 @@
+diff --git a/isort/api.py b/isort/api.py
+index abf8bdb..f39fc1c 100644
+--- a/isort/api.py
++++ b/isort/api.py
+@@ -186,6 +186,12 @@ def sort_stream(
+ 
+     _internal_output = output_stream
+ 
++    if config.sort_reexports:
++        # core.process() rewinds output via seek(tell() - len(line)), which assumes
++        # character offsets: it crashes on non-seekable streams and corrupts
++        # TextIOWrapper output containing multi-byte characters. Buffer instead.
++        _internal_output = StringIO()
++
+     if config.atomic:
+         try:
+             file_content = input_stream.read()
+@@ -229,6 +235,9 @@ def sort_stream(
+                 )
+         if _internal_output != output_stream:
+             output_stream.write(_internal_output.read())
++    elif _internal_output is not output_stream:
++        _internal_output.seek(0)
++        output_stream.write(_internal_output.read())
+ 
+     return changed
+ 
+diff --git a/tests/unit/test_api.py b/tests/unit/test_api.py
+index f6c6ac4..e9c3a43 100644
+--- a/tests/unit/test_api.py
++++ b/tests/unit/test_api.py
+@@ -1,5 +1,6 @@
+ """Tests the isort API module"""
+ 
++import io
+ import os
+ from io import StringIO
+ from unittest.mock import MagicMock, patch
+@@ -114,3 +115,57 @@ import x
+     assert len(list(api.find_imports_in_code(code, unique=ImportKey.ATTRIBUTE))) == 3
+     assert len(list(api.find_imports_in_code(code, unique=ImportKey.MODULE))) == 2
+     assert len(list(api.find_imports_in_code(code, unique=ImportKey.PACKAGE))) == 1
++
++
++def test_sort_stream_with_sort_reexports_and_non_seekable_output() -> None:
++    """Ensure sort_stream works with non-seekable output streams when sort_reexports is enabled.
++
++    See https://github.com/PyCQA/isort/issues/2393
++    """
++
++    class NonSeekableOutputStream(StringIO):
++        def seekable(self) -> bool:
++            return False
++
++        def seek(self, *args, **kwargs):  # type: ignore[override]
++            raise io.UnsupportedOperation("Stream is not seekable")
++
++    input_stream = StringIO("__all__ = ('foo', 'bar')\n")
++    output_stream = NonSeekableOutputStream()
++    assert api.sort_stream(
++        input_stream, output_stream, config=Config(sort_reexports=True)
++    )
++    assert output_stream.getvalue() == "__all__ = ('bar', 'foo')\n"
++
++
++def test_sort_stream_with_sort_reexports_and_seekable_file_output(tmpdir) -> None:
++    """Seekable TextIOWrapper output must not be corrupted by the reexport rewind.
++
++    core.process() rewinds via seek(tell() - len(line)), but tell/seek on files
++    use opaque byte offsets, so multi-byte characters misplace the rewind.
++    Buffering must keep the rewind on a character-offset stream.
++    """
++    out_path = str(tmpdir.join("out.py"))
++    with open(out_path, "w+", encoding="utf-8", newline="") as output_stream:
++        assert output_stream.seekable()
++        assert api.sort_stream(
++            StringIO("__all__ = ('föö', 'bär')\n"),
++            output_stream,
++            config=Config(sort_reexports=True),
++        )
++        output_stream.seek(0)
++        assert output_stream.read() == "__all__ = ('bär', 'föö')\n"
++
++
++def test_check_stream_with_sort_reexports() -> None:
++    """check_stream must not crash when sort_reexports is enabled.
++
++    check_stream sorts into a non-storing output stream, which cannot support
++    the seek-back-and-truncate rewind that reexport sorting performs.
++    """
++    assert not api.check_stream(
++        StringIO("__all__ = ('foo', 'bar')\n"), config=Config(sort_reexports=True)
++    )
++    assert api.check_stream(
++        StringIO("__all__ = ('bar', 'foo')\n"), config=Config(sort_reexports=True)
++    )

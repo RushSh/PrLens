@@ -1,0 +1,37 @@
+diff --git a/boltons/strutils.py b/boltons/strutils.py
+index 4c6dcc2..424c8da 100644
+--- a/boltons/strutils.py
++++ b/boltons/strutils.py
+@@ -196,7 +196,7 @@ def singularize(word):
+         singular = word[:-1]  # or just return word?
+     elif word.endswith('ies') and word[-4:-3] not in 'aeiou':
+         singular = word[:-3] + 'y'
+-    elif word.endswith(('ses', 'xes', 'zes', 'ches', 'shes')):
++    elif word.endswith(('sses', 'xes', 'zes', 'ches', 'shes')):
+         singular = word[:-2]
+     else:
+         singular = word[:-1]
+@@ -246,7 +246,7 @@ _IRR_S2P = {'addendum': 'addenda', 'alga': 'algae', 'alumna': 'alumnae',
+             'alumnus': 'alumni', 'analysis': 'analyses', 'antenna': 'antennae',
+             'appendix': 'appendices', 'axis': 'axes', 'bacillus': 'bacilli',
+             'bacterium': 'bacteria', 'basis': 'bases', 'beau': 'beaux',
+-            'bison': 'bison', 'bureau': 'bureaus', 'cactus': 'cacti',
++            'bison': 'bison', 'bureau': 'bureaus', 'bus': 'buses', 'cactus': 'cacti',
+             'calf': 'calves', 'child': 'children', 'corps': 'corps',
+             'corpus': 'corpora', 'crisis': 'crises', 'criterion': 'criteria',
+             'curriculum': 'curricula', 'datum': 'data', 'deer': 'deer',
+diff --git a/tests/test_strutils.py b/tests/test_strutils.py
+index 91ca419..87446b2 100644
+--- a/tests/test_strutils.py
++++ b/tests/test_strutils.py
+@@ -57,6 +57,10 @@ def test_singularize():
+     # ordinary -s plurals still lose just the -s
+     assert strutils.singularize('chances') == 'chance'
+     assert strutils.singularize('friends') == 'friend'
++    # ... including silent-e plurals that end in -ses
++    assert strutils.singularize('houses') == 'house'
++    assert strutils.singularize('cases') == 'case'
++    assert strutils.singularize('horses') == 'horse'
+     # case is preserved
+     assert strutils.singularize('Classes') == 'Class'
+     assert strutils.singularize('WISHES') == 'WISH'

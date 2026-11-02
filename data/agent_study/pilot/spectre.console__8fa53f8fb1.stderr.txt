@@ -1,3 +1,3 @@
-muse: workspace root: /Users/rushabhshah/muse_agent_study/spectre.console__8fa53f8fb1/repo/. (explicit)
+muse: workspace root: ~/muse_agent_study/spectre.console__8fa53f8fb1/repo/. (explicit)
 muse: Agent delegation: auto unavailable: workspace is untrusted.
 received SIGTERM; flushed session logs

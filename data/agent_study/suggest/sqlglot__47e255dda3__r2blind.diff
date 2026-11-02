@@ -1,0 +1,51 @@
+diff --git a/sqlglot/generators/snowflake.py b/sqlglot/generators/snowflake.py
+index 0e2d3be..9852b01 100644
+--- a/sqlglot/generators/snowflake.py
++++ b/sqlglot/generators/snowflake.py
+@@ -1182,11 +1182,6 @@ class SnowflakeGenerator(generator.Generator):
+         agg_arg = agg.this
+         cond = expression.expression.this
+ 
+-        if isinstance(agg, exp.Count) and isinstance(agg_arg, exp.Star):
+-            # A star is not a valid IFF argument, so COUNT(*) FILTER can't use the
+-            # rewrite below; it counts qualifying rows, i.e. Snowflake's COUNT_IF
+-            return self.sql(exp.CountIf(this=cond.copy()))
+-
+         if isinstance(agg, exp.WithinGroup):
+             # Ordered-set aggregates take their input from the ORDER BY key, so the
+             # condition has to wrap that instead of the aggregate's own argument
+@@ -1216,6 +1211,16 @@ class SnowflakeGenerator(generator.Generator):
+         else:
+             targets = [agg_arg]
+ 
++        if (
++            isinstance(agg, exp.Count)
++            and len(targets) == 1
++            and isinstance(targets[0], exp.Expression)
++            and targets[0].is_star
++        ):
++            # A star is not a valid IFF argument, so COUNT(*) FILTER can't use the
++            # rewrite below; it counts qualifying rows, i.e. Snowflake's COUNT_IF
++            return self.sql(exp.CountIf(this=cond.copy()))
++
+         for target in targets:
+             target.replace(exp.If(this=cond.copy(), true=target.copy()))
+ 
+diff --git a/tests/dialects/test_duckdb.py b/tests/dialects/test_duckdb.py
+index 6a89f46..0a6963e 100644
+--- a/tests/dialects/test_duckdb.py
++++ b/tests/dialects/test_duckdb.py
+@@ -380,6 +380,13 @@ class TestDuckDB(Validator):
+                 "snowflake": "SELECT COUNT_IF(b > 0) FROM t",
+             },
+         )
++        self.validate_all(
++            "SELECT COUNT(t.*) FILTER (WHERE b > 0) FROM t",
++            write={
++                "duckdb": "SELECT COUNT(t.*) FILTER(WHERE b > 0) FROM t",
++                "snowflake": "SELECT COUNT_IF(b > 0) FROM t",
++            },
++        )
+         self.validate_all(
+             "SELECT ARRAY_AGG(DISTINCT a) FILTER (WHERE a IS NOT NULL)",
+             write={

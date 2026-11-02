@@ -1,0 +1,2 @@
+muse: workspace root: /Users/rushabhshah/muse_suggest/valibot__a0aa98555c__blind/repo/. (explicit)
+muse: Agent delegation: auto unavailable: workspace is untrusted.

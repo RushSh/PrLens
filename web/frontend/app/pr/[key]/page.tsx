@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { modelName, reviewQueue, triageLoad, type PrTriage } from "@prlens/shared";
 import { CheckIcon, LensIcon, ShieldIcon } from "@/components/Icons";
 import { RevealBox } from "@/components/pr/RevealBox";
+import { SuggestedFix } from "@/components/pr/SuggestedFix";
 import { Avatar, Pill, PriorityPill, buttonPrimary } from "@/components/ui";
 import { pct, when } from "@/lib/format";
 import { itemAnchor, itemLine, prHref, prIdFromKey, skipLabel } from "@/lib/pr";
@@ -89,6 +90,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ k
         </Comment>
 
         {pr.groundTruth ? <RevealBox pr={pr} /> : null}
+        {pr.suggestion && pr.suggestion.status !== "no change" ? <SuggestedFix fix={pr.suggestion} /> : null}
 
         <MergeBox pr={pr} />
       </div>

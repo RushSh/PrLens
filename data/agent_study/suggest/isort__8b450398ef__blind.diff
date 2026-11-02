@@ -1,0 +1,57 @@
+diff --git a/isort/api.py b/isort/api.py
+index 49a732a..f39fc1c 100644
+--- a/isort/api.py
++++ b/isort/api.py
+@@ -186,7 +186,10 @@ def sort_stream(
+ 
+     _internal_output = output_stream
+ 
+-    if config.sort_reexports and not output_stream.seekable():
++    if config.sort_reexports:
++        # core.process() rewinds output via seek(tell() - len(line)), which assumes
++        # character offsets: it crashes on non-seekable streams and corrupts
++        # TextIOWrapper output containing multi-byte characters. Buffer instead.
+         _internal_output = StringIO()
+ 
+     if config.atomic:
+diff --git a/tests/unit/test_api.py b/tests/unit/test_api.py
+index 2d24b41..e9c3a43 100644
+--- a/tests/unit/test_api.py
++++ b/tests/unit/test_api.py
+@@ -136,3 +136,36 @@ def test_sort_stream_with_sort_reexports_and_non_seekable_output() -> None:
+         input_stream, output_stream, config=Config(sort_reexports=True)
+     )
+     assert output_stream.getvalue() == "__all__ = ('bar', 'foo')\n"
++
++
++def test_sort_stream_with_sort_reexports_and_seekable_file_output(tmpdir) -> None:
++    """Seekable TextIOWrapper output must not be corrupted by the reexport rewind.
++
++    core.process() rewinds via seek(tell() - len(line)), but tell/seek on files
++    use opaque byte offsets, so multi-byte characters misplace the rewind.
++    Buffering must keep the rewind on a character-offset stream.
++    """
++    out_path = str(tmpdir.join("out.py"))
++    with open(out_path, "w+", encoding="utf-8", newline="") as output_stream:
++        assert output_stream.seekable()
++        assert api.sort_stream(
++            StringIO("__all__ = ('föö', 'bär')\n"),
++            output_stream,
++            config=Config(sort_reexports=True),
++        )
++        output_stream.seek(0)
++        assert output_stream.read() == "__all__ = ('bär', 'föö')\n"
++
++
++def test_check_stream_with_sort_reexports() -> None:
++    """check_stream must not crash when sort_reexports is enabled.
++
++    check_stream sorts into a non-storing output stream, which cannot support
++    the seek-back-and-truncate rewind that reexport sorting performs.
++    """
++    assert not api.check_stream(
++        StringIO("__all__ = ('foo', 'bar')\n"), config=Config(sort_reexports=True)
++    )
++    assert api.check_stream(
++        StringIO("__all__ = ('bar', 'foo')\n"), config=Config(sort_reexports=True)
++    )

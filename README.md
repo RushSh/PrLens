@@ -13,8 +13,8 @@ into regions of up to about 25 changed lines and puts each in one of two places:
   lock files, generated code, config, test data, or a combined risk score under a threshold calibrated on real bugs.
 
 The skip threshold is a dial, not a guarantee: it targets a 20% miss rate. Chosen without each PR's own repository,
-17% of Python bugs (28 of 168) landed in skipped code, 90% upper bound 21%; TypeScript 14% (bound 20%); C# 11%
-(bound 18%). It prioritizes human review; it never approves or merges anything.
+16.7% of Python bugs (28 of 168) landed in skipped code, 90% upper bound 20.9%; TypeScript 14.3% (bound 20.4%);
+C# 10.9% (bound 17.7%). It prioritizes human review; it never approves or merges anything.
 
 **Three Meta AI tools, one job each.** The **Muse Code** agent writes the pull request; **Muse Spark Open** (open weights,
 on Baseten) scores every region as structured JSON; the **Muse Spark Model API** writes the one-line note on what
@@ -63,6 +63,20 @@ snapshot of each commit's parent and its message. The fix's own tests could judg
 review); in the 11th Muse Code avoided the human's bug. PR Lens kept 8 of the 10 in the review list while leaving 27% of
 lines to read; both misses are TypeScript regions scored just under the threshold. A case study, not a calibrated rate
 (Agent study tab).
+
+We also tried closing the loop: for each of the 8 kept bugs, Muse Code got its own change back with PR Lens's flagged
+regions and Muse Spark's notes and questions (never the bug or the later fix) and was asked for the smallest fix; as a
+control, it got the same change and request with no flags. The later fix's tests judged every suggestion.
+
+| Fix tests pass after the suggestion (of 8) | With PR Lens's flags | Control, no flags |
+| --- | --- | --- |
+| Round 1 | 1 | 2 |
+| Round 2: notes see the whole PR; both arms asked more firmly to find a bug | 2 | 2 |
+
+The same two bugs were fixed whenever any were (more-itertools `seekable`, sqlglot `COUNT(*) FILTER`), with and without
+the flags; no suggestion broke a test that passed before, where the project's own suite runs. On these 8 PRs the flags
+did not change whether Muse Code could repair the bug, even when the note named it (more-itertools `iter_index`).
+PR Lens's value is in what a human reads, not in steering an agent's repair.
 
 Caveats: most evaluation commits were written by people and are small (median 135 changed lines). The Evaluation tab
 shows the full curves, per-repository results, the ablation and the calibration chart.

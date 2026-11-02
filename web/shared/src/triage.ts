@@ -131,12 +131,35 @@ export interface TriageGroundTruth {
 /** Display names for the models in a PR's panel (pr.panel), e.g. "spark_open" -> "Muse Spark Open". */
 export const MODEL_NAMES: Record<string, string> = {
   spark_open: "Muse Spark Open",
+  "Spark Open (Baseten)": "Muse Spark Open",
   spark: "Muse Spark",
   wonder: "Muse Wonder",
   glimmer: "Muse Glimmer",
   glimmer_fw: "Muse Glimmer",
 };
 export const modelName = (k: string) => MODEL_NAMES[k] ?? k;
+
+export interface SuggestedFix {
+  by: string;
+  model: string;
+  /** "fixed": every fix test passes; "partly fixed": fewer fail than on the agent's change alone; "no change":
+   * Muse Code left the code as it was. */
+  status: SuggestStatus;
+  tests: { passed: number; failed: number; not_loading: number };
+  /** The fix tests on the agent's change before the suggestion. */
+  before: { passed: number; failed: number; not_loading: number };
+  /** The suggestion as a unified diff against the agent's change. */
+  diff: string;
+  /** The project's own test suite before and after the suggestion: tests it newly breaks (Python only). */
+  suite?: { checked: boolean; note?: string; passed_before?: number; passed_after?: number; broken?: string[]; broken_count?: number } | null;
+  /** The control: Muse Code on the same change with no flagged regions, notes or questions. */
+  control?: SuggestStatus | null;
+  /** 1: original prompts; 2: softer prompts in both arms and version-2 Muse Spark notes. */
+  round?: number;
+}
+
+export type SuggestStatus = "fixed" | "partly fixed" | "not fixed" | "no change" | "apply_failed" | "not_loading";
+const SUGGEST_STATUS = ["fixed", "partly fixed", "not fixed", "no change", "apply_failed", "not_loading"] as const;
 
 export interface PrTriage {
   id: string;
@@ -158,6 +181,8 @@ export interface PrTriage {
    * "agent": a PR the Muse Code agent wrote in the agent study (with a hand-labelled bug when a fix test failed). */
   source: "sample" | "eval" | "live" | "agent";
   groundTruth?: TriageGroundTruth;
+  /** Agent-study PRs: the fix Muse Code suggested for the flagged regions, judged by the later fix's tests. */
+  suggestion?: SuggestedFix;
   /** Each scored hunk's full diff, so files can be shown whole; items point into them (id prefix, flagged lines). */
   hunks?: { id: string; file: string; header: string; diff: DiffLine[] }[];
   /** "python" | "typescript" | "csharp": the language whose calibration was used. */
@@ -314,6 +339,11 @@ export interface AgentStudy {
     lines: number;
     read: number;
     why: string[];
+    /** The Muse Code suggested fix's result, when one was made. */
+    suggestion?: SuggestStatus | null;
+    suggestionBlind?: SuggestStatus | null;
+    /** Every round's result by variant: flagged, blind (round 1), flagged2, blind2 (round 2). */
+    suggestionRounds?: Record<string, SuggestStatus>;
   }[];
   notJudgeable: { task: string; language: string; why: string }[];
 }
@@ -384,6 +414,29 @@ export const prTriageSchema: z.ZodType<PrTriage> = z.object({
   guarantee: z.object({ missBound: z.number(), confidence: z.number(), calibratedOn: z.string() }).nullable(),
   source: z.enum(["sample", "eval", "live", "agent"]),
   hunks: z.array(z.object({ id: z.string(), file: z.string(), header: z.string(), diff: z.array(diffLine) })).optional(),
+  suggestion: z
+    .object({
+      by: z.string(),
+      model: z.string(),
+      status: z.enum(SUGGEST_STATUS),
+      tests: z.object({ passed: z.number(), failed: z.number(), not_loading: z.number() }),
+      before: z.object({ passed: z.number(), failed: z.number(), not_loading: z.number() }),
+      diff: z.string(),
+      suite: z
+        .object({
+          checked: z.boolean(),
+          note: z.string().optional(),
+          passed_before: z.number().optional(),
+          passed_after: z.number().optional(),
+          broken: z.array(z.string()).optional(),
+          broken_count: z.number().optional(),
+        })
+        .nullable()
+        .optional(),
+      control: z.enum(SUGGEST_STATUS).nullable().optional(),
+      round: z.number().optional(),
+    })
+    .optional(),
   skipThreshold: z.number().optional(),
   language: z.string().optional(),
   url: z.string().url().optional(),
@@ -442,6 +495,9 @@ export const triageFile = z.object({
             lines: z.number(),
             read: z.number(),
             why: z.array(z.string()),
+            suggestion: z.enum(SUGGEST_STATUS).nullable().optional(),
+            suggestionBlind: z.enum(SUGGEST_STATUS).nullable().optional(),
+            suggestionRounds: z.record(z.string(), z.enum(SUGGEST_STATUS)).optional(),
           }),
         ),
         notJudgeable: z.array(z.object({ task: z.string(), language: z.string(), why: z.string() })),

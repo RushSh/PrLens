@@ -1,0 +1,106 @@
+diff --git a/more_itertools/recipes.py b/more_itertools/recipes.py
+index e8b7cb6..da06580 100644
+--- a/more_itertools/recipes.py
++++ b/more_itertools/recipes.py
+@@ -817,9 +817,9 @@ def polynomial_from_roots(roots):
+     return list(reduce(convolve, factors, [1]))
+ 
+ 
+-def iter_index(iterable, value, start=0):
++def iter_index(iterable, value, start=0, stop=None):
+     """Yield the index of each place in *iterable* that *value* occurs,
+-    beginning with index *start*.
++    beginning with index *start* and stopping before index *stop*.
+ 
+     See :func:`locate` for a more general means of finding the indexes
+     associated with particular values.
+@@ -831,7 +831,7 @@ def iter_index(iterable, value, start=0):
+         seq_index = iterable.index
+     except AttributeError:
+         # Slow path for general iterables
+-        it = islice(iterable, start, None)
++        it = islice(iterable, start, stop)
+         i = start - 1
+         try:
+             while True:
+@@ -845,6 +845,8 @@ def iter_index(iterable, value, start=0):
+         try:
+             while True:
+                 i = seq_index(value, i + 1)
++                if stop is not None and i >= stop:
++                    break
+                 yield i
+         except ValueError:
+             pass
+diff --git a/more_itertools/recipes.pyi b/more_itertools/recipes.pyi
+index 86efa1e..1492965 100644
+--- a/more_itertools/recipes.pyi
++++ b/more_itertools/recipes.pyi
+@@ -108,6 +108,7 @@ def iter_index(
+     iterable: Iterable[_T],
+     value: Any,
+     start: int | None = ...,
++    stop: int | None = ...,
+ ) -> Iterator[int]: ...
+ def sieve(n: int) -> Iterator[int]: ...
+ def batched(
+diff --git a/tests/test_recipes.py b/tests/test_recipes.py
+index 4228913..6d19bc9 100644
+--- a/tests/test_recipes.py
++++ b/tests/test_recipes.py
+@@ -931,6 +931,55 @@ class IterIndexTests(TestCase):
+                 expected = [0, 1, 4, 7]
+                 self.assertEqual(actual, expected)
+ 
++    def test_stop(self):
++        iterable = 'AABCADEAF'
++        cases = [
++            (0, []),
++            (1, [0]),
++            (2, [0, 1]),
++            (5, [0, 1, 4]),
++            (8, [0, 1, 4, 7]),
++        ]
++        for wrapper in (list, iter):
++            for stop, expected in cases:
++                with self.subTest(wrapper=wrapper, stop=stop):
++                    actual = list(
++                        mi.iter_index(wrapper(iterable), 'A', stop=stop)
++                    )
++                    self.assertEqual(actual, expected)
++
++    def test_start_stop(self):
++        iterable = 'AABCADEAF'
++        cases = [
++            (0, 8, [0, 1, 4, 7]),
++            (2, 8, [4, 7]),
++            (0, 5, [0, 1, 4]),
++            (2, 5, [4]),
++            (1, 7, [1, 4]),
++        ]
++        for wrapper in (list, iter):
++            for start, stop, expected in cases:
++                with self.subTest(
++                    wrapper=wrapper, start=start, stop=stop
++                ):
++                    actual = list(
++                        mi.iter_index(
++                            wrapper(iterable), 'A', start=start, stop=stop
++                        )
++                    )
++                    self.assertEqual(actual, expected)
++
++    def test_stop_substring(self):
++        # stop limits yielded start indexes, even when the match itself
++        # extends past stop (str.index would require the full match
++        # within [start:stop]).
++        self.assertEqual(
++            list(mi.iter_index('AAAA', 'AA', stop=1)), [0]
++        )
++        self.assertEqual(
++            list(mi.iter_index('ABCABC', 'ABC', stop=4)), [0, 3]
++        )
++
+ 
+ class SieveTests(TestCase):
+     def test_basic(self):

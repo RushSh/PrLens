@@ -8,6 +8,21 @@ import { loadEvalSet } from "@/lib/triage-source";
 
 export const dynamic = "force-dynamic";
 
+const OUTCOMES = [
+  { key: "fixed", label: "fix tests pass", match: (s?: string | null) => s === "fixed" },
+  { key: "partly", label: "fewer fail", match: (s?: string | null) => s === "partly fixed" },
+  { key: "not", label: "still fail", match: (s?: string | null) => s === "not fixed" },
+  { key: "none", label: "no change", match: (s?: string | null) => s === "no change" },
+  { key: "other", label: "not judged", match: (s?: string | null) => s === "apply_failed" || s === "not_loading" },
+];
+
+const ARMS = [
+  { key: "flagged", label: "Round 1, with PR Lens's flags" },
+  { key: "blind", label: "Round 1, control (no flags)" },
+  { key: "flagged2", label: "Round 2, with flags (whole-PR notes, softer prompt)" },
+  { key: "blind2", label: "Round 2, control (softer prompt)" },
+];
+
 const langLabel = (k: string) => EVAL_LANGUAGES.find((l) => l.key === k)?.label ?? k;
 
 export default async function AgentStudyPage() {
@@ -27,6 +42,7 @@ export default async function AgentStudyPage() {
   const lines = study.tasks.reduce((a, t) => a + t.lines, 0);
   const top = study.funnel[0]?.prs ?? 1;
   const omissions = bugs.filter((t) => t.bugKind === "omission").length;
+  const suggested = study.tasks.filter((t) => t.suggestionRounds && Object.keys(t.suggestionRounds).length);
 
   return (
     <div className="space-y-6">
@@ -69,6 +85,48 @@ export default async function AgentStudyPage() {
         </p>
       </Box>
 
+      {suggested.length ? (
+        <Box title="Closing the loop: can Muse Code fix what PR Lens flagged?">
+          <div className="space-y-3 px-4 py-3 text-sm">
+            <p className="text-fg">
+              For each bug PR Lens kept for review, {study.agent} got the same task and its own change twice: once with the regions
+              PR Lens flagged and Muse Spark&apos;s notes and questions, once without them (the control). It never saw the bug, the
+              later fix or its tests; the later fix&apos;s tests judged both. Round 2 softened the request the same way in both arms
+              and used notes that see the whole PR. {suggested.length} PRs is a case study: read the counts, not a rate.
+            </p>
+            <table className="w-full max-w-xl text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs text-muted">
+                  <th className="py-1.5 pr-3 font-normal" />
+                  {OUTCOMES.map((o) => (
+                    <th key={o.key} className="py-1.5 pr-3 text-right font-normal">{o.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ARMS.filter((a) => suggested.some((t) => t.suggestionRounds?.[a.key])).map((a) => {
+                  const ran = suggested.filter((t) => t.suggestionRounds?.[a.key]);
+                  return (
+                    <tr key={a.key} className="border-b border-line-muted last:border-b-0">
+                      <td className="py-1.5 pr-3 text-fg">{a.label}</td>
+                      {OUTCOMES.map((o) => (
+                        <td key={o.key} className="tabular py-1.5 pr-3 text-right">
+                          {ran.filter((t) => o.match(t.suggestionRounds?.[a.key])).length}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="text-xs text-muted">
+              Every suggestion is labelled “suggested, still needs human review”; PR Lens never applies one. Where the project&apos;s
+              own Python suite runs, each suggestion is also checked for tests it newly breaks.
+            </p>
+          </div>
+        </Box>
+      ) : null}
+
       <Box title={`The ${study.tasks.length} judgeable agent PRs`}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px] text-sm">
@@ -78,6 +136,7 @@ export default async function AgentStudyPage() {
                 <th className="px-4 py-2 font-normal">Fix tests</th>
                 <th className="px-4 py-2 text-right font-normal">Lines read</th>
                 <th className="px-4 py-2 font-normal">PR Lens</th>
+                <th className="px-4 py-2 font-normal">Muse Code fix</th>
               </tr>
             </thead>
             <tbody>
@@ -110,6 +169,16 @@ export default async function AgentStudyPage() {
                     ) : (
                       <span className="text-muted">no bug to keep</span>
                     )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-2">
+                    {t.suggestion ? (
+                      <span className={t.suggestion === "fixed" ? "text-success" : t.suggestion === "partly fixed" ? "text-attention" : "text-muted"}>
+                        {t.suggestion}
+                      </span>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                    {t.suggestionBlind ? <span className="block text-xs text-muted">control: {t.suggestionBlind}</span> : null}
                   </td>
                 </tr>
               ))}

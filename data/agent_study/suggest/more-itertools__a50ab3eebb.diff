@@ -1,0 +1,35 @@
+diff --git a/more_itertools/more.py b/more_itertools/more.py
+index c21d05b..b35b22a 100755
+--- a/more_itertools/more.py
++++ b/more_itertools/more.py
+@@ -2644,6 +2644,11 @@ class seekable:
+             return default
+ 
+         self._cache.append(item)
++        if len(self._cache) == 0:
++            # maxlen=0: the cache can't hold the peeked item, so push it
++            # back onto the source to avoid consuming it.
++            self._source = chain([item], self._source)
++            return item
+         self._index = len(self._cache) - 1
+         return item
+ 
+diff --git a/tests/test_more.py b/tests/test_more.py
+index becbd50..df4d64f 100644
+--- a/tests/test_more.py
++++ b/tests/test_more.py
+@@ -3166,6 +3166,14 @@ class SeekableTest(TestCase):
+         s.seek(0)
+         self.assertTrue(s)
+ 
++    def test_peek_maxlen_zero(self):
++        s = mi.seekable([str(n) for n in range(3)], maxlen=0)
++        self.assertEqual(s.peek(), '0')
++        self.assertEqual(s.peek(), '0')
++        self.assertEqual(next(s), '0')
++        self.assertTrue(s)
++        self.assertEqual(next(s), '1')
++
+ 
+ class SequenceViewTests(TestCase):
+     def test_init(self):

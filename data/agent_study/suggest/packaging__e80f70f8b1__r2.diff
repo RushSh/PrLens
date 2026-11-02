@@ -1,0 +1,45 @@
+diff --git a/src/packaging/direct_url.py b/src/packaging/direct_url.py
+index b4ed128..5da744e 100644
+--- a/src/packaging/direct_url.py
++++ b/src/packaging/direct_url.py
+@@ -290,7 +290,7 @@ class DirectUrl:
+                 "Exactly one of vcs_info, archive_info, dir_info must be present"
+             )
+         if direct_url.dir_info is not None and (
+-            urllib.parse.urlsplit(direct_url.url).scheme.lower() != "file"
++            not direct_url.url.lower().startswith("file://")
+         ):
+             raise DirectUrlValidationError(
+                 "URL scheme must be file:// when dir_info is present",
+diff --git a/tests/test_direct_url.py b/tests/test_direct_url.py
+index b7b5b24..1f8bedb 100644
+--- a/tests/test_direct_url.py
++++ b/tests/test_direct_url.py
+@@ -227,6 +227,27 @@ def test_dir_info_url_scheme_file(url: str) -> None:
+         )
+ 
+ 
++@pytest.mark.parametrize(
++    "url",
++    [
++        "file:/tmp/x",
++        "FILE:/tmp/x",
++        "file:foo",
++    ],
++)
++def test_dir_info_rejects_file_scheme_without_double_slash(url: str) -> None:
++    with pytest.raises(
++        DirectUrlValidationError,
++        match=r"URL scheme must be file:// when dir_info is present",
++    ):
++        DirectUrl.from_dict(
++            {
++                "url": url,
++                "dir_info": {},
++            }
++        )
++
++
+ def test_missing_url() -> None:
+     with pytest.raises(
+         DirectUrlValidationError,

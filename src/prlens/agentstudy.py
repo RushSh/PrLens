@@ -548,6 +548,13 @@ def triage(args) -> None:
                 fh.write(json.dumps({**r, "key": k}) + "\n")
     cache.update(new)
 
+    sugg_path = STUDY / "suggestions.jsonl"
+    suggestions: dict[str, dict] = {}
+    if sugg_path.exists():
+        for l in sugg_path.read_text().splitlines():
+            if l.strip():
+                r_ = json.loads(l)
+                suggestions.setdefault(r_["task"], {})[r_.get("variant", "flagged")] = r_
     out, rows = [], []
     for n, pr in prs.items():
         bug_ids = label(pr, labels.get(n, [])) if val[n]["verdict"] == "bug" else []
@@ -565,11 +572,25 @@ def triage(args) -> None:
         o.update(source="agent", language=language, branch=f"muse/{tasks[n]['repo']}-{pr['sha'][:7]}",
                  author={"name": AGENT, "kind": "ai_agent", "agent": f"{AGENT} ({AGENT_MODEL})"},
                  panel=[s.name, "combiner", "rules"], taskSummary=pr["message"][:1500])
+        # the latest round with a flagged result is shown on the PR page, next to its own control
+        rnd = "2" if "flagged2" in suggestions.get(n, {}) else ""
+        sg = suggestions.get(n, {}).get("flagged" + rnd)
+        blind = suggestions.get(n, {}).get("blind" + rnd)
+        sg_diff = STUDY / "suggest" / f"{n.replace('@', '__')}{'__r2' if rnd else ''}.diff"
+        if sg and sg_diff.exists():
+            text = "".join(b for p_, b in split_diff(sg_diff.read_text()) if not ARTEFACT.search(p_) and not ENV_FILES.search(p_))
+            o["suggestion"] = {"by": AGENT, "model": AGENT_MODEL, "status": sg["status"], "tests": sg["tests"],
+                               "before": sg["before"], "diff": "\n".join(text.splitlines()[:400]),
+                               "suite": sg.get("suite"), "control": blind["status"] if blind else None,
+                               "round": 2 if rnd else 1}
         out.append(o)
         read = sum(i["added"] + i["removed"] for i in o["toReview"])
         rows.append({"task": n, "prId": o["id"], "verdict": val[n]["verdict"], "bugKind": val[n].get("bug_kind"),
                      "caught": o["groundTruth"]["caughtByTriage"] if bug_ids else None, "lines": pr["lines"],
-                     "read": read, "why": [lb["why"] for lb in labels.get(n, [])]})
+                     "read": read, "why": [lb["why"] for lb in labels.get(n, [])],
+                     "suggestion": sg["status"] if sg and "suggestion" in o else None,
+                     "suggestionBlind": blind["status"] if blind else None,
+                     "suggestionRounds": {k: v["status"] for k, v in suggestions.get(n, {}).items()}})
         print(f"{n:28s} {val[n]['verdict']:7s} read {read:4d}/{pr['lines']:<4d} "
               + ("" if not bug_ids else ("bug KEPT for review" if o["groundTruth"]["caughtByTriage"] else "bug SKIPPED")))
 
