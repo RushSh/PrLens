@@ -21,3 +21,5 @@ data/calibration/dryrun_*/
 data/envs/
 data/work/
 .pnpm-store/
+
+web/recordings/

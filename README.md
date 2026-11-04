@@ -40,6 +40,10 @@ saw it).
 | Threshold chosen without the PR's repository | 28 skipped, 44% read | 12 skipped, 42% read | 7 skipped, 41% read |
 | Ranking quality (AUC), combined / model alone | 0.81 / 0.74 | 0.83 / 0.76 | 0.74 / 0.70 |
 
+Every score here is out of fold. The "kept" and "lines left to read" rows use one threshold per language, picked on all
+of that language's out-of-fold scores. The "threshold chosen without the PR's repository" row is stricter and keeps
+140 / 72 / 57 bugs; the bounds quoted at the top come from that row.
+
 **Does the model earn its place?** At the same 20% miss target, held out by repository, the share of lines left to read,
 and how many bugs each ranking keeps when it may read only as much as PR Lens does:
 
