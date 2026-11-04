@@ -74,7 +74,8 @@ control, it got the same change and request with no flags. The later fix's tests
 | Round 2: notes see the whole PR; both arms asked more firmly to find a bug | 2 | 2 |
 
 The same two bugs were fixed whenever any were (more-itertools `seekable`, sqlglot `COUNT(*) FILTER`), with and without
-the flags; no suggestion broke a test that passed before, where the project's own suite runs. On these 8 PRs the flags
+the flags. No suggestion broke a test that passed before: every Python suggestion was also run against the project's
+own test suite (161 to about 62,000 tests) with and without it; the one TypeScript project's suite was not checked. On these 8 PRs the flags
 did not change whether Muse Code could repair the bug, even when the note named it (more-itertools `iter_index`).
 PR Lens's value is in what a human reads, not in steering an agent's repair.
 
