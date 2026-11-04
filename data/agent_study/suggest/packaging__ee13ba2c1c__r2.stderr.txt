@@ -1,2 +1,2 @@
-muse: workspace root: /Users/rushabhshah/muse_suggest/packaging__ee13ba2c1c__r2/repo/. (explicit)
+muse: workspace root: ~/muse_suggest/packaging__ee13ba2c1c__r2/repo/. (explicit)
 muse: Agent delegation: auto unavailable: workspace is untrusted.

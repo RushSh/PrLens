@@ -163,21 +163,26 @@ def suite_failures(clone: Path, rev: str, diff: str, install: str) -> tuple[int,
                     break
             if r.returncode != 0:
                 return 0, set(), "install failed"
-            text = ""
-            for pin in (None, "pytest<7", "pytest<5"):  # old commits: the same fallbacks as the fix-test runs
+            # old commits: the same pytest fallbacks as the fix-test runs, keeping the attempt that ran the most tests;
+            # a test file that cannot be collected is reported (ERROR) instead of stopping the run
+            best = (0, set(), "")
+            for pin in (None, "pytest<7", "pytest<5"):
                 if pin:
                     sh(f'{uvpip} "{pin}"', wt, timeout=300)
-                r = sh(".venv/bin/python -m pytest -q -p no:cacheprovider -rf --maxfail=200 2>&1 | tail -400", wt,
-                       timeout=900)
+                r = sh(".venv/bin/python -m pytest -q -p no:cacheprovider -rfE --continue-on-collection-errors "
+                       "2>&1 | tail -600", wt, timeout=900)
                 text = r.stdout + r.stderr
-                if not re.search(r"PluginValidationError|hookimpl|unexpected keyword argument|PytestRemovedIn|"
-                                 r"has no attribute 'Function'|ImportError while loading conftest", text):
+                passed = sum(int(x) for x in re.findall(r"(\d+) passed", text[-800:]))
+                failed = set(re.findall(r"^(?:FAILED|ERROR) (\S+)", text, re.M))
+                if passed > best[0]:
+                    best = (passed, failed, text)
+                if passed and not re.search(r"PluginValidationError|hookimpl|unexpected keyword argument|"
+                                            r"PytestRemovedIn|has no attribute 'Function'|ImportError while loading "
+                                            r"conftest", text):
                     break
-            failed = set(re.findall(r"^FAILED (\S+)", text, re.M))
-            passed = sum(int(x) for x in re.findall(r"(\d+) passed", text[-800:]))
-            if not passed:
+            if not best[0]:
                 return 0, set(), "the project's suite did not run here"
-            return passed, failed, ""
+            return best[0], best[1], ""
         finally:
             subprocess.run(["git", "-C", str(clone), "worktree", "remove", "--force", str(wt)], capture_output=True)
 
@@ -234,9 +239,12 @@ def validate(args) -> None:
                     p0, f0, e0 = suite_failures(clone, t["parent"], agent_only, install)
                     p1, f1, e1 = suite_failures(clone, t["parent"], combined, install)
                     broke = sorted(f1 - f0)
+                    # a drop in passing tests that no FAILED/ERROR line names (e.g. a module that stopped importing)
+                    # counts as breakage too
+                    lost = max(0, p0 - p1 - len(broke))
                     rec["suite"] = ({"checked": False, "note": e0 or e1} if e0 or e1 else
                                     {"checked": True, "passed_before": p0, "passed_after": p1, "broken": broke[:20],
-                                     "broken_count": len(broke)})
+                                     "broken_count": len(broke) + lost, "unnamed_drop": lost})
                 else:
                     rec["suite"] = {"checked": False, "note": "suite check runs for Python only"}
             rec["seconds"] = round(time.time() - t0)

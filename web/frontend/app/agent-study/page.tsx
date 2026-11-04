@@ -120,8 +120,9 @@ export default async function AgentStudyPage() {
               </tbody>
             </table>
             <p className="text-xs text-muted">
-              Every suggestion is labelled “suggested, still needs human review”; PR Lens never applies one. Where the project&apos;s
-              own Python suite runs, each suggestion is also checked for tests it newly breaks.
+              Every suggestion is labelled “suggested, still needs human review”; PR Lens never applies one. Every Python
+              suggestion was also run against the project&apos;s own test suite: none breaks a test that passed before (the
+              TypeScript project&apos;s suite was not checked).
             </p>
           </div>
         </Box>

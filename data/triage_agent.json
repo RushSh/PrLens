@@ -1,7 +1,7 @@
 {
  "kind": "triage",
  "name": "agent",
- "generated_at": "2026-11-01T20:05:02+00:00",
+ "generated_at": "2026-11-04T16:13:59+00:00",
  "model": "spark_open",
  "threshold": 0.061336526333574365,
  "alpha": 0.2,
@@ -859,8 +859,12 @@
     },
     "diff": "diff --git a/boltons/strutils.py b/boltons/strutils.py\nindex 4c6dcc2..88620e3 100644\n--- a/boltons/strutils.py\n+++ b/boltons/strutils.py\n@@ -196,7 +196,7 @@ def singularize(word):\n         singular = word[:-1]  # or just return word?\n     elif word.endswith('ies') and word[-4:-3] not in 'aeiou':\n         singular = word[:-3] + 'y'\n-    elif word.endswith(('ses', 'xes', 'zes', 'ches', 'shes')):\n+    elif word == 'buses' or word.endswith(('sses', 'xes', 'zes', 'ches', 'shes')):\n         singular = word[:-2]\n     else:\n         singular = word[:-1]\ndiff --git a/tests/test_strutils.py b/tests/test_strutils.py\nindex 91ca419..ab21cf3 100644\n--- a/tests/test_strutils.py\n+++ b/tests/test_strutils.py\n@@ -65,6 +65,13 @@ def test_singularize():\n     assert strutils.singularize(strutils.pluralize('wish')) == 'wish'\n \n \n+def test_singularize_se_singulars():\n+    # singulars ending in -se pluralize with just -s, so only -s is removed\n+    assert strutils.singularize('houses') == 'house'\n+    assert strutils.singularize('cases') == 'case'\n+    assert strutils.singularize('horses') == 'horse'\n+\n+\n class TestMultiReplace(TestCase):\n \n     def test_simple_substitutions(self):",
     "suite": {
-     "checked": false,
-     "note": "the project's suite did not run here"
+     "checked": true,
+     "passed_before": 161,
+     "passed_after": 162,
+     "broken": [],
+     "broken_count": 0,
+     "unnamed_drop": 0
     },
     "control": "not fixed",
     "round": 2
@@ -1304,8 +1308,12 @@
     },
     "diff": "diff --git a/sqlglot/generators/snowflake.py b/sqlglot/generators/snowflake.py\nindex 0e2d3be..c2c24fe 100644\n--- a/sqlglot/generators/snowflake.py\n+++ b/sqlglot/generators/snowflake.py\n@@ -1182,10 +1182,18 @@ class SnowflakeGenerator(generator.Generator):\n         agg_arg = agg.this\n         cond = expression.expression.this\n \n-        if isinstance(agg, exp.Count) and isinstance(agg_arg, exp.Star):\n-            # A star is not a valid IFF argument, so COUNT(*) FILTER can't use the\n-            # rewrite below; it counts qualifying rows, i.e. Snowflake's COUNT_IF\n-            return self.sql(exp.CountIf(this=cond.copy()))\n+        if isinstance(agg, exp.Count):\n+            # A star is not a valid IFF argument, so star-shaped COUNT(*) FILTER\n+            # can't use the rewrite below; it counts qualifying rows, i.e. COUNT_IF\n+            star_arg = agg_arg.this if isinstance(agg_arg, exp.Order) else agg_arg\n+            if isinstance(star_arg, exp.Distinct):\n+                star_exprs = star_arg.expressions\n+                is_star = len(star_exprs) == 1 and star_exprs[0].is_star\n+            else:\n+                is_star = star_arg is None or star_arg.is_star\n+\n+            if is_star:\n+                return self.sql(exp.CountIf(this=cond.copy()))\n \n         if isinstance(agg, exp.WithinGroup):\n             # Ordered-set aggregates take their input from the ORDER BY key, so the\ndiff --git a/tests/dialects/test_duckdb.py b/tests/dialects/test_duckdb.py\nindex 6a89f46..bc7ed0f 100644\n--- a/tests/dialects/test_duckdb.py\n+++ b/tests/dialects/test_duckdb.py\n@@ -380,6 +380,34 @@ class TestDuckDB(Validator):\n                 \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n             },\n         )\n+        self.validate_all(\n+            \"SELECT COUNT(t.*) FILTER (WHERE b > 0) FROM t\",\n+            write={\n+                \"duckdb\": \"SELECT COUNT(t.*) FILTER(WHERE b > 0) FROM t\",\n+                \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n+            },\n+        )\n+        self.validate_all(\n+            \"SELECT COUNT(* ORDER BY b) FILTER (WHERE b > 0) FROM t\",\n+            write={\n+                \"duckdb\": \"SELECT COUNT(* ORDER BY b) FILTER(WHERE b > 0) FROM t\",\n+                \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n+            },\n+        )\n+        self.validate_all(\n+            \"SELECT COUNT(DISTINCT *) FILTER (WHERE b > 0) FROM t\",\n+            write={\n+                \"duckdb\": \"SELECT COUNT(DISTINCT *) FILTER(WHERE b > 0) FROM t\",\n+                \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n+            },\n+        )\n+        self.validate_all(\n+            \"SELECT COUNT() FILTER (WHERE b > 0) FROM t\",\n+            write={\n+                \"duckdb\": \"SELECT COUNT() FILTER(WHERE b > 0) FROM t\",\n+                \"snowflake\": \"SELECT COUNT_IF(b > 0) FROM t\",\n+            },\n+        )\n         self.validate_all(\n             \"SELECT ARRAY_AGG(DISTINCT a) FILTER (WHERE a IS NOT NULL)\",\n             write={",
     "suite": {
-     "checked": false,
-     "note": "the project's suite did not run here"
+     "checked": true,
+     "passed_before": 977,
+     "passed_after": 977,
+     "broken": [],
+     "broken_count": 0,
+     "unnamed_drop": 0
     },
     "control": "fixed",
     "round": 2
@@ -1862,8 +1870,12 @@
     },
     "diff": "diff --git a/src/packaging/direct_url.py b/src/packaging/direct_url.py\nindex b4ed128..5da744e 100644\n--- a/src/packaging/direct_url.py\n+++ b/src/packaging/direct_url.py\n@@ -290,7 +290,7 @@ class DirectUrl:\n                 \"Exactly one of vcs_info, archive_info, dir_info must be present\"\n             )\n         if direct_url.dir_info is not None and (\n-            urllib.parse.urlsplit(direct_url.url).scheme.lower() != \"file\"\n+            not direct_url.url.lower().startswith(\"file://\")\n         ):\n             raise DirectUrlValidationError(\n                 \"URL scheme must be file:// when dir_info is present\",\ndiff --git a/tests/test_direct_url.py b/tests/test_direct_url.py\nindex b7b5b24..1f8bedb 100644\n--- a/tests/test_direct_url.py\n+++ b/tests/test_direct_url.py\n@@ -227,6 +227,27 @@ def test_dir_info_url_scheme_file(url: str) -> None:\n         )\n \n \n+@pytest.mark.parametrize(\n+    \"url\",\n+    [\n+        \"file:/tmp/x\",\n+        \"FILE:/tmp/x\",\n+        \"file:foo\",\n+    ],\n+)\n+def test_dir_info_rejects_file_scheme_without_double_slash(url: str) -> None:\n+    with pytest.raises(\n+        DirectUrlValidationError,\n+        match=r\"URL scheme must be file:// when dir_info is present\",\n+    ):\n+        DirectUrl.from_dict(\n+            {\n+                \"url\": url,\n+                \"dir_info\": {},\n+            }\n+        )\n+\n+\n def test_missing_url() -> None:\n     with pytest.raises(\n         DirectUrlValidationError,",
     "suite": {
-     "checked": false,
-     "note": "the project's suite did not run here"
+     "checked": true,
+     "passed_before": 61904,
+     "passed_after": 61907,
+     "broken": [],
+     "broken_count": 0,
+     "unnamed_drop": 0
     },
     "control": "not fixed",
     "round": 2
@@ -2691,7 +2703,8 @@
      "passed_before": 578,
      "passed_after": 579,
      "broken": [],
-     "broken_count": 0
+     "broken_count": 0,
+     "unnamed_drop": 0
     },
     "control": "not fixed",
     "round": 2
@@ -4086,7 +4099,8 @@
      "passed_before": 604,
      "passed_after": 606,
      "broken": [],
-     "broken_count": 0
+     "broken_count": 0,
+     "unnamed_drop": 0
     },
     "control": "not fixed",
     "round": 2
@@ -7510,7 +7524,8 @@
      "passed_before": 433,
      "passed_after": 434,
      "broken": [],
-     "broken_count": 0
+     "broken_count": 0,
+     "unnamed_drop": 0
     },
     "control": "fixed",
     "round": 2
