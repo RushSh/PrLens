@@ -1,3 +1,3 @@
-muse: workspace root: /Users/rushabhshah/muse_suggest/sqlglot__47e255dda3__r2/repo/. (explicit)
-muse: warning: rules file at /Users/rushabhshah/muse_suggest/sqlglot__47e255dda3__r2/repo/AGENTS.md exists, but the workspace is untrusted, so it is skipped for this session; restart with --trust-workspace to load project rules
+muse: workspace root: ~/muse_suggest/sqlglot__47e255dda3__r2/repo/. (explicit)
+muse: warning: rules file at ~/muse_suggest/sqlglot__47e255dda3__r2/repo/AGENTS.md exists, but the workspace is untrusted, so it is skipped for this session; restart with --trust-workspace to load project rules
 muse: Agent delegation: auto unavailable: workspace is untrusted.

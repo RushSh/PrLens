@@ -1,2 +1,2 @@
-muse: workspace root: /Users/rushabhshah/muse_suggest/more-itertools__a50ab3eebb/repo/. (explicit)
+muse: workspace root: ~/muse_suggest/more-itertools__a50ab3eebb/repo/. (explicit)
 muse: Agent delegation: auto unavailable: workspace is untrusted.

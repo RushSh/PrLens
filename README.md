@@ -174,6 +174,7 @@ Evaluation, Agent study, Triage a PR, and Pipeline (every `prlens` step, with co
 | `prlens triage-pr` | Triage a live GitHub PR (`--explain` adds the notes) | paid, asks first |
 | `prlens explain` | One-sentence notes on review items (Muse Spark Model API) | paid, asks first |
 | `prlens agent-study` | Muse Code re-implements evaluation commits; validate with the fix's tests; triage | paid, asks first |
+| `prlens suggest` | Muse Code suggests a fix for the flagged regions (and a no-flags control); the later fix's tests judge it | paid, asks first |
 
 ## Repository layout
 
@@ -194,7 +195,7 @@ Evaluation, Agent study, Triage a PR, and Pipeline (every `prlens` step, with co
 | --- | --- | --- |
 | Muse Spark Open | Scores every region and writes the reason, as structured JSON (all results above) | Open weights on Baseten |
 | Muse Spark | Writes the one-line note on what to check (demo and agent-study PRs) | Meta Model API |
-| Muse Code (agent) | Writes the agent-study pull requests | Muse Code CLI |
+| Muse Code (agent) | Writes the agent-study pull requests, and the suggested fixes in the fix-loop experiment | Muse Code CLI |
 | Muse Wonder | Wired as an alternative scorer; not evaluated | Meta Model API |
 | Muse Glimmer | Wired as an alternative scorer; not evaluated | Open weights (MLX locally, or Fireworks) |
 
